@@ -1,4 +1,10 @@
+<<<<<<< HEAD
 {
         "Rohan":{"username": "Rohan123","password": "Rohan@2024"  }
     
+=======
+{
+        "Rohan":{"username": "Rohan123","password": "Rohan@2024"  }
+    
+>>>>>>> 37eaa4c (Initial commit)
 }
