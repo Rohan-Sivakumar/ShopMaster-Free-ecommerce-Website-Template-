@@ -1,0 +1,346 @@
+*{
+    font-family: sans-serif;
+}
+.Logo{
+  text-decoration: none;
+  display: inline;
+  font-size: 24px;
+  font-weight: bold;
+  color: #333;
+}
+.Logo1{
+  list-style-type: none;
+  text-decoration: none;
+  padding-right: 1000px;
+  display: inline;
+  font-size: 24px;
+  font-weight: bold;
+  font-family: sans-serif;
+  color: #01796f;
+  padding-left: 50px;
+}
+nav{
+  display: flex;
+  align-items: center;
+  gap: 100px;
+
+}
+li{
+  display: inline;
+  margin-right: 20px;
+  cursor: pointer;
+  text-decoration: none;
+  list-style-type: none;
+}
+a{
+  text-decoration: none;
+  color: #333;
+}
+li{
+  font-family: sans-serif;
+  padding-right: 50px;
+}
+.heading{
+    color: #21808d;
+    font-family:"FKGroteskNeue", "Geist", "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    display: inline;
+    border-radius: 0px;
+    
+}
+.nodecoration{
+    text-decoration: none;
+    display: inline;
+    color: black;
+}
+.navbar{
+    display: flex;
+    background-color: rgb(247, 247, 247);
+    
+    
+}
+.nav{
+    display: inline-flex;
+    font-family:"FKGroteskNeue", "Geist", "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    font-weight: bolder;
+    font-size: large;
+    margin-left: 100px;
+    font-weight: 500;
+    
+
+}
+.butt{
+    background: rgb(247, 247, 247) ;
+    border: none;
+    padding:10px;
+    font-size: 16px;
+    cursor: pointer;
+    margin-left: 100px;
+}
+.butt:hover{
+    background-color: rgba(44, 91, 97, 0.199);
+    border-radius: 10px;
+}
+.head{
+    padding-left: 700px;
+}
+.upper{
+    background: rgba(61, 61, 61, 0.082);
+    padding-top: 75px;
+    padding-bottom: 75px;
+}
+.para{
+    font-family:"FKGroteskNeue", "Geist", "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    font-size: larger;
+    text-align: center;
+}
+.uppbutton{
+    background: #21808d;
+    border-radius: 10px;
+    border-color: rgba(61, 61, 61, 0.082);
+    padding-right: 15px;
+    padding-left: 15px;
+}
+.upbutton{
+    font-weight: 100;
+    font-style: normal;
+    font-family: sans-serif;
+}
+.footer{
+    text-align: center;
+}
+@media screen and (max-width: 500px) and (min-width: 0px) {
+    .head {
+        padding-left: 0px;
+    }
+    .butt , .nav{
+        margin-left: 0px;
+    }
+}
+@media screen and (max-width: 800px) and (min-width:600px) {
+    .head {
+        padding-left: 50px;
+    }
+    .butt , .nav{
+        margin-left: 45px;
+    }
+}
+@media screen and (max-width: 1024px) and (min-width:900px) {
+    .head {
+        padding-left: 100px;
+    }
+    .butt , .nav{
+        margin-left: 90px;
+    }
+}
+@media screen and (max-width: 600px) and (min-width: 500px){
+    .head {
+        padding-left: 100px;
+    }
+    .butt , .nav{
+        margin-left: 0px;
+    }
+}
+@media screen and (max-width: 900px) and (min-width:800px) {
+    .head {
+        padding-left: 130px;
+    }
+    .butt , .nav{
+        margin-left: 45px;
+    }
+}
+@media screen and (max-width: 1440px) and (min-width:1024px) {
+    .head {
+        padding-left: 110px;
+    }
+    .butt , .nav{
+        margin-left: 90px;
+    }
+}
+@media screen and (max-width: 1800px) and (min-width:1500px) {
+    .head {
+        padding-left: 250px;
+    }
+    .butt , .nav{
+        margin-left: 120px;
+    }
+}
+.Pheading{
+    font-family:"FKGroteskNeue", "Geist", "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    font-size: xx-large;
+    font-weight: bolder;
+    text-align: center;
+    padding-top: 20px;
+    color: black;
+    align-content: center;
+}
+.product-list{
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 20px;
+    padding: 20px;
+}
+
+
+.page{
+    display: none;
+}
+.page.active{
+    display: block;
+}
+.div{
+    border: 0.1px solid; border-radius: 10px; height: 400px; width: 300px;
+}
+.img{
+    border-top-left-radius: 10px;border-top-right-radius: 10px;
+    width: 300px;
+}
+.h2{
+    font-family: sans-serif; font-weight: 500;padding-left: 20px;
+    text-align: left;
+}
+.h3{
+    font-family: sans-serif; font-weight: 400;padding-left: 20px; 
+    text-align: left;
+}
+.div:hover{
+    box-shadow: 0 4px 8px 0 rgba(0, 0, 0, 0.2), 0 6px 20px 0 rgba(0, 0, 0, 0.19);
+    transition: 0.3s;
+}
+.button{
+    margin-left: 20px;
+    margin-top: 10px;
+    padding: 10px;
+    background-color: #21808d;
+    color: white;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    text-align: left;
+}
+.button:hover{
+    background-color: #17666a;
+}
+.buttonr{
+    margin-top: 10px;
+    background-color: #21808d;
+    color: white;
+    border: none;
+    border-top-right-radius: 5px;
+    border-bottom-right-radius: 5px;
+    cursor: pointer;
+    text-align: left;
+    height: 25px;
+    font-size: 13.3333px;
+}
+.buttonm{
+    margin-top: 10px;
+    background-color: #21808d;
+    color: white;
+    border: none;
+    cursor: pointer;
+    text-align: left;
+    height: 25px;
+    font-size: 13.3333px;
+    padding-top: 10px;
+    padding-bottom: 10px;
+}
+.buttonl{
+    margin-top: 10px;
+    background-color: #21808d;
+    color: white;
+    border: none;
+    border-top-left-radius: 5px;
+    border-bottom-left-radius: 5px;
+    cursor: pointer;
+    text-align: left;
+    height: 25px;
+    font-size: 13.3333px;
+    margin-left: 20px;
+}
+.buttonl :hover{
+    background-color: #17666a;
+
+    
+}
+.buttonm :hover{
+    background-color: #17666a;
+
+    
+}
+.buttonr :hover{
+    background-color: #17666a;
+}
+.add{
+    text-align: left;
+}
+
+/* --- Page Visibility Control --- */
+.page {
+  display: none;
+}
+.page.active {
+  display: block;
+}
+
+/* --- Cart Count Badge in Navigation --- */
+.navigation a {
+    position: relative;
+}
+.cart-count {
+  background-color: #dc3545;
+  color: white;
+  border-radius: 10px;
+  padding: 2px 6px;
+  font-size: 0.75rem;
+  font-weight: bold;
+  position: absolute;
+  top: 0;
+  right: -15px;
+}
+
+/* --- Cart Page Styles --- */
+.cart-container {
+    max-width: 800px;
+    margin: 2rem auto;
+    padding: 2rem;
+    background: #fff;
+    border-radius: 8px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+.cart-list {
+    list-style: none;
+    padding: 0;
+}
+
+.cart-list li {
+    display: flex;
+    justify-content: space-between;
+    padding: 1rem 0;
+    border-bottom: 1px solid #eee;
+}
+
+.cart-list li:last-child {
+    border-bottom: none;
+}
+.product-details button {
+  background: #dc3545;
+  color: #fff;
+  border: none;
+  border-radius: 4px;
+  padding: 4px 10px;
+  cursor: pointer;
+  font-size: 1rem;
+}
+.product-details button:hover {
+  background: #b52a37;
+}
+
+
+
+
+
+
+
+

@@ -1,0 +1,14 @@
+#Cart {
+    padding: 20px;
+    background-color: #fcfcfc;
+    height: 850px;
+}
+.cart-items {
+    margin-top: 20px;
+    background-color: white;
+    min-height: 400px;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+    border-radius: 5px;
+    width: 750px;
+    margin-left: 150px;
+}
