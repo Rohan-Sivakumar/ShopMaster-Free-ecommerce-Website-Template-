@@ -118,11 +118,25 @@ function App() {
       {/* Product Details Page */}
       <div className={`page ${activePage === 'pdetails' ? 'active' : ''}`} id="pdetails">
         {selectedProduct && (
-          <div style={{justifyContent:'start'}}>
-            <div style={{boxShadow: '1px 1px 1px 1px grey', padding: '20px', margin: '20px', borderRadius: '10px', justifyContent:'start', height: 'fit-content' ,width: 'fit-content', marginLeft: 'auto', marginRight: 'auto'}}>
+          <div style={{display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '400px'}}>
+            <div style={{boxShadow: '1px 1px 1px 1px grey', padding: '20px', margin: '20px', borderRadius: '10px', maxWidth: '500px'}}>
               {selectedProduct.img && (
-                <img src={selectedProduct.img} alt={selectedProduct.id} height={'300px'} />
+                <img src={selectedProduct.img} alt={selectedProduct.id} height={'300px'} style={{marginBottom: '20px'}} />
               )}
+              <h2>{selectedProduct.id}</h2>
+              <p><strong>Category:</strong> {selectedProduct.category}</p>
+              <p><strong>Year:</strong> {selectedProduct.year}</p>
+              <p><strong>Price:</strong> ₹{selectedProduct.cost}</p>
+              <p><strong>Description:</strong> {selectedProduct.description}</p>
+              <button className="button" onClick={() => {
+                addcart(selectedProduct);
+                handlePageChange('p');
+              }}>
+                Add To Cart
+              </button>
+              <button className="button" style={{marginLeft: '10px'}} onClick={() => handlePageChange('p')}>
+                Back to Products
+              </button>
             </div>
           </div>
         )}
@@ -170,15 +184,22 @@ function App() {
                         return acc;
                     }, []);
 
+                    const totalPrice = groupedCart.reduce((sum, item) => sum + (item.cost * item.quantity), 0);
+
                     return (
-                        <ul className="cart-list">
-                            {groupedCart.map(item => (
-                                <li key={item.id}>
-                                    <span>{item.id}{item.quantity > 1 ? ` × ${item.quantity}` : ''}</span>
-                                    <span>₹{item.cost * item.quantity}</span>
-                                </li>
-                            ))}
-                        </ul>
+                        <>
+                            <ul className="cart-list">
+                                {groupedCart.map(item => (
+                                    <li key={item.id}>
+                                        <span>{item.id}{item.quantity > 1 ? ` × ${item.quantity}` : ''}</span>
+                                        <span>₹{item.cost * item.quantity}</span>
+                                    </li>
+                                ))}
+                            </ul>
+                            <div style={{marginTop: '20px', fontSize: '18px', fontWeight: 'bold'}}>
+                                <p>Total: ₹{totalPrice}</p>
+                            </div>
+                        </>
                     );
                 })()
             )}
@@ -186,7 +207,7 @@ function App() {
       </div>
       <div id="dashboard" className={`page ${activePage === 'dashboard' ? 'active' : ''}`}>
         <center>
-            <h2>dashboard</h2>
+            <h2>Dashboard</h2>
             <p>Welcome to your dashboard, {user}!</p>
         </center>
       </div>
@@ -195,5 +216,3 @@ function App() {
 }
 
 export default App;
-
-/* Add to App.css */
