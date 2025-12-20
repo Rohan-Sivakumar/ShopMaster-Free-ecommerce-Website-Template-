@@ -1,9 +1,11 @@
+export default App;
 import React, { useState, useEffect } from "react";
 import Navigation from "./Navigation";
 import "./App.css";
 import { addcart, removecart, user, useCartUpdater } from "./index.js";
 import us from "./assets/login.json";
 var users = JSON.parse(JSON.stringify(us));
+
 
 const initialProducts = [
     {
@@ -118,25 +120,11 @@ function App() {
       {/* Product Details Page */}
       <div className={`page ${activePage === 'pdetails' ? 'active' : ''}`} id="pdetails">
         {selectedProduct && (
-          <div style={{display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '400px'}}>
-            <div style={{boxShadow: '1px 1px 1px 1px grey', padding: '20px', margin: '20px', borderRadius: '10px', maxWidth: '500px'}}>
+          <div style={{justifyContent:'start'}}>
+            <div style={{boxShadow: '1px 1px 1px 1px grey', padding: '20px', margin: '20px', borderRadius: '10px', justifyContent:'start', height: 'fit-content' ,width: 'fit-content', marginLeft: 'auto', marginRight: 'auto'}}>
               {selectedProduct.img && (
-                <img src={selectedProduct.img} alt={selectedProduct.id} height={'300px'} style={{marginBottom: '20px'}} />
+                <img src={selectedProduct.img} alt={selectedProduct.id} height={'300px'} />
               )}
-              <h2>{selectedProduct.id}</h2>
-              <p><strong>Category:</strong> {selectedProduct.category}</p>
-              <p><strong>Year:</strong> {selectedProduct.year}</p>
-              <p><strong>Price:</strong> ₹{selectedProduct.cost}</p>
-              <p><strong>Description:</strong> {selectedProduct.description}</p>
-              <button className="button" onClick={() => {
-                addcart(selectedProduct);
-                handlePageChange('p');
-              }}>
-                Add To Cart
-              </button>
-              <button className="button" style={{marginLeft: '10px'}} onClick={() => handlePageChange('p')}>
-                Back to Products
-              </button>
             </div>
           </div>
         )}
@@ -207,7 +195,7 @@ function App() {
       </div>
       <div id="dashboard" className={`page ${activePage === 'dashboard' ? 'active' : ''}`}>
         <center>
-            <h2>Dashboard</h2>
+            <h2>dashboard</h2>
             <p>Welcome to your dashboard, {user}!</p>
         </center>
       </div>
@@ -216,3 +204,4 @@ function App() {
 }
 
 export default App;
+
