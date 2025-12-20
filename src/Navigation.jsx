@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from "react";
 import { user } from "./index.js";
 import us from "./assets/login.json";
@@ -13,7 +12,7 @@ export default function Navigation({ activePage, onPageChange }) {
 
   useEffect(() => {
     const handleCartUpdate = (event) => {
-      setCartCount(event.detail.count);
+      setCartCount(event?.detail?.count ?? 0);
     };
     window.addEventListener("cartUpdated", handleCartUpdate);
     return () => window.removeEventListener("cartUpdated", handleCartUpdate);
@@ -26,11 +25,16 @@ export default function Navigation({ activePage, onPageChange }) {
 
   return (
     <nav className="navigation">
-        <h2 className="heading" style={{marginLeft: "40px",marginRight: "800px",cursor: "pointer"}} onClick={() => window.location.href='/'}>Shopmaster</h2>
+        <h2 className="heading" style={{marginLeft: "40px",marginRight: "800px",cursor: "pointer"}} onClick={() => window.location.href='/'}>
+          Shopmaster
+        </h2>
       <ul>
-        
-        <li className={activePage === "home" ? "active-nav-link" : ""}><a href="#home" onClick={go("home")}>Home</a></li>
-        <li className={activePage === "p" ? "active-nav-link" : ""}><a href="#product" onClick={go("p")}>Products</a></li>
+        <li className={activePage === "home" ? "active-nav-link" : ""}>
+          <a href="#home" onClick={go("home")}>Home</a>
+        </li>
+        <li className={activePage === "p" ? "active-nav-link" : ""}>
+          <a href="#product" onClick={go("p")}>Products</a>
+        </li>
         {user === "anonymous" ? (
           <li className={activePage === "login" ? "active-nav-link" : ""}>
             <a href="#login" onClick={go("login")}>Login</a>
@@ -49,5 +53,3 @@ export default function Navigation({ activePage, onPageChange }) {
     </nav>
   );
 }
-
-
