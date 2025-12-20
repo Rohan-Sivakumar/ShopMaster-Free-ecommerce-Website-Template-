@@ -101,6 +101,7 @@ export function pageshow(page){
         }
     });
 }
+
 export function useCartUpdater(setCartItems) {
     useEffect(() => {
         const onCartUpdated = (e) => {
@@ -109,8 +110,9 @@ export function useCartUpdater(setCartItems) {
         };
         window.addEventListener('cartUpdated', onCartUpdated);
         return () => window.removeEventListener('cartUpdated', onCartUpdated);
-    }, []);
+    }, [setCartItems]);
 } 
+
 export const removeFromCartLocal = (product) => {
     if (user === "anonymous" || !users[user] || !Array.isArray(users[user].cart)) {
         return;
@@ -127,6 +129,7 @@ export const removeFromCartLocal = (product) => {
         console.error(e);
     }
 };
+
 export const addToCartLocal = (product) => {
     if (user === "anonymous" || !users[user]) {
         alert("Please log in to add items to the cart.");
@@ -142,7 +145,3 @@ export const addToCartLocal = (product) => {
         console.error(e);
     }
 };
-
-
-
-
