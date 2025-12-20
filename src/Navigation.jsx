@@ -48,4 +48,6 @@ export default function Navigation({ activePage, onPageChange }) {
       </ul>
     </nav>
   );
+}
+
 
