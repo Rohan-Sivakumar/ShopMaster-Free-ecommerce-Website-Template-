@@ -1,7 +1,7 @@
-
 import React, { useState, useEffect } from "react";
 import Navigation from "./Navigation";
 import "./App.css";
+import "./styles/ProductDetails.css";
 import { addcart, removecart, user, useCartUpdater } from "./index.js";
 import us from "./assets/login.json";
 var users = JSON.parse(JSON.stringify(us));
@@ -14,7 +14,23 @@ const initialProducts = [
         cost: 9999,
         img: "./src/assets/headphone.jpeg",
         category: "Electronics",
-        description: "High-quality wireless headphones with noise cancellation."
+        description: "High-quality wireless headphones with noise cancellation.",
+        originalPrice: 14999,
+        rating: 4.5,
+        reviews: 342,
+        stock: 15,
+        colors: [
+            { name: 'black', hex: '#000000' },
+            { name: 'silver', hex: '#C0C0C0' },
+            { name: 'gold', hex: '#FFD700' },
+        ],
+        sizes: ['S', 'M', 'L', 'XL'],
+        features: [
+            '✓ Active Noise Cancellation',
+            '✓ 30-Hour Battery Life',
+            '✓ Premium Sound Quality',
+            '✓ Bluetooth 5.0',
+        ]
     },
     {
         id: "Smart Watch",
@@ -22,7 +38,23 @@ const initialProducts = [
         cost: 4999,
         img: "./src/assets/watch.jpeg",
         category: "Wearables",
-        description: "Feature-rich smart watch with health tracking."
+        description: "Feature-rich smart watch with health tracking.",
+        originalPrice: 7999,
+        rating: 4.3,
+        reviews: 215,
+        stock: 20,
+        colors: [
+            { name: 'black', hex: '#000000' },
+            { name: 'silver', hex: '#C0C0C0' },
+            { name: 'rose', hex: '#F64A8A' },
+        ],
+        sizes: ['S', 'M', 'L'],
+        features: [
+            '✓ Heart Rate Monitor',
+            '✓ Sleep Tracking',
+            '✓ GPS Navigation',
+            '✓ Water Resistant',
+        ]
     },
     // Add more products as needed
 ];
@@ -34,6 +66,9 @@ function App() {
   const [search, setSearch] = useState("");
   const [filter, setFilter] = useState("All");
   const [selectedProduct, setSelectedProduct] = useState(null);
+  const [quantity, setQuantity] = useState(1);
+  const [selectedSize, setSelectedSize] = useState('M');
+  const [selectedColor, setSelectedColor] = useState('black');
 
   // Get unique categories for filter dropdown
   const categories = ["All", ...Array.from(new Set(products.map(p => p.category)))];
@@ -44,6 +79,9 @@ function App() {
   const handlePageChange = (pageId) => {
     setActivePage(pageId);
     setSelectedProduct(null);
+    setQuantity(1);
+    setSelectedSize('M');
+    setSelectedColor('black');
   };
 
   // Filter and search logic
@@ -57,6 +95,23 @@ function App() {
   const showProductDetails = (product) => {
     setSelectedProduct(product);
     setActivePage("pdetails");
+    setQuantity(1);
+    setSelectedSize('M');
+    setSelectedColor('black');
+  };
+
+  const discount = selectedProduct ? Math.round(((selectedProduct.originalPrice - selectedProduct.cost) / selectedProduct.originalPrice) * 100) : 0;
+
+  const handleAddToCart = () => {
+    for (let i = 0; i < quantity; i++) {
+      addcart(selectedProduct);
+    }
+    alert(`${quantity}x ${selectedProduct.id} added to cart!`);
+    setQuantity(1);
+  };
+
+  const handleBuyNow = () => {
+    alert(`Proceeding to checkout with ${quantity}x ${selectedProduct.id}`);
   };
 
   return (
@@ -66,7 +121,7 @@ function App() {
       {/* Product Page with Search and Filter */}
       <div id="p" className={`page ${activePage === 'p' ? 'active' : ''}`}>
         <h2 style={{textAlign:'center'}}>Products</h2>
-        <div style={{display:'flex', justifyContent:'center', gap:'1rem', marginBottom:'1rem'}}>
+        <div style={{display:'flex', justifyContent:'center', gap:'1rem', marginBottom:'1rem', flexWrap:'wrap'}}>
           <input
             type="text"
             placeholder="Search products..."
@@ -95,7 +150,7 @@ function App() {
                 style={{cursor:'pointer'}}
                 onClick={() => showProductDetails(product)}
               >
-                <img src={product.img} className='img' alt={product.id} height={'218.25px'} />
+                <img src={product.img} className='img' alt={product.id} height={'218.25px'} onError={(e) => {e.target.src = 'https://via.placeholder.com/300?text=Product'}} />
                 <h2 className='h2'>{product.id}</h2>
                 <h3 className='h3'>₹{product.cost}</h3>
                 <div className='add' onClick={e => e.stopPropagation()}>
@@ -117,14 +172,175 @@ function App() {
         </div>
       </div>
 
-      {/* Product Details Page */}
+      {/* Product Details Page - ENHANCED */}
       <div className={`page ${activePage === 'pdetails' ? 'active' : ''}`} id="pdetails">
         {selectedProduct && (
-          <div style={{justifyContent:'start'}}>
-            <div style={{boxShadow: '1px 1px 1px 1px grey', padding: '20px', margin: '20px', borderRadius: '10px', justifyContent:'start', height: 'fit-content' ,width: 'fit-content', marginLeft: 'auto', marginRight: 'auto'}}>
-              {selectedProduct.img && (
-                <img src={selectedProduct.img} alt={selectedProduct.id} height={'300px'} />
+          <div className="product-details-container">
+            {/* Left Section - Product Image */}
+            <div className="product-image-section">
+              <div className="product-image-wrapper">
+                <img
+                  src={selectedProduct.img}
+                  alt={selectedProduct.id}
+                  className="product-main-image"
+                  onError={(e) => {
+                    e.target.src = 'https://via.placeholder.com/500?text=Product+Image';
+                  }}
+                />
+                {discount > 0 && <div className="discount-badge">{discount}% OFF</div>}
+                {selectedProduct.stock > 0 && <div className="stock-badge">In Stock</div>}
+              </div>
+              <div className="product-thumbnails">
+                {[1, 2, 3].map((idx) => (
+                  <img
+                    key={idx}
+                    src={selectedProduct.img}
+                    alt={`thumbnail ${idx}`}
+                    className={`thumbnail ${idx === 1 ? 'active' : ''}`}
+                    onError={(e) => (e.target.src = 'https://via.placeholder.com/80?text=Thumb')}
+                  />
+                ))}
+              </div>
+            </div>
+
+            {/* Right Section - Product Details */}
+            <div className="product-details-section">
+              {/* Title and Rating */}
+              <div className="product-header">
+                <h1 className="product-title">{selectedProduct.id}</h1>
+                <div className="rating-section">
+                  <div className="stars">
+                    {'★'.repeat(Math.floor(selectedProduct.rating || 4))}
+                    {(selectedProduct.rating || 4) % 1 !== 0 && '½'}
+                  </div>
+                  <span className="rating-value">{selectedProduct.rating || 4}</span>
+                  <span className="review-count">({selectedProduct.reviews || 100} reviews)</span>
+                </div>
+              </div>
+
+              {/* Price Section */}
+              <div className="price-section">
+                <div className="price-display">
+                  <span className="current-price">₹{selectedProduct.cost.toLocaleString()}</span>
+                  <span className="original-price">₹{selectedProduct.originalPrice.toLocaleString()}</span>
+                  <span className="discount-percent">{discount}% OFF</span>
+                </div>
+                <p className="description">{selectedProduct.description}</p>
+              </div>
+
+              {/* Options */}
+              <div className="product-options">
+                {/* Color Selection */}
+                {selectedProduct.colors && (
+                  <div className="option-group">
+                    <label>Color:</label>
+                    <div className="color-options">
+                      {selectedProduct.colors.map((color) => (
+                        <button
+                          key={color.name}
+                          className={`color-btn ${selectedColor === color.name ? 'active' : ''}`}
+                          style={{ backgroundColor: color.hex }}
+                          onClick={() => setSelectedColor(color.name)}
+                          title={color.name}
+                        />
+                      ))}
+                    </div>
+                    <p className="selected-option">Selected: {selectedColor}</p>
+                  </div>
+                )}
+
+                {/* Size Selection */}
+                {selectedProduct.sizes && (
+                  <div className="option-group">
+                    <label>Size:</label>
+                    <div className="size-options">
+                      {selectedProduct.sizes.map((size) => (
+                        <button
+                          key={size}
+                          className={`size-btn ${selectedSize === size ? 'active' : ''}`}
+                          onClick={() => setSelectedSize(size)}
+                        >
+                          {size}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Quantity Selection */}
+                <div className="option-group">
+                  <label>Quantity:</label>
+                  <div className="quantity-selector">
+                    <button
+                      className="qty-btn"
+                      onClick={() => setQuantity(Math.max(1, quantity - 1))}
+                    >
+                      −
+                    </button>
+                    <input
+                      type="number"
+                      value={quantity}
+                      onChange={(e) => setQuantity(Math.max(1, parseInt(e.target.value) || 1))}
+                      min="1"
+                      max={selectedProduct.stock}
+                    />
+                    <button
+                      className="qty-btn"
+                      onClick={() => setQuantity(Math.min(selectedProduct.stock, quantity + 1))}
+                    >
+                      +
+                    </button>
+                  </div>
+                  <small>Only {selectedProduct.stock} available</small>
+                </div>
+              </div>
+
+              {/* Action Buttons */}
+              <div className="action-buttons">
+                <button className="add-to-cart-btn" onClick={handleAddToCart}>
+                  🛒 Add to Cart
+                </button>
+                <button className="buy-now-btn" onClick={handleBuyNow}>
+                  💳 Buy Now
+                </button>
+              </div>
+
+              {/* Features */}
+              {selectedProduct.features && (
+                <div className="features-section">
+                  <h3>Key Features:</h3>
+                  <ul className="features-list">
+                    {selectedProduct.features.map((feature, idx) => (
+                      <li key={idx}>{feature}</li>
+                    ))}
+                  </ul>
+                </div>
               )}
+
+              {/* Shipping Info */}
+              <div className="shipping-info">
+                <div className="info-item">
+                  <span>📦</span>
+                  <div>
+                    <strong>Free Shipping</strong>
+                    <p>on orders above ₹500</p>
+                  </div>
+                </div>
+                <div className="info-item">
+                  <span>↩️</span>
+                  <div>
+                    <strong>Easy Returns</strong>
+                    <p>30-day return policy</p>
+                  </div>
+                </div>
+                <div className="info-item">
+                  <span>🔒</span>
+                  <div>
+                    <strong>Secure Payment</strong>
+                    <p>100% secure transactions</p>
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
         )}
@@ -204,4 +420,3 @@ function App() {
 }
 
 export default App;
-
