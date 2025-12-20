@@ -16,7 +16,7 @@ const ProductPage = ({ productId }) => {
     rating: 4.5,
     reviews: 342,
     stock: 15,
-    image: 'https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=800&q=80',
+    image: './src/assets/headphone.jpeg',
     description:
       'High-quality wireless headphones with noise cancellation, 30-hour battery life, and premium sound quality.',
     features: [
@@ -38,22 +38,25 @@ const ProductPage = ({ productId }) => {
   };
 
   const handleAddToCart = () => {
-    Swal.fire({
-      icon: 'success',
-      title: 'Added to Cart!',
-      text: `${quantity}x ${product.name} added to your cart`,
-      confirmButtonColor: '#28a745',
-    });
-  };
-
-  const handleBuyNow = () => {
-    Swal.fire({
+    if user=='anonymous'{
+      Swal.fire({
       icon: 'success',
       title: 'Proceeding to Checkout',
-      text: 'Redirecting you to payment page...',
+      text:'Login to add to cart'
       confirmButtonColor: '#007bff',
     });
+    else{
+      Swal.fire({
+      icon: 'success',
+      title: 'Proceeding to Checkout',
+      text:'product added to cart'
+      confirmButtonColor: '#007bff',
+    });
+    }
+  }
   };
+
+
 
   const discount = Math.round(((product.originalPrice - product.price) / product.originalPrice) * 100);
 
