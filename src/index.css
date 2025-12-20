@@ -1,4 +1,4 @@
-<<<<<<< HEAD
+
 #Cart {
     padding: 20px;
     background-color: #fcfcfc;
@@ -12,7 +12,8 @@
     border-radius: 5px;
     width: 750px;
     margin-left: 150px;
-=======
+
+
 #Cart {
     padding: 20px;
     background-color: #fcfcfc;
@@ -26,5 +27,5 @@
     border-radius: 5px;
     width: 750px;
     margin-left: 150px;
->>>>>>> 37eaa4c (Initial commit)
+
 }
