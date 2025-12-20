@@ -5,7 +5,7 @@ import Swal from 'sweetalert2';
 var users = JSON.parse(JSON.stringify(us));
 
 // The currently "logged-in" user.
-export let user = 'Rohan';
+export let user = 'anonymous';
 
 // Utility for showing toast notifications.
 export function customalert(message, type) {
