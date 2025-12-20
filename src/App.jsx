@@ -1,4 +1,4 @@
-export default App;
+
 import React, { useState, useEffect } from "react";
 import Navigation from "./Navigation";
 import "./App.css";
