@@ -11,7 +11,7 @@ const initialProducts = [
         id: "Wireless headphone",
         year: 2025,
         cost: 9999,
-        img: "./src/assets/headphone.jpeg",
+        img: "/images/headphone.jpeg",
         category: "Electronics",
         description: "High-quality wireless headphones with noise cancellation."
     },
@@ -19,7 +19,7 @@ const initialProducts = [
         id: "Smart Watch",
         year: 2024,
         cost: 4999,
-        img: "./src/assets/watch.jpeg",
+        img: "/images/watch.jpeg",
         category: "Wearables",
         description: "Feature-rich smart watch with health tracking."
     },
@@ -27,7 +27,7 @@ const initialProducts = [
         id: "Bluetooth Speaker",
         year: 2025,
         cost: 2999,
-        img: "./src/assets/speaker.jpeg",
+        img: "/images/speaker.jpeg",
         category: "Electronics",
         description: "Portable Bluetooth speaker with premium sound quality and 12-hour battery life."
     },
@@ -35,7 +35,7 @@ const initialProducts = [
         id: "Wireless Mouse",
         year: 2024,
         cost: 799,
-        img: "./src/assets/mouse.jpeg",
+        img: "/images/mouse.jpeg",
         category: "Electronics",
         description: "Ergonomic wireless mouse with precision tracking and long battery life."
     },
@@ -43,7 +43,7 @@ const initialProducts = [
         id: "USB-C Cable",
         year: 2025,
         cost: 299,
-        img: "./src/assets/cable.jpeg",
+        img: "/images/cable.jpeg",
         category: "Accessories",
         description: "Fast charging USB-C cable with durable braided design."
     },
@@ -51,7 +51,7 @@ const initialProducts = [
         id: "Fitness Band",
         year: 2024,
         cost: 1999,
-        img: "./src/assets/band.jpeg",
+        img: "/images/band.jpeg",
         category: "Wearables",
         description: "Track your fitness goals with heart rate monitoring and sleep tracking."
     },
@@ -59,7 +59,7 @@ const initialProducts = [
         id: "Phone Case",
         year: 2025,
         cost: 499,
-        img: "./src/assets/case.jpeg",
+        img: "/images/case.jpeg",
         category: "Accessories",
         description: "Shockproof phone case with premium finish and raised edges."
     },
@@ -67,7 +67,7 @@ const initialProducts = [
         id: "Power Bank",
         year: 2024,
         cost: 1499,
-        img: "./src/assets/powerbank.jpeg",
+        img: "/images/powerbank.jpeg",
         category: "Electronics",
         description: "20000mAh power bank with fast charging support for multiple devices."
     },
@@ -75,7 +75,7 @@ const initialProducts = [
         id: "Laptop Stand",
         year: 2025,
         cost: 899,
-        img: "./src/assets/stand.jpeg",
+        img: "/images/stand.jpeg",
         category: "Accessories",
         description: "Adjustable aluminum laptop stand for better ergonomics and cooling."
     },
@@ -83,7 +83,7 @@ const initialProducts = [
         id: "Gaming Keyboard",
         year: 2024,
         cost: 3499,
-        img: "./src/assets/keyboard.jpeg",
+        img: "/images/keyboard.jpeg",
         category: "Electronics",
         description: "Mechanical gaming keyboard with RGB lighting and programmable keys."
     },
@@ -91,7 +91,7 @@ const initialProducts = [
         id: "Webcam HD",
         year: 2025,
         cost: 2499,
-        img: "./src/assets/webcam.jpeg",
+        img: "/images/webcam.jpeg",
         category: "Electronics",
         description: "1080p HD webcam with auto-focus and built-in microphone."
     },
@@ -99,7 +99,7 @@ const initialProducts = [
         id: "Screen Protector",
         year: 2024,
         cost: 199,
-        img: "./src/assets/protector.jpeg",
+        img: "/images/protector.jpeg",
         category: "Accessories",
         description: "Tempered glass screen protector with anti-fingerprint coating."
     },
@@ -107,7 +107,7 @@ const initialProducts = [
         id: "Earbuds Pro",
         year: 2025,
         cost: 5999,
-        img: "./src/assets/earbuds.jpeg",
+        img: "/images/earbuds.jpeg",
         category: "Electronics",
         description: "True wireless earbuds with active noise cancellation and premium audio."
     },
@@ -115,7 +115,7 @@ const initialProducts = [
         id: "Tablet Stand",
         year: 2024,
         cost: 599,
-        img: "./src/assets/tabletstand.jpeg",
+        img: "/images/tabletstand.jpeg",
         category: "Accessories",
         description: "Universal tablet stand with adjustable angles and stable base."
     },
@@ -123,7 +123,7 @@ const initialProducts = [
         id: "LED Desk Lamp",
         year: 2025,
         cost: 1299,
-        img: "./src/assets/lamp.jpeg",
+        img: "/images/lamp.jpeg",
         category: "Electronics",
         description: "Smart LED desk lamp with adjustable brightness and color temperature."
     },
@@ -131,7 +131,7 @@ const initialProducts = [
         id: "Car Charger",
         year: 2024,
         cost: 399,
-        img: "./src/assets/carcharger.jpeg",
+        img: "/images/carcharger.jpeg",
         category: "Accessories",
         description: "Dual-port car charger with fast charging technology."
     },
@@ -139,7 +139,7 @@ const initialProducts = [
         id: "Smart Ring",
         year: 2025,
         cost: 6999,
-        img: "./src/assets/ring.jpeg",
+        img: "/images/ring.jpeg",
         category: "Wearables",
         description: "Smart ring for fitness tracking, sleep monitoring, and notifications."
     },
@@ -147,7 +147,7 @@ const initialProducts = [
         id: "Portable SSD",
         year: 2024,
         cost: 4499,
-        img: "./src/assets/ssd.jpeg",
+        img: "/images/ssd.jpeg",
         category: "Electronics",
         description: "1TB portable SSD with high-speed data transfer and compact design."
     },
