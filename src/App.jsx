@@ -23,6 +23,134 @@ const initialProducts = [
         category: "Wearables",
         description: "Feature-rich smart watch with health tracking."
     },
+    {
+        id: "Bluetooth Speaker",
+        year: 2025,
+        cost: 2999,
+        img: "./src/assets/speaker.jpeg",
+        category: "Electronics",
+        description: "Portable Bluetooth speaker with premium sound quality and 12-hour battery life."
+    },
+    {
+        id: "Wireless Mouse",
+        year: 2024,
+        cost: 799,
+        img: "./src/assets/mouse.jpeg",
+        category: "Electronics",
+        description: "Ergonomic wireless mouse with precision tracking and long battery life."
+    },
+    {
+        id: "USB-C Cable",
+        year: 2025,
+        cost: 299,
+        img: "./src/assets/cable.jpeg",
+        category: "Accessories",
+        description: "Fast charging USB-C cable with durable braided design."
+    },
+    {
+        id: "Fitness Band",
+        year: 2024,
+        cost: 1999,
+        img: "./src/assets/band.jpeg",
+        category: "Wearables",
+        description: "Track your fitness goals with heart rate monitoring and sleep tracking."
+    },
+    {
+        id: "Phone Case",
+        year: 2025,
+        cost: 499,
+        img: "./src/assets/case.jpeg",
+        category: "Accessories",
+        description: "Shockproof phone case with premium finish and raised edges."
+    },
+    {
+        id: "Power Bank",
+        year: 2024,
+        cost: 1499,
+        img: "./src/assets/powerbank.jpeg",
+        category: "Electronics",
+        description: "20000mAh power bank with fast charging support for multiple devices."
+    },
+    {
+        id: "Laptop Stand",
+        year: 2025,
+        cost: 899,
+        img: "./src/assets/stand.jpeg",
+        category: "Accessories",
+        description: "Adjustable aluminum laptop stand for better ergonomics and cooling."
+    },
+    {
+        id: "Gaming Keyboard",
+        year: 2024,
+        cost: 3499,
+        img: "./src/assets/keyboard.jpeg",
+        category: "Electronics",
+        description: "Mechanical gaming keyboard with RGB lighting and programmable keys."
+    },
+    {
+        id: "Webcam HD",
+        year: 2025,
+        cost: 2499,
+        img: "./src/assets/webcam.jpeg",
+        category: "Electronics",
+        description: "1080p HD webcam with auto-focus and built-in microphone."
+    },
+    {
+        id: "Screen Protector",
+        year: 2024,
+        cost: 199,
+        img: "./src/assets/protector.jpeg",
+        category: "Accessories",
+        description: "Tempered glass screen protector with anti-fingerprint coating."
+    },
+    {
+        id: "Earbuds Pro",
+        year: 2025,
+        cost: 5999,
+        img: "./src/assets/earbuds.jpeg",
+        category: "Electronics",
+        description: "True wireless earbuds with active noise cancellation and premium audio."
+    },
+    {
+        id: "Tablet Stand",
+        year: 2024,
+        cost: 599,
+        img: "./src/assets/tabletstand.jpeg",
+        category: "Accessories",
+        description: "Universal tablet stand with adjustable angles and stable base."
+    },
+    {
+        id: "LED Desk Lamp",
+        year: 2025,
+        cost: 1299,
+        img: "./src/assets/lamp.jpeg",
+        category: "Electronics",
+        description: "Smart LED desk lamp with adjustable brightness and color temperature."
+    },
+    {
+        id: "Car Charger",
+        year: 2024,
+        cost: 399,
+        img: "./src/assets/carcharger.jpeg",
+        category: "Accessories",
+        description: "Dual-port car charger with fast charging technology."
+    },
+    {
+        id: "Smart Ring",
+        year: 2025,
+        cost: 6999,
+        img: "./src/assets/ring.jpeg",
+        category: "Wearables",
+        description: "Smart ring for fitness tracking, sleep monitoring, and notifications."
+    },
+    {
+        id: "Portable SSD",
+        year: 2024,
+        cost: 4499,
+        img: "./src/assets/ssd.jpeg",
+        category: "Electronics",
+        description: "1TB portable SSD with high-speed data transfer and compact design."
+    },
     // Add more products as needed
 ];
 
