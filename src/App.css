@@ -1,129 +1,14 @@
-/* Optimize image loading */
-img {
-  /* Prevent layout shift */
-  max-width: 100%;
-  height: auto;
-}
-
-/* Blur-up effect for images while loading */
-.card-img-top {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  background-size: cover;
-  transition: filter 0.3s ease-in-out;
-}
-
-.card-img-top.loading {
-  filter: blur(10px);
-  opacity: 0.6;
-}
-
-.card-img-top.loaded {
-  filter: blur(0);
-  opacity: 1;
-}
-
-/* Skeleton loading for images */
-.image-skeleton {
-  background: linear-gradient(
-    90deg,
-    #f0f0f0 25%,
-    #e0e0e0 50%,
-    #f0f0f0 75%
-  );
-  background-size: 200% 100%;
-  animation: loading 1.5s infinite;
-}
-
-@keyframes loading {
-  0% {
-    background-position: 200% 0;
-  }
-  100% {
-    background-position: -200% 0;
-  }
-}
-
-/* Optimize product card images */
-.product-image {
-  width: 100%;
-  height: 250px;
-  object-fit: cover;
-  object-position: center;
-}
-
-/* Lazy load placeholder */
-.lazy-placeholder {
-  background: #f5f5f5;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  min-height: 250px;
-  color: #999;
-}
-
-/* Page transitions */
 .page {
   display: none;
 }
 
 .page.active {
   display: block;
-  animation: fadeIn 0.3s ease-in;
 }
 
-@keyframes fadeIn {
-  from {
-    opacity: 0;
-    transform: translateY(10px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-/* Optimize card hover effects */
-.card {
-  transition: transform 0.2s ease, box-shadow 0.2s ease;
-  will-change: transform;
-}
-
-.card:hover {
-  transform: translateY(-5px);
-  box-shadow: 0 10px 20px rgba(0, 0, 0, 0.1);
-}
-
-/* Performance optimization */
-* {
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
-}
-
-/* Reduce paint on scroll */
-.card-img-top {
-  transform: translateZ(0);
-  backface-visibility: hidden;
-}
-
-/* Mobile optimizations */
-@media (max-width: 768px) {
-  .product-image {
-    height: 200px;
-  }
-}
-
-/* Loading spinner */
-.spinner {
-  border: 3px solid #f3f3f3;
-  border-top: 3px solid #3498db;
-  border-radius: 50%;
-  width: 30px;
-  height: 30px;
-  animation: spin 1s linear infinite;
-  margin: 0 auto;
-}
-
-@keyframes spin {
-  0% { transform: rotate(0deg); }
-  100% { transform: rotate(360deg); }
+.body {
+  min-height: 80vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
