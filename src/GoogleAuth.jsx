@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import './GoogleAuth.css';
 
 // Google OAuth Configuration
-const GOOGLE_CLIENT_ID = '902043632684-87h6kimr4divhgqhuabu11l8713vc240.apps.googleusercontent.com'; // Replace with your actual Client ID
+const GOOGLE_CLIENT_ID = '902043632684-87h6kimr4divhgqhuabu11l8713vc240.apps.googleusercontent.com';
 
 const GoogleAuth = ({ onSignInSuccess, onSignInFailure }) => {
   const [isSignedIn, setIsSignedIn] = useState(false);
@@ -77,6 +77,9 @@ const GoogleAuth = ({ onSignInSuccess, onSignInFailure }) => {
       sessionStorage.setItem('googleUser', JSON.stringify(userData));
       sessionStorage.setItem('authToken', response.credential);
       
+      // Notify Navigation component about user change
+      window.dispatchEvent(new Event('userChanged'));
+      
       // Call success callback
       if (onSignInSuccess) {
         onSignInSuccess(userData);
@@ -119,6 +122,9 @@ const GoogleAuth = ({ onSignInSuccess, onSignInFailure }) => {
     // Clear session data
     sessionStorage.removeItem('googleUser');
     sessionStorage.removeItem('authToken');
+    
+    // Notify Navigation component about user change
+    window.dispatchEvent(new Event('userChanged'));
     
     // Reload to reinitialize Google Sign-In
     window.location.reload();
