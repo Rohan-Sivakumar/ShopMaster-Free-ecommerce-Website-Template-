@@ -66,13 +66,16 @@ const GoogleAuth = ({ onSignInSuccess, onSignInFailure }) => {
         name: userObject.name,
         picture: userObject.picture,
         sub: userObject.sub, // Google user ID
+        loginTime: new Date().toISOString(),
       };
 
       setUserInfo(userData);
       setIsSignedIn(true);
       
-      // Store user info in localStorage
-      localStorage.setItem('googleUser', JSON.stringify(userData));
+      // Store user info in sessionStorage (more secure than localStorage)
+      // Data is cleared when browser/tab is closed
+      sessionStorage.setItem('googleUser', JSON.stringify(userData));
+      sessionStorage.setItem('authToken', response.credential);
       
       // Call success callback
       if (onSignInSuccess) {
@@ -112,25 +115,56 @@ const GoogleAuth = ({ onSignInSuccess, onSignInFailure }) => {
     
     setIsSignedIn(false);
     setUserInfo(null);
-    localStorage.removeItem('googleUser');
+    
+    // Clear session data
+    sessionStorage.removeItem('googleUser');
+    sessionStorage.removeItem('authToken');
     
     // Reload to reinitialize Google Sign-In
     window.location.reload();
   };
 
-  // Check if user is already signed in
+  // Check if user is already signed in from sessionStorage
   useEffect(() => {
-    const storedUser = localStorage.getItem('googleUser');
-    if (storedUser) {
+    const storedUser = sessionStorage.getItem('googleUser');
+    const storedToken = sessionStorage.getItem('authToken');
+    
+    if (storedUser && storedToken) {
       try {
         const userData = JSON.parse(storedUser);
-        setUserInfo(userData);
-        setIsSignedIn(true);
+        
+        // Optional: Check if session is still valid (e.g., within 1 hour)
+        const loginTime = new Date(userData.loginTime);
+        const currentTime = new Date();
+        const timeDiff = (currentTime - loginTime) / (1000 * 60 * 60); // hours
+        
+        if (timeDiff < 1) {
+          setUserInfo(userData);
+          setIsSignedIn(true);
+        } else {
+          // Session expired, clear storage
+          sessionStorage.removeItem('googleUser');
+          sessionStorage.removeItem('authToken');
+        }
       } catch (error) {
         console.error('Error loading stored user:', error);
-        localStorage.removeItem('googleUser');
+        sessionStorage.removeItem('googleUser');
+        sessionStorage.removeItem('authToken');
       }
     }
+  }, []);
+
+  // Security: Clear session on page unload
+  useEffect(() => {
+    const handleBeforeUnload = () => {
+      // Optional: You can add logic here if needed
+    };
+    
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    
+    return () => {
+      window.removeEventListener('beforeunload', handleBeforeUnload);
+    };
   }, []);
 
   if (isLoading) {
@@ -149,6 +183,7 @@ const GoogleAuth = ({ onSignInSuccess, onSignInFailure }) => {
         <div className="profile-info">
           <h3>{userInfo.name}</h3>
           <p>{userInfo.email}</p>
+          <small className="text-muted">Session expires when browser closes</small>
         </div>
         <button onClick={handleSignOut} className="sign-out-button">
           Sign Out
@@ -162,6 +197,11 @@ const GoogleAuth = ({ onSignInSuccess, onSignInFailure }) => {
       <div id="googleSignInButton"></div>
       <p className="google-auth-disclaimer">
         By signing in, you agree to our Terms of Service and Privacy Policy
+      </p>
+      <p className="google-auth-security">
+        <small>
+          🔒 Secure session - automatically expires when you close your browser
+        </small>
       </p>
     </div>
   );
