@@ -1,0 +1,307 @@
+/* ========================================= */
+/* ======== NAVIGATION CORE STYLES ======== */
+/* ========================================= */
+
+.navigation {
+    background-color: #ffffff;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+    position: sticky;
+    top: 0;
+    z-index: 1000;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 1rem 2rem;
+    transition: all 0.3s ease;
+}
+
+.navigation .heading {
+    font-size: 1.5rem;
+    font-weight: bold;
+    color: #21808d;
+    cursor: pointer;
+    margin: 0;
+    transition: color 0.3s ease;
+    flex-shrink: 0;
+}
+
+.navigation .heading:hover {
+    color: #17666a;
+}
+
+.navigation ul {
+    display: flex;
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    gap: 2rem;
+    align-items: center;
+}
+
+.navigation li {
+    display: inline-block;
+    margin: 0;
+    padding: 0;
+}
+
+.navigation a {
+    text-decoration: none;
+    color: #333;
+    font-size: 1rem;
+    font-weight: 500;
+    padding: 0.5rem 1rem;
+    border-radius: 8px;
+    transition: all 0.3s ease;
+    display: inline-block;
+}
+
+.navigation a:hover {
+    background-color: rgba(33, 128, 141, 0.1);
+    color: #21808d;
+}
+
+.navigation .active-nav-link a {
+    background-color: #21808d;
+    color: white;
+}
+
+.navigation .active-nav-link a:hover {
+    background-color: #17666a;
+}
+
+/* ========================================= */
+/* ========== MOBILE NAVIGATION =========== */
+/* ========================================= */
+
+/* Mobile Menu Toggle Button (Hidden by default, shown on mobile) */
+.mobile-menu-toggle {
+    display: none;
+    background: none;
+    border: none;
+    font-size: 1.5rem;
+    cursor: pointer;
+    color: #333;
+    padding: 0.5rem;
+    transition: color 0.3s ease;
+}
+
+.mobile-menu-toggle:hover {
+    color: #21808d;
+}
+
+/* ========================================= */
+/* ====== RESPONSIVE MEDIA QUERIES ======== */
+/* ========================================= */
+
+/* ========== MOBILE DEVICES (up to 768px) ========== */
+@media screen and (max-width: 768px) {
+    .navigation {
+        flex-wrap: wrap;
+        padding: 0.75rem 1rem;
+        position: relative;
+    }
+    
+    .navigation .heading {
+        font-size: 1.25rem;
+        margin-left: 0 !important;
+        margin-right: auto !important;
+    }
+    
+    /* Show mobile menu toggle */
+    .mobile-menu-toggle {
+        display: block;
+        order: 2;
+    }
+    
+    /* Hide menu by default on mobile */
+    .navigation ul {
+        display: none;
+        flex-direction: column;
+        width: 100%;
+        gap: 0;
+        margin-top: 1rem;
+        background-color: #ffffff;
+        border-radius: 8px;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+        padding: 1rem 0;
+        order: 3;
+    }
+    
+    /* Show menu when mobile-menu-open class is added */
+    .navigation.mobile-menu-open ul {
+        display: flex;
+    }
+    
+    .navigation li {
+        width: 100%;
+        text-align: center;
+        margin: 0;
+    }
+    
+    .navigation a {
+        display: block;
+        width: 100%;
+        padding: 1rem;
+        border-radius: 0;
+        font-size: 1.1rem;
+    }
+    
+    .navigation .active-nav-link a {
+        border-left: 4px solid #21808d;
+        background-color: rgba(33, 128, 141, 0.1);
+        color: #21808d;
+    }
+}
+
+/* ========== SMALL MOBILE (up to 480px) ========== */
+@media screen and (max-width: 480px) {
+    .navigation {
+        padding: 0.5rem 0.75rem;
+    }
+    
+    .navigation .heading {
+        font-size: 1.1rem;
+    }
+    
+    .navigation a {
+        font-size: 1rem;
+        padding: 0.875rem;
+    }
+}
+
+/* ========== TABLETS (769px - 1024px) ========== */
+@media screen and (min-width: 769px) and (max-width: 1024px) {
+    .navigation {
+        padding: 1rem 1.5rem;
+    }
+    
+    .navigation .heading {
+        font-size: 1.4rem;
+        margin-left: 0 !important;
+        margin-right: auto !important;
+    }
+    
+    .navigation ul {
+        gap: 1.5rem;
+    }
+    
+    .navigation a {
+        font-size: 0.95rem;
+        padding: 0.5rem 0.875rem;
+    }
+}
+
+/* ========== SMALL DESKTOPS (1025px - 1440px) ========== */
+@media screen and (min-width: 1025px) and (max-width: 1440px) {
+    .navigation {
+        padding: 1rem 2rem;
+    }
+    
+    .navigation .heading {
+        margin-left: 1rem !important;
+        margin-right: auto !important;
+    }
+    
+    .navigation ul {
+        gap: 2rem;
+    }
+}
+
+/* ========== LARGE DESKTOPS (1441px - 1920px) ========== */
+@media screen and (min-width: 1441px) and (max-width: 1920px) {
+    .navigation {
+        padding: 1.25rem 3rem;
+    }
+    
+    .navigation .heading {
+        font-size: 1.75rem;
+        margin-left: 2rem !important;
+        margin-right: auto !important;
+    }
+    
+    .navigation ul {
+        gap: 2.5rem;
+    }
+    
+    .navigation a {
+        font-size: 1.1rem;
+        padding: 0.6rem 1.2rem;
+    }
+}
+
+/* ========== ULTRA-WIDE / 4K (1921px+) ========== */
+@media screen and (min-width: 1921px) {
+    .navigation {
+        padding: 1.5rem 4rem;
+    }
+    
+    .navigation .heading {
+        font-size: 2rem;
+        margin-left: 3rem !important;
+        margin-right: auto !important;
+    }
+    
+    .navigation ul {
+        gap: 3rem;
+    }
+    
+    .navigation a {
+        font-size: 1.25rem;
+        padding: 0.75rem 1.5rem;
+    }
+}
+
+/* ========== LANDSCAPE ORIENTATION (Mobile/Tablet) ========== */
+@media screen and (max-height: 600px) and (max-width: 1024px) and (orientation: landscape) {
+    .navigation {
+        padding: 0.5rem 1rem;
+    }
+    
+    .navigation .heading {
+        font-size: 1.1rem;
+    }
+    
+    .navigation a {
+        font-size: 0.9rem;
+        padding: 0.4rem 0.8rem;
+    }
+    
+    .navigation ul {
+        gap: 1rem;
+    }
+}
+
+/* ========================================= */
+/* ========== ACCESSIBILITY =============== */
+/* ========================================= */
+
+/* Focus styles for keyboard navigation */
+.navigation a:focus {
+    outline: 2px solid #21808d;
+    outline-offset: 2px;
+}
+
+/* Reduce motion for users who prefer it */
+@media (prefers-reduced-motion: reduce) {
+    .navigation,
+    .navigation a,
+    .navigation .heading {
+        transition: none;
+    }
+}
+
+/* High contrast mode support */
+@media (prefers-contrast: high) {
+    .navigation {
+        border-bottom: 2px solid #000;
+    }
+    
+    .navigation a {
+        border: 1px solid transparent;
+    }
+    
+    .navigation a:hover,
+    .navigation .active-nav-link a {
+        border-color: #000;
+    }
+}
