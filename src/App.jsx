@@ -151,7 +151,6 @@ const initialProducts = [
         category: "Electronics",
         description: "1TB portable SSD with high-speed data transfer and compact design."
     },
-    // Add more products as needed
 ];
 
 function App() {
@@ -192,139 +191,209 @@ function App() {
 
       {/* Product Page with Search and Filter */}
       <div id="p" className={`page ${activePage === 'p' ? 'active' : ''}`}>
-        <h2 style={{textAlign:'center'}}>Products</h2>
-        <div style={{display:'flex', justifyContent:'center', gap:'1rem', marginBottom:'1rem'}}>
-          <input
-            type="text"
-            placeholder="Search products..."
-            value={search}
-            onChange={e => setSearch(e.target.value)}
-            style={{padding:'8px', fontSize:'1rem'}}
-          />
-          <select
-            value={filter}
-            onChange={e => setFilter(e.target.value)}
-            style={{padding:'8px', fontSize:'1rem'}}
-          >
-            {categories.map(cat => (
-              <option key={cat} value={cat}>{cat}</option>
-            ))}
-          </select>
-        </div>
-        <div style={{display:'flex',flexWrap:'wrap',justifyContent:'center',gap:'10px'}}>
-          {filteredProducts.length === 0 && <p>No products found.</p>}
-          {filteredProducts.map((product) => {
-            const quantity = cartItems.filter(item => item.id === product.id).length;
-            return (
-              <div
-                className='div'
-                key={product.id}
-                style={{cursor:'pointer'}}
-                onClick={() => showProductDetails(product)}
-              >
-                <img src={product.img} className='img' alt={product.id} height={'218.25px'} />
-                <h2 className='h2'>{product.id}</h2>
-                <h3 className='h3'>₹{product.cost}</h3>
-                <div className='add' onClick={e => e.stopPropagation()}>
-                  {quantity === 0 ? (
-                    <button className="button" onClick={() => addcart(product)}>
-                      Add To Cart
-                    </button>
-                  ) : (
-                    <button className="button" style={{width: '90.16px'}}>
-                      <span style={{marginRight:'22px',paddingLeft:'2px',paddingRight:'2px'}} onClick={() => removecart(product)}>-</span>
-                      {quantity}
-                      <span style={{marginLeft:'22px',paddingRight:'2px' ,paddingLeft:'2px'}} onClick={() => addcart(product)}>+</span>
-                    </button>
-                  )}
-                </div>
-              </div>
-            );
-          })}
+        <div className="container my-4">
+          <h2 className="text-center mb-4">Products</h2>
+          <div className="d-flex justify-content-center gap-3 mb-4 flex-wrap">
+            <input
+              type="text"
+              className="form-control"
+              placeholder="Search products..."
+              value={search}
+              onChange={e => setSearch(e.target.value)}
+              style={{maxWidth: '300px'}}
+            />
+            <select
+              className="form-select"
+              value={filter}
+              onChange={e => setFilter(e.target.value)}
+              style={{maxWidth: '200px'}}
+            >
+              {categories.map(cat => (
+                <option key={cat} value={cat}>{cat}</option>
+              ))}
+            </select>
+          </div>
+          
+          {filteredProducts.length === 0 ? (
+            <div className="alert alert-info text-center" role="alert">
+              No products found.
+            </div>
+          ) : (
+            <div className="row row-cols-1 row-cols-md-2 row-cols-lg-3 row-cols-xl-4 g-4">
+              {filteredProducts.map((product) => {
+                const quantity = cartItems.filter(item => item.id === product.id).length;
+                return (
+                  <div className="col" key={product.id}>
+                    <div className="card h-100 shadow-sm" style={{cursor:'pointer'}} onClick={() => showProductDetails(product)}>
+                      <img src={product.img} className="card-img-top" alt={product.id} style={{height: '250px', objectFit: 'cover'}} />
+                      <div className="card-body d-flex flex-column">
+                        <h5 className="card-title">{product.id}</h5>
+                        <p className="card-text fw-bold text-success">₹{product.cost}</p>
+                        <div className="mt-auto" onClick={e => e.stopPropagation()}>
+                          {quantity === 0 ? (
+                            <button className="btn btn-primary w-100" onClick={() => addcart(product)}>
+                              Add To Cart
+                            </button>
+                          ) : (
+                            <div className="btn-group w-100" role="group">
+                              <button className="btn btn-outline-danger" onClick={() => removecart(product)}>-</button>
+                              <button className="btn btn-outline-secondary" disabled>{quantity}</button>
+                              <button className="btn btn-outline-success" onClick={() => addcart(product)}>+</button>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
         </div>
       </div>
 
       {/* Product Details Page */}
       <div className={`page ${activePage === 'pdetails' ? 'active' : ''}`} id="pdetails">
         {selectedProduct && (
-          <div style={{justifyContent:'start'}}>
-            <div style={{boxShadow: '1px 1px 1px 1px grey', padding: '20px', margin: '20px', borderRadius: '10px', justifyContent:'start', height: 'fit-content' ,width: 'fit-content', marginLeft: 'auto', marginRight: 'auto'}}>
-              {selectedProduct.img && (
-                <img src={selectedProduct.img} alt={selectedProduct.id} height={'300px'} />
-              )}
+          <div className="container my-5">
+            <div className="row justify-content-center">
+              <div className="col-md-8">
+                <div className="card shadow">
+                  <div className="row g-0">
+                    <div className="col-md-6">
+                      <img src={selectedProduct.img} className="img-fluid rounded-start p-3" alt={selectedProduct.id} />
+                    </div>
+                    <div className="col-md-6">
+                      <div className="card-body">
+                        <h3 className="card-title">{selectedProduct.id}</h3>
+                        <p className="card-text">{selectedProduct.description}</p>
+                        <p className="card-text"><small className="text-muted">Category: {selectedProduct.category}</small></p>
+                        <p className="card-text"><small className="text-muted">Year: {selectedProduct.year}</small></p>
+                        <h4 className="text-success mb-3">₹{selectedProduct.cost}</h4>
+                        <button className="btn btn-primary btn-lg w-100" onClick={() => addcart(selectedProduct)}>
+                          Add to Cart
+                        </button>
+                        <button className="btn btn-secondary w-100 mt-2" onClick={() => setActivePage('p')}>
+                          Back to Products
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
         )}
       </div>
 
-      {/* Home, Login, Cart, Dashboard (unchanged) */}
+      {/* Home Page */}
       <div id="home" className={`page ${activePage === 'home' ? 'active' : ''}`}>
         <div className="body">
-          <center>
-            <div className="upper">
-              <h1 className="heading" style={{ color: "black" }}>Welcome To ShopMaster</h1>
-              <p className="para">Here You Can Buy Products In Unbeatable Prices</p>
-              <button className="uppbutton" onClick={() => setActivePage('p')} ><h3 className="upbutton" style={{color: 'white'}}>Shop Now</h3></button>
+          <div className="container">
+            <div className="text-center py-5">
+              <h1 className="display-3 fw-bold mb-3">Welcome To ShopMaster</h1>
+              <p className="lead mb-4">Here You Can Buy Products In Unbeatable Prices</p>
+              <button className="btn btn-primary btn-lg px-5" onClick={() => setActivePage('p')}>
+                Shop Now
+              </button>
             </div>
-          </center>
+          </div>
         </div>
       </div>
 
+      {/* Login Page */}
       <div id="login" className={`page ${activePage === 'login' ? 'active' : ''}`}>
-        <div className="login-container">
-          <form className="login-form">
-            <h2>Login</h2>
-            <div className="input-group"><label htmlFor="username">Username</label><input type="text" id="username" name="username" required /></div>
-            <div className="input-group"><label htmlFor="password">Password</label><input type="password" id="password" name="password" required /></div>
-            <button type="submit" className="login-button">Login</button>
-            <div className="form-footer"><a href="#">Forgot Password?</a><span> | </span><a href="#">Sign Up</a></div>
-          </form>
+        <div className="container my-5">
+          <div className="row justify-content-center">
+            <div className="col-md-6 col-lg-4">
+              <div className="card shadow">
+                <div className="card-body p-4">
+                  <h2 className="card-title text-center mb-4">Login</h2>
+                  <form>
+                    <div className="mb-3">
+                      <label htmlFor="username" className="form-label">Username</label>
+                      <input type="text" className="form-control" id="username" name="username" required />
+                    </div>
+                    <div className="mb-3">
+                      <label htmlFor="password" className="form-label">Password</label>
+                      <input type="password" className="form-control" id="password" name="password" required />
+                    </div>
+                    <button type="submit" className="btn btn-primary w-100 mb-3">Login</button>
+                    <div className="text-center">
+                      <a href="#" className="text-decoration-none">Forgot Password?</a>
+                      <span className="mx-2">|</span>
+                      <a href="#" className="text-decoration-none">Sign Up</a>
+                    </div>
+                  </form>
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
 
+      {/* Cart Page */}
       <div id="Cart" className={`page ${activePage === 'Cart' ? 'active' : ''}`}>
-        <div className="cart-container">
-            <h2>Your Cart</h2>
-            {cartItems.length === 0 ? (
-                <p>Your cart is empty.</p>
-            ) : (
-                (() => {
-                    const groupedCart = cartItems.reduce((acc, item) => {
+        <div className="container my-4">
+          <div className="row justify-content-center">
+            <div className="col-md-8">
+              <div className="card shadow">
+                <div className="card-body">
+                  <h2 className="card-title mb-4">Your Cart</h2>
+                  {cartItems.length === 0 ? (
+                    <div className="alert alert-warning" role="alert">
+                      Your cart is empty.
+                    </div>
+                  ) : (
+                    (() => {
+                      const groupedCart = cartItems.reduce((acc, item) => {
                         const existingItem = acc.find(i => i.id === item.id);
                         if (existingItem) {
-                            existingItem.quantity++;
+                          existingItem.quantity++;
                         } else {
-                            acc.push({ ...item, quantity: 1 });
+                          acc.push({ ...item, quantity: 1 });
                         }
                         return acc;
-                    }, []);
+                      }, []);
 
-                    const totalPrice = groupedCart.reduce((sum, item) => sum + (item.cost * item.quantity), 0);
+                      const totalPrice = groupedCart.reduce((sum, item) => sum + (item.cost * item.quantity), 0);
 
-                    return (
+                      return (
                         <>
-                            <ul className="cart-list">
-                                {groupedCart.map(item => (
-                                    <li key={item.id}>
-                                        <span>{item.id}{item.quantity > 1 ? ` × ${item.quantity}` : ''}</span>
-                                        <span>₹{item.cost * item.quantity}</span>
-                                    </li>
-                                ))}
-                            </ul>
-                            <div style={{marginTop: '20px', fontSize: '18px', fontWeight: 'bold'}}>
-                                <p>Total: ₹{totalPrice}</p>
-                            </div>
+                          <ul className="list-group mb-3">
+                            {groupedCart.map(item => (
+                              <li key={item.id} className="list-group-item d-flex justify-content-between align-items-center">
+                                <span>{item.id}{item.quantity > 1 ? ` × ${item.quantity}` : ''}</span>
+                                <span className="badge bg-success rounded-pill fs-6">₹{item.cost * item.quantity}</span>
+                              </li>
+                            ))}
+                          </ul>
+                          <div className="d-flex justify-content-between align-items-center border-top pt-3">
+                            <h4 className="mb-0">Total:</h4>
+                            <h4 className="text-success mb-0">₹{totalPrice}</h4>
+                          </div>
+                          <button className="btn btn-primary w-100 mt-3 btn-lg">
+                            Proceed to Checkout
+                          </button>
                         </>
-                    );
-                })()
-            )}
+                      );
+                    })()
+                  )}
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
+
+      {/* Dashboard Page */}
       <div id="dashboard" className={`page ${activePage === 'dashboard' ? 'active' : ''}`}>
-        <center>
-            <h2>dashboard</h2>
-            <p>Welcome to your dashboard, {user}!</p>
-        </center>
+        <div className="container my-5">
+          <div className="text-center">
+            <h2 className="mb-3">Dashboard</h2>
+            <p className="lead">Welcome to your dashboard, {user}!</p>
+          </div>
+        </div>
       </div>
     </>
   );
