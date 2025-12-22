@@ -2,11 +2,8 @@ import React, { useState, useEffect, useMemo, useCallback } from "react";
 import Navigation from "./Navigation";
 import GoogleAuth from "./GoogleAuth";
 import "./App.css";
-import { addcart, removecart, user, useCartUpdater } from "./index.js";
-import us from "./assets/login.json";
+import { getCart, saveCart, addToCart, removeFromCart, getCurrentUser } from "./cartService";
 import Swal from 'sweetalert2';
-
-var users = JSON.parse(JSON.stringify(us));
 
 const initialProducts = [
     {
@@ -155,7 +152,7 @@ const initialProducts = [
     },
 ];
 
-// Memoized Product Card Component for better performance
+// Memoized Product Card Component
 const ProductCard = React.memo(({ product, quantity, onShowDetails, onAddCart, onRemoveCart }) => {
   return (
     <div className="col">
@@ -194,26 +191,34 @@ ProductCard.displayName = 'ProductCard';
 function App() {
   const [products] = useState(initialProducts);
   const [activePage, setActivePage] = useState('home');
-  const [cartItems, setCartItems] = useState(() => users?.[user]?.cart ?? []);
+  const [currentUser, setCurrentUser] = useState(null);
+  const [cartItems, setCartItems] = useState([]);
   const [search, setSearch] = useState("");
   const [filter, setFilter] = useState("All");
   const [selectedProduct, setSelectedProduct] = useState(null);
 
-  // Memoize categories to prevent recalculation
+  // Load user and cart on mount
+  useEffect(() => {
+    const user = getCurrentUser();
+    if (user) {
+      setCurrentUser(user);
+      const savedCart = getCart(user.email);
+      setCartItems(savedCart);
+    }
+  }, []);
+
+  // Memoize categories
   const categories = useMemo(() => 
     ["All", ...Array.from(new Set(products.map(p => p.category)))],
     [products]
   );
-
-  // Custom hook to update cart items on 'cartUpdated' event
-  useCartUpdater(setCartItems);
 
   const handlePageChange = useCallback((pageId) => {
     setActivePage(pageId);
     setSelectedProduct(null);
   }, []);
 
-  // Memoize filtered products to prevent unnecessary recalculations
+  // Memoize filtered products
   const filteredProducts = useMemo(() => {
     return products.filter(product => {
       const matchesSearch = product.id.toLowerCase().includes(search.toLowerCase());
@@ -222,14 +227,57 @@ function App() {
     });
   }, [products, search, filter]);
 
-  // Product details handler
   const showProductDetails = useCallback((product) => {
     setSelectedProduct(product);
     setActivePage("pdetails");
   }, []);
 
-  // Google Sign-In handlers
+  // Handle add to cart
+  const handleAddToCart = useCallback((product) => {
+    if (!currentUser) {
+      Swal.fire({
+        icon: 'warning',
+        title: 'Please Sign In',
+        text: 'You need to sign in to add items to your cart',
+        confirmButtonText: 'Sign In',
+      }).then((result) => {
+        if (result.isConfirmed) {
+          setActivePage('login');
+        }
+      });
+      return;
+    }
+
+    const updatedCart = addToCart(currentUser.email, product, cartItems);
+    setCartItems(updatedCart);
+    
+    Swal.fire({
+      icon: 'success',
+      title: 'Added to Cart!',
+      text: `${product.id} added to your cart`,
+      timer: 1500,
+      showConfirmButton: false,
+      toast: true,
+      position: 'top-end'
+    });
+  }, [currentUser, cartItems]);
+
+  // Handle remove from cart
+  const handleRemoveFromCart = useCallback((product) => {
+    if (!currentUser) return;
+
+    const updatedCart = removeFromCart(currentUser.email, product, cartItems);
+    setCartItems(updatedCart);
+  }, [currentUser, cartItems]);
+
+  // Google Sign-In success handler
   const handleGoogleSignInSuccess = useCallback((userData) => {
+    setCurrentUser(userData);
+    
+    // Load user's cart
+    const savedCart = getCart(userData.email);
+    setCartItems(savedCart);
+    
     Swal.fire({
       icon: 'success',
       title: 'Welcome!',
@@ -243,6 +291,7 @@ function App() {
     }, 2000);
   }, []);
 
+  // Google Sign-In failure handler
   const handleGoogleSignInFailure = useCallback((error) => {
     Swal.fire({
       icon: 'error',
@@ -251,11 +300,18 @@ function App() {
     });
   }, []);
 
+  // Handle sign out
+  const handleSignOut = useCallback(() => {
+    setCurrentUser(null);
+    setCartItems([]);
+    setActivePage('home');
+  }, []);
+
   return (
     <>
-      <Navigation activePage={activePage} onPageChange={handlePageChange} />
+      <Navigation activePage={activePage} onPageChange={handlePageChange} cartCount={cartItems.length} />
 
-      {/* Product Page with Search and Filter */}
+      {/* Product Page */}
       <div id="p" className={`page ${activePage === 'p' ? 'active' : ''}`}>
         <div className="container my-4">
           <h2 className="text-center mb-4">Products</h2>
@@ -294,8 +350,8 @@ function App() {
                     product={product}
                     quantity={quantity}
                     onShowDetails={showProductDetails}
-                    onAddCart={addcart}
-                    onRemoveCart={removecart}
+                    onAddCart={handleAddToCart}
+                    onRemoveCart={handleRemoveFromCart}
                   />
                 );
               })}
@@ -322,7 +378,7 @@ function App() {
                         <p className="card-text"><small className="text-muted">Category: {selectedProduct.category}</small></p>
                         <p className="card-text"><small className="text-muted">Year: {selectedProduct.year}</small></p>
                         <h4 className="text-success mb-3">₹{selectedProduct.cost}</h4>
-                        <button className="btn btn-primary btn-lg w-100" onClick={() => addcart(selectedProduct)}>
+                        <button className="btn btn-primary btn-lg w-100" onClick={() => handleAddToCart(selectedProduct)}>
                           Add to Cart
                         </button>
                         <button className="btn btn-secondary w-100 mt-2" onClick={() => setActivePage('p')}>
@@ -362,7 +418,6 @@ function App() {
                 <div className="card-body p-4">
                   <h2 className="card-title text-center mb-4">Login</h2>
                   
-                  {/* Google Sign-In */}
                   <div className="mb-4">
                     <GoogleAuth 
                       onSignInSuccess={handleGoogleSignInSuccess}
@@ -374,7 +429,6 @@ function App() {
                     <span className="text-muted">──────  OR  ──────</span>
                   </div>
                   
-                  {/* Traditional Login Form */}
                   <form>
                     <div className="mb-3">
                       <label htmlFor="username" className="form-label">Username</label>
@@ -406,7 +460,11 @@ function App() {
               <div className="card shadow">
                 <div className="card-body">
                   <h2 className="card-title mb-4">Your Cart</h2>
-                  {cartItems.length === 0 ? (
+                  {!currentUser ? (
+                    <div className="alert alert-info text-center" role="alert">
+                      Please <a href="#" onClick={() => setActivePage('login')} className="alert-link">sign in</a> to view your cart.
+                    </div>
+                  ) : cartItems.length === 0 ? (
                     <div className="alert alert-warning" role="alert">
                       Your cart is empty.
                     </div>
@@ -457,11 +515,25 @@ function App() {
         <div className="container my-5">
           <div className="text-center">
             <h2 className="mb-3">Dashboard</h2>
-            <p className="lead">Welcome to your dashboard, {user}!</p>
-            <GoogleAuth 
-              onSignInSuccess={handleGoogleSignInSuccess}
-              onSignInFailure={handleGoogleSignInFailure}
-            />
+            {currentUser ? (
+              <>
+                <p className="lead">Welcome, {currentUser.name}!</p>
+                <p className="text-muted">{currentUser.email}</p>
+                <div className="mt-4">
+                  <p>Cart Items: <strong>{cartItems.length}</strong></p>
+                  <button className="btn btn-primary me-2" onClick={() => setActivePage('p')}>Shop Now</button>
+                  <button className="btn btn-secondary me-2" onClick={() => setActivePage('Cart')}>View Cart</button>
+                </div>
+              </>
+            ) : (
+              <p className="lead">Please sign in to view your dashboard</p>
+            )}
+            <div className="mt-4">
+              <GoogleAuth 
+                onSignInSuccess={handleGoogleSignInSuccess}
+                onSignInFailure={handleGoogleSignInFailure}
+              />
+            </div>
           </div>
         </div>
       </div>
