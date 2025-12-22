@@ -238,7 +238,7 @@ function App() {
       Swal.fire({
         icon: 'warning',
         title: 'Please Sign In',
-        text: 'You need to sign in to add items to your cart',
+        text: 'You need to sign in with Google to add items to your cart',
         confirmButtonText: 'Sign In',
       }).then((result) => {
         if (result.isConfirmed) {
@@ -409,42 +409,32 @@ function App() {
         </div>
       </div>
 
-      {/* Login Page */}
+      {/* Login Page - Google Only */}
       <div id="login" className={`page ${activePage === 'login' ? 'active' : ''}`}>
         <div className="container my-5">
           <div className="row justify-content-center">
             <div className="col-md-6 col-lg-5">
               <div className="card shadow">
-                <div className="card-body p-4">
-                  <h2 className="card-title text-center mb-4">Login</h2>
+                <div className="card-body p-5 text-center">
+                  <h2 className="card-title mb-3">Sign In to ShopMaster</h2>
+                  <p className="text-muted mb-4">Sign in with your Google account to start shopping</p>
                   
-                  <div className="mb-4">
+                  {/* Google Sign-In Only */}
+                  <div className="d-flex justify-content-center mb-4">
                     <GoogleAuth 
                       onSignInSuccess={handleGoogleSignInSuccess}
                       onSignInFailure={handleGoogleSignInFailure}
                     />
                   </div>
                   
-                  <div className="text-center mb-3">
-                    <span className="text-muted">──────  OR  ──────</span>
+                  <div className="mt-4">
+                    <p className="small text-muted">
+                      <i className="bi bi-shield-check"></i> Secure sign-in with Google
+                    </p>
+                    <p className="small text-muted">
+                      Your cart and preferences are saved automatically
+                    </p>
                   </div>
-                  
-                  <form>
-                    <div className="mb-3">
-                      <label htmlFor="username" className="form-label">Username</label>
-                      <input type="text" className="form-control" id="username" name="username" required />
-                    </div>
-                    <div className="mb-3">
-                      <label htmlFor="password" className="form-label">Password</label>
-                      <input type="password" className="form-control" id="password" name="password" required />
-                    </div>
-                    <button type="submit" className="btn btn-primary w-100 mb-3">Login</button>
-                    <div className="text-center">
-                      <a href="#" className="text-decoration-none">Forgot Password?</a>
-                      <span className="mx-2">|</span>
-                      <a href="#" className="text-decoration-none">Sign Up</a>
-                    </div>
-                  </form>
                 </div>
               </div>
             </div>
@@ -462,7 +452,7 @@ function App() {
                   <h2 className="card-title mb-4">Your Cart</h2>
                   {!currentUser ? (
                     <div className="alert alert-info text-center" role="alert">
-                      Please <a href="#" onClick={() => setActivePage('login')} className="alert-link">sign in</a> to view your cart.
+                      Please <a href="#" onClick={() => setActivePage('login')} className="alert-link">sign in with Google</a> to view your cart.
                     </div>
                   ) : cartItems.length === 0 ? (
                     <div className="alert alert-warning" role="alert">
