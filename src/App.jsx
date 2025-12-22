@@ -1,10 +1,12 @@
 import React, { useState, useEffect } from "react";
 import Navigation from "./Navigation";
+import GoogleAuth from "./GoogleAuth";
 import "./App.css";
 import { addcart, removecart, user, useCartUpdater } from "./index.js";
 import us from "./assets/login.json";
-var users = JSON.parse(JSON.stringify(us));
+import Swal from 'sweetalert2';
 
+var users = JSON.parse(JSON.stringify(us));
 
 const initialProducts = [
     {
@@ -185,6 +187,30 @@ function App() {
     setActivePage("pdetails");
   };
 
+  // Google Sign-In handlers
+  const handleGoogleSignInSuccess = (userData) => {
+    Swal.fire({
+      icon: 'success',
+      title: 'Welcome!',
+      text: `Successfully signed in as ${userData.name}`,
+      timer: 2000,
+      showConfirmButton: false
+    });
+    
+    // Redirect to dashboard after successful login
+    setTimeout(() => {
+      setActivePage('dashboard');
+    }, 2000);
+  };
+
+  const handleGoogleSignInFailure = (error) => {
+    Swal.fire({
+      icon: 'error',
+      title: 'Sign In Failed',
+      text: 'There was an error signing in with Google. Please try again.',
+    });
+  };
+
   return (
     <>
       <Navigation activePage={activePage} onPageChange={handlePageChange} />
@@ -305,10 +331,24 @@ function App() {
       <div id="login" className={`page ${activePage === 'login' ? 'active' : ''}`}>
         <div className="container my-5">
           <div className="row justify-content-center">
-            <div className="col-md-6 col-lg-4">
+            <div className="col-md-6 col-lg-5">
               <div className="card shadow">
                 <div className="card-body p-4">
                   <h2 className="card-title text-center mb-4">Login</h2>
+                  
+                  {/* Google Sign-In */}
+                  <div className="mb-4">
+                    <GoogleAuth 
+                      onSignInSuccess={handleGoogleSignInSuccess}
+                      onSignInFailure={handleGoogleSignInFailure}
+                    />
+                  </div>
+                  
+                  <div className="text-center mb-3">
+                    <span className="text-muted">──────  OR  ──────</span>
+                  </div>
+                  
+                  {/* Traditional Login Form */}
                   <form>
                     <div className="mb-3">
                       <label htmlFor="username" className="form-label">Username</label>
@@ -392,6 +432,10 @@ function App() {
           <div className="text-center">
             <h2 className="mb-3">Dashboard</h2>
             <p className="lead">Welcome to your dashboard, {user}!</p>
+            <GoogleAuth 
+              onSignInSuccess={handleGoogleSignInSuccess}
+              onSignInFailure={handleGoogleSignInFailure}
+            />
           </div>
         </div>
       </div>
