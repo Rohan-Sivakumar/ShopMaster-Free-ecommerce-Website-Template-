@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo, useCallback } from "react";
 import Navigation from "./Navigation";
 import GoogleAuth from "./GoogleAuth";
 import "./App.css";
@@ -155,6 +155,42 @@ const initialProducts = [
     },
 ];
 
+// Memoized Product Card Component for better performance
+const ProductCard = React.memo(({ product, quantity, onShowDetails, onAddCart, onRemoveCart }) => {
+  return (
+    <div className="col">
+      <div className="card h-100 shadow-sm" style={{cursor:'pointer'}} onClick={() => onShowDetails(product)}>
+        <img 
+          src={product.img} 
+          className="card-img-top" 
+          alt={product.id} 
+          style={{height: '250px', objectFit: 'cover'}} 
+          loading="lazy"
+        />
+        <div className="card-body d-flex flex-column">
+          <h5 className="card-title">{product.id}</h5>
+          <p className="card-text fw-bold text-success">₹{product.cost}</p>
+          <div className="mt-auto" onClick={e => e.stopPropagation()}>
+            {quantity === 0 ? (
+              <button className="btn btn-primary w-100" onClick={() => onAddCart(product)}>
+                Add To Cart
+              </button>
+            ) : (
+              <div className="btn-group w-100" role="group">
+                <button className="btn btn-outline-danger" onClick={() => onRemoveCart(product)}>-</button>
+                <button className="btn btn-outline-secondary" disabled>{quantity}</button>
+                <button className="btn btn-outline-success" onClick={() => onAddCart(product)}>+</button>
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+});
+
+ProductCard.displayName = 'ProductCard';
+
 function App() {
   const [products] = useState(initialProducts);
   const [activePage, setActivePage] = useState('home');
@@ -163,32 +199,37 @@ function App() {
   const [filter, setFilter] = useState("All");
   const [selectedProduct, setSelectedProduct] = useState(null);
 
-  // Get unique categories for filter dropdown
-  const categories = ["All", ...Array.from(new Set(products.map(p => p.category)))];
+  // Memoize categories to prevent recalculation
+  const categories = useMemo(() => 
+    ["All", ...Array.from(new Set(products.map(p => p.category)))],
+    [products]
+  );
 
   // Custom hook to update cart items on 'cartUpdated' event
   useCartUpdater(setCartItems);
 
-  const handlePageChange = (pageId) => {
+  const handlePageChange = useCallback((pageId) => {
     setActivePage(pageId);
     setSelectedProduct(null);
-  };
+  }, []);
 
-  // Filter and search logic
-  const filteredProducts = products.filter(product => {
-    const matchesSearch = product.id.toLowerCase().includes(search.toLowerCase());
-    const matchesFilter = filter === "All" || product.category === filter;
-    return matchesSearch && matchesFilter;
-  });
+  // Memoize filtered products to prevent unnecessary recalculations
+  const filteredProducts = useMemo(() => {
+    return products.filter(product => {
+      const matchesSearch = product.id.toLowerCase().includes(search.toLowerCase());
+      const matchesFilter = filter === "All" || product.category === filter;
+      return matchesSearch && matchesFilter;
+    });
+  }, [products, search, filter]);
 
-  // Product details modal/page
-  const showProductDetails = (product) => {
+  // Product details handler
+  const showProductDetails = useCallback((product) => {
     setSelectedProduct(product);
     setActivePage("pdetails");
-  };
+  }, []);
 
   // Google Sign-In handlers
-  const handleGoogleSignInSuccess = (userData) => {
+  const handleGoogleSignInSuccess = useCallback((userData) => {
     Swal.fire({
       icon: 'success',
       title: 'Welcome!',
@@ -197,19 +238,18 @@ function App() {
       showConfirmButton: false
     });
     
-    // Redirect to dashboard after successful login
     setTimeout(() => {
       setActivePage('dashboard');
     }, 2000);
-  };
+  }, []);
 
-  const handleGoogleSignInFailure = (error) => {
+  const handleGoogleSignInFailure = useCallback((error) => {
     Swal.fire({
       icon: 'error',
       title: 'Sign In Failed',
       text: 'There was an error signing in with Google. Please try again.',
     });
-  };
+  }, []);
 
   return (
     <>
@@ -249,28 +289,14 @@ function App() {
               {filteredProducts.map((product) => {
                 const quantity = cartItems.filter(item => item.id === product.id).length;
                 return (
-                  <div className="col" key={product.id}>
-                    <div className="card h-100 shadow-sm" style={{cursor:'pointer'}} onClick={() => showProductDetails(product)}>
-                      <img src={product.img} className="card-img-top" alt={product.id} style={{height: '250px', objectFit: 'cover'}} />
-                      <div className="card-body d-flex flex-column">
-                        <h5 className="card-title">{product.id}</h5>
-                        <p className="card-text fw-bold text-success">₹{product.cost}</p>
-                        <div className="mt-auto" onClick={e => e.stopPropagation()}>
-                          {quantity === 0 ? (
-                            <button className="btn btn-primary w-100" onClick={() => addcart(product)}>
-                              Add To Cart
-                            </button>
-                          ) : (
-                            <div className="btn-group w-100" role="group">
-                              <button className="btn btn-outline-danger" onClick={() => removecart(product)}>-</button>
-                              <button className="btn btn-outline-secondary" disabled>{quantity}</button>
-                              <button className="btn btn-outline-success" onClick={() => addcart(product)}>+</button>
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                    </div>
-                  </div>
+                  <ProductCard
+                    key={product.id}
+                    product={product}
+                    quantity={quantity}
+                    onShowDetails={showProductDetails}
+                    onAddCart={addcart}
+                    onRemoveCart={removecart}
+                  />
                 );
               })}
             </div>
@@ -287,7 +313,7 @@ function App() {
                 <div className="card shadow">
                   <div className="row g-0">
                     <div className="col-md-6">
-                      <img src={selectedProduct.img} className="img-fluid rounded-start p-3" alt={selectedProduct.id} />
+                      <img src={selectedProduct.img} className="img-fluid rounded-start p-3" alt={selectedProduct.id} loading="lazy" />
                     </div>
                     <div className="col-md-6">
                       <div className="card-body">
