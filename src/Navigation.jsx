@@ -1,30 +1,30 @@
 import React, { useState, useEffect } from "react";
-import { user } from "./index.js";
-import us from "./assets/login.json";
 import "./Navigation.css";
+import { getCurrentUser } from "./cartService";
 
-var users = JSON.parse(JSON.stringify(us));
-
-const getInitialCartCount = () => {
-    return users?.[user]?.cart?.length ?? 0;
-};
-
-export default function Navigation({ activePage, onPageChange }) {
-  const [cartCount, setCartCount] = useState(getInitialCartCount());
+export default function Navigation({ activePage, onPageChange, cartCount = 0 }) {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [currentUser, setCurrentUser] = useState(null);
 
+  // Check if user is logged in
   useEffect(() => {
-    const handleCartUpdate = (event) => {
-      setCartCount(event?.detail?.count ?? 0);
+    const user = getCurrentUser();
+    setCurrentUser(user);
+
+    // Listen for user changes
+    const handleUserChange = () => {
+      const updatedUser = getCurrentUser();
+      setCurrentUser(updatedUser);
     };
-    window.addEventListener("cartUpdated", handleCartUpdate);
-    return () => window.removeEventListener("cartUpdated", handleCartUpdate);
+
+    window.addEventListener('userChanged', handleUserChange);
+    return () => window.removeEventListener('userChanged', handleUserChange);
   }, []);
 
   const go = (page) => (e) => {
     e.preventDefault();
     onPageChange(page);
-    setMobileMenuOpen(false); // Close mobile menu after navigation
+    setMobileMenuOpen(false);
   };
 
   const toggleMobileMenu = () => {
@@ -55,7 +55,7 @@ export default function Navigation({ activePage, onPageChange }) {
         <li className={activePage === "p" ? "active-nav-link" : ""}>
           <a href="#product" onClick={go("p")}>Products</a>
         </li>
-        {user === "anonymous" ? (
+        {!currentUser ? (
           <li className={activePage === "login" ? "active-nav-link" : ""}>
             <a href="#login" onClick={go("login")}>Login</a>
           </li>
