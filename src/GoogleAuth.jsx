@@ -1,0 +1,170 @@
+import React, { useState, useEffect } from 'react';
+import './GoogleAuth.css';
+
+// Google OAuth Configuration
+const GOOGLE_CLIENT_ID = 'YOUR_GOOGLE_CLIENT_ID_HERE'; // Replace with your actual Client ID
+
+const GoogleAuth = ({ onSignInSuccess, onSignInFailure }) => {
+  const [isSignedIn, setIsSignedIn] = useState(false);
+  const [userInfo, setUserInfo] = useState(null);
+  const [isLoading, setIsLoading] = useState(false);
+
+  useEffect(() => {
+    // Load Google Sign-In script
+    const loadGoogleScript = () => {
+      const script = document.createElement('script');
+      script.src = 'https://accounts.google.com/gsi/client';
+      script.async = true;
+      script.defer = true;
+      script.onload = initializeGoogleSignIn;
+      document.body.appendChild(script);
+    };
+
+    loadGoogleScript();
+
+    return () => {
+      // Cleanup
+      const script = document.querySelector('script[src="https://accounts.google.com/gsi/client"]');
+      if (script) {
+        document.body.removeChild(script);
+      }
+    };
+  }, []);
+
+  const initializeGoogleSignIn = () => {
+    if (window.google) {
+      window.google.accounts.id.initialize({
+        client_id: GOOGLE_CLIENT_ID,
+        callback: handleCredentialResponse,
+        auto_select: false,
+        cancel_on_tap_outside: true,
+      });
+
+      // Render the Google Sign-In button
+      window.google.accounts.id.renderButton(
+        document.getElementById('googleSignInButton'),
+        {
+          theme: 'outline',
+          size: 'large',
+          width: 250,
+          text: 'signin_with',
+          shape: 'rectangular',
+        }
+      );
+    }
+  };
+
+  const handleCredentialResponse = (response) => {
+    setIsLoading(true);
+    
+    try {
+      // Decode JWT token to get user info
+      const userObject = parseJwt(response.credential);
+      
+      const userData = {
+        email: userObject.email,
+        name: userObject.name,
+        picture: userObject.picture,
+        sub: userObject.sub, // Google user ID
+      };
+
+      setUserInfo(userData);
+      setIsSignedIn(true);
+      
+      // Store user info in localStorage
+      localStorage.setItem('googleUser', JSON.stringify(userData));
+      
+      // Call success callback
+      if (onSignInSuccess) {
+        onSignInSuccess(userData);
+      }
+    } catch (error) {
+      console.error('Error processing sign-in:', error);
+      if (onSignInFailure) {
+        onSignInFailure(error);
+      }
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const parseJwt = (token) => {
+    try {
+      const base64Url = token.split('.')[1];
+      const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+      const jsonPayload = decodeURIComponent(
+        atob(base64)
+          .split('')
+          .map((c) => '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2))
+          .join('')
+      );
+      return JSON.parse(jsonPayload);
+    } catch (error) {
+      console.error('Error parsing JWT:', error);
+      return null;
+    }
+  };
+
+  const handleSignOut = () => {
+    if (window.google) {
+      window.google.accounts.id.disableAutoSelect();
+    }
+    
+    setIsSignedIn(false);
+    setUserInfo(null);
+    localStorage.removeItem('googleUser');
+    
+    // Reload to reinitialize Google Sign-In
+    window.location.reload();
+  };
+
+  // Check if user is already signed in
+  useEffect(() => {
+    const storedUser = localStorage.getItem('googleUser');
+    if (storedUser) {
+      try {
+        const userData = JSON.parse(storedUser);
+        setUserInfo(userData);
+        setIsSignedIn(true);
+      } catch (error) {
+        console.error('Error loading stored user:', error);
+        localStorage.removeItem('googleUser');
+      }
+    }
+  }, []);
+
+  if (isLoading) {
+    return (
+      <div className="google-auth-loading">
+        <div className="spinner"></div>
+        <p>Signing you in...</p>
+      </div>
+    );
+  }
+
+  if (isSignedIn && userInfo) {
+    return (
+      <div className="google-auth-profile">
+        <img src={userInfo.picture} alt="Profile" className="profile-picture" />
+        <div className="profile-info">
+          <h3>{userInfo.name}</h3>
+          <p>{userInfo.email}</p>
+        </div>
+        <button onClick={handleSignOut} className="sign-out-button">
+          Sign Out
+        </button>
+      </div>
+    );
+  }
+
+  return (
+    <div className="google-auth-container">
+      <div id="googleSignInButton"></div>
+      <p className="google-auth-disclaimer">
+        By signing in, you agree to our Terms of Service and Privacy Policy
+      </p>
+    </div>
+  );
+};
+
+export default GoogleAuth;
