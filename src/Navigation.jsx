@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from "react";
 import { user } from "./index.js";
 import us from "./assets/login.json";
+import "./Navigation.css";
+
 var users = JSON.parse(JSON.stringify(us));
 
 const getInitialCartCount = () => {
@@ -9,6 +11,7 @@ const getInitialCartCount = () => {
 
 export default function Navigation({ activePage, onPageChange }) {
   const [cartCount, setCartCount] = useState(getInitialCartCount());
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   useEffect(() => {
     const handleCartUpdate = (event) => {
@@ -21,13 +24,30 @@ export default function Navigation({ activePage, onPageChange }) {
   const go = (page) => (e) => {
     e.preventDefault();
     onPageChange(page);
+    setMobileMenuOpen(false); // Close mobile menu after navigation
+  };
+
+  const toggleMobileMenu = () => {
+    setMobileMenuOpen(!mobileMenuOpen);
   };
 
   return (
-    <nav className="navigation">
-        <h2 className="heading" style={{marginLeft: "40px",marginRight: "800px",cursor: "pointer"}} onClick={() => window.location.href='/'}>
-          Shopmaster
-        </h2>
+    <nav className={`navigation ${mobileMenuOpen ? 'mobile-menu-open' : ''}`}>
+      <h2 className="heading" onClick={() => {
+        onPageChange('home');
+        setMobileMenuOpen(false);
+      }}>
+        Shopmaster
+      </h2>
+      
+      <button 
+        className="mobile-menu-toggle" 
+        onClick={toggleMobileMenu}
+        aria-label="Toggle menu"
+      >
+        {mobileMenuOpen ? '✕' : '☰'}
+      </button>
+      
       <ul>
         <li className={activePage === "home" ? "active-nav-link" : ""}>
           <a href="#home" onClick={go("home")}>Home</a>
@@ -45,9 +65,7 @@ export default function Navigation({ activePage, onPageChange }) {
           </li>
         )}
         <li className={activePage === "Cart" ? "active-nav-link" : ""}>
-          <a href="#Cart" onClick={go("Cart")}>
-            Cart ({cartCount})
-          </a>
+          <a href="#Cart" onClick={go("Cart")}>Cart ({cartCount})</a>
         </li>
       </ul>
     </nav>
