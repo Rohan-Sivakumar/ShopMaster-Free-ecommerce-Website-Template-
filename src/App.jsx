@@ -231,6 +231,202 @@ function App() {
     <>
       <Navigation activePage={activePage} onPageChange={handlePageChange} cartCount={cartItems.length} />
 
+      {/* Home Page - Professional Bootstrap Landing Page */}
+      <div id="home" className={`page ${activePage === 'home' ? 'active' : ''}`}>
+        {/* Hero Section */}
+        <section style={{
+          background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+          color: 'white',
+          padding: '100px 20px',
+          textAlign: 'center'
+        }}>
+          <div className="container">
+            <h1 className="display-3 fw-bold mb-4">Welcome to ShopMaster</h1>
+            <p className="lead mb-5">Discover premium electronics, wearables, and accessories at unbeatable prices</p>
+            <button 
+              className="btn btn-light btn-lg px-5 me-3" 
+              onClick={() => setActivePage('p')}
+              style={{fontWeight: 'bold'}}
+            >
+              Shop Now
+            </button>
+            {!currentUser && (
+              <button 
+                className="btn btn-outline-light btn-lg px-5"
+                onClick={() => setActivePage('login')}
+                style={{fontWeight: 'bold'}}
+              >
+                Sign In
+              </button>
+            )}
+          </div>
+        </section>
+
+        {/* Features Section */}
+        <section style={{padding: '80px 20px', backgroundColor: '#f8f9fa'}}>
+          <div className="container">
+            <h2 className="text-center mb-5 fw-bold">Why Shop With Us?</h2>
+            <div className="row g-4">
+              <div className="col-md-4">
+                <div className="text-center">
+                  <div style={{
+                    width: '80px',
+                    height: '80px',
+                    backgroundColor: '#667eea',
+                    borderRadius: '50%',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    margin: '0 auto 20px',
+                    color: 'white',
+                    fontSize: '40px'
+                  }}>🚚</div>
+                  <h4>Fast Shipping</h4>
+                  <p>Ships within 24 hours for most products</p>
+                </div>
+              </div>
+              <div className="col-md-4">
+                <div className="text-center">
+                  <div style={{
+                    width: '80px',
+                    height: '80px',
+                    backgroundColor: '#764ba2',
+                    borderRadius: '50%',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    margin: '0 auto 20px',
+                    color: 'white',
+                    fontSize: '40px'
+                  }}>💰</div>
+                  <h4>Best Prices</h4>
+                  <p>Unbeatable prices on premium products</p>
+                </div>
+              </div>
+              <div className="col-md-4">
+                <div className="text-center">
+                  <div style={{
+                    width: '80px',
+                    height: '80px',
+                    backgroundColor: '#667eea',
+                    borderRadius: '50%',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    margin: '0 auto 20px',
+                    color: 'white',
+                    fontSize: '40px'
+                  }}>🔒</div>
+                  <h4>Secure Payment</h4>
+                  <p>Google Sign-In for safe and secure transactions</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        {/* Categories Section */}
+        <section style={{padding: '80px 20px'}}>
+          <div className="container">
+            <h2 className="text-center mb-5 fw-bold">Shop By Category</h2>
+            <div className="row g-4">
+              <div className="col-md-4">
+                <div 
+                  className="card shadow-lg" 
+                  style={{cursor: 'pointer', transition: 'transform 0.3s', height: '100%'}}
+                  onClick={() => {
+                    setFilter('Electronics');
+                    setActivePage('p');
+                  }}
+                  onMouseEnter={(e) => e.currentTarget.style.transform = 'translateY(-10px)'}
+                  onMouseLeave={(e) => e.currentTarget.style.transform = 'translateY(0)'}
+                >
+                  <div style={{
+                    background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                    color: 'white',
+                    padding: '50px 20px',
+                    textAlign: 'center',
+                    fontSize: '60px'
+                  }}>📱</div>
+                  <div className="card-body text-center">
+                    <h5 className="card-title">Electronics</h5>
+                    <p className="card-text">Premium tech gadgets and devices</p>
+                  </div>
+                </div>
+              </div>
+              <div className="col-md-4">
+                <div 
+                  className="card shadow-lg" 
+                  style={{cursor: 'pointer', transition: 'transform 0.3s', height: '100%'}}
+                  onClick={() => {
+                    setFilter('Wearables');
+                    setActivePage('p');
+                  }}
+                  onMouseEnter={(e) => e.currentTarget.style.transform = 'translateY(-10px)'}
+                  onMouseLeave={(e) => e.currentTarget.style.transform = 'translateY(0)'}
+                >
+                  <div style={{
+                    background: 'linear-gradient(135deg, #764ba2 0%, #667eea 100%)',
+                    color: 'white',
+                    padding: '50px 20px',
+                    textAlign: 'center',
+                    fontSize: '60px'
+                  }}>⌚</div>
+                  <div className="card-body text-center">
+                    <h5 className="card-title">Wearables</h5>
+                    <p className="card-text">Smartwatches and fitness trackers</p>
+                  </div>
+                </div>
+              </div>
+              <div className="col-md-4">
+                <div 
+                  className="card shadow-lg" 
+                  style={{cursor: 'pointer', transition: 'transform 0.3s', height: '100%'}}
+                  onClick={() => {
+                    setFilter('Accessories');
+                    setActivePage('p');
+                  }}
+                  onMouseEnter={(e) => e.currentTarget.style.transform = 'translateY(-10px)'}
+                  onMouseLeave={(e) => e.currentTarget.style.transform = 'translateY(0)'}
+                >
+                  <div style={{
+                    background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                    color: 'white',
+                    padding: '50px 20px',
+                    textAlign: 'center',
+                    fontSize: '60px'
+                  }}>🎒</div>
+                  <div className="card-body text-center">
+                    <h5 className="card-title">Accessories</h5>
+                    <p className="card-text">Cases, cables, and more</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        {/* CTA Section */}
+        <section style={{
+          background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+          color: 'white',
+          padding: '60px 20px',
+          textAlign: 'center'
+        }}>
+          <div className="container">
+            <h2 className="fw-bold mb-4">Ready to Shop?</h2>
+            <p className="lead mb-4">Browse our collection of premium products at unbeatable prices</p>
+            <button 
+              className="btn btn-light btn-lg px-5"
+              onClick={() => setActivePage('p')}
+              style={{fontWeight: 'bold'}}
+            >
+              Browse Products
+            </button>
+          </div>
+        </section>
+      </div>
+
       {/* Product Page */}
       <div id="p" className={`page ${activePage === 'p' ? 'active' : ''}`}>
         <div className="container my-4">
@@ -312,21 +508,6 @@ function App() {
             </div>
           </div>
         )}
-      </div>
-
-      {/* Home Page */}
-      <div id="home" className={`page ${activePage === 'home' ? 'active' : ''}`}>
-        <div className="body">
-          <div className="container">
-            <div className="text-center py-5">
-              <h1 className="display-3 fw-bold mb-3">Welcome To ShopMaster</h1>
-              <p className="lead mb-4">Here You Can Buy Products In Unbeatable Prices</p>
-              <button className="btn btn-primary btn-lg px-5" onClick={() => setActivePage('p')}>
-                Shop Now
-              </button>
-            </div>
-          </div>
-        </div>
       </div>
 
       {/* Login Page - Google Only */}
