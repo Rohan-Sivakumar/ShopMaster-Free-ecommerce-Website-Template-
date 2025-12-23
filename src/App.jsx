@@ -7,148 +7,228 @@ import Swal from 'sweetalert2';
 
 const initialProducts = [
     {
-        id: "LBK1 Boring Bar Extension",
+        id: "LBK1 BORING BAR EXTENSION (LENGTH 60)",
         year: 2025,
         cost: 1464,
-        img: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=400&h=400&fit=crop",
-        category: "Boring Tools",
-        description: "LBK1 boring bar extension with 60mm length for precision boring operations."
+        img: "https://cdn.shopify.com/s/files/1/0558/6413/1539/products/LBK1_2_720x.jpg",
+        category: "BORING TOOLS",
+        description: "LBK1-LBK1-60L boring bar extension with 60mm length for precision boring operations. Ships within 24 hours."
     },
     {
-        id: "Fine Boring Bar Inserts",
+        id: "FINE BORING BAR INSERTS",
         year: 2025,
         cost: 1234,
-        img: "https://images.unsplash.com/photo-1581092918056-0c4c3acd3789?w=400&h=400&fit=crop",
-        category: "Inserts",
-        description: "TPGT080204L-UP15 fine boring bar inserts for precision finishing operations."
+        img: "https://cdn.shopify.com/s/files/1/0558/6413/1539/products/TPGT080204L_2_720x.jpg",
+        category: "INSERTS",
+        description: "TPGT080204L-UP15 fine boring bar inserts for precision boring operations. Ships within 24 hours."
     },
     {
-        id: "BT40 Locking Device",
+        id: "BT40 LOCKING DEVICE TOOL BOY",
         year: 2025,
         cost: 1386,
-        img: "https://images.unsplash.com/photo-1565043666747-69f6646db940?w=400&h=400&fit=crop",
-        category: "Tool Holders",
-        description: "BT40 locking device tool boy for secure tool holding and positioning."
+        img: "https://cdn.shopify.com/s/files/1/0558/6413/1539/products/BT40_LOCKING_720x.jpg",
+        category: "TOOL HOLDER",
+        description: "BT40 LOCKING DEVICE tool holder for secure tool holding and positioning. Ships within 14 days."
     },
     {
-        id: "SC Endmill 45HRC",
+        id: "SC ENDMILL 45HRC ALUMINIUM DIA1*3*D4*50L*3F",
         year: 2025,
         cost: 94,
-        img: "https://images.unsplash.com/photo-1513694203232-fe5acdc3fb15?w=400&h=400&fit=crop",
-        category: "End Mills",
-        description: "SC endmill 45HRC aluminum cutting tool Dia1*3*D4*50L*3F for CNC operations."
+        img: "https://cdn.shopify.com/s/files/1/0558/6413/1539/products/SC-ENDMILL_720x.jpg",
+        category: "SC ENDMILL CUTTER",
+        description: "SC endmill 45HRC aluminum DIA1*3*D4*50L*3F for precision milling operations. Ships within 24 hours."
     },
     {
-        id: "Rough Boring Head",
+        id: "ROUGH BORING HEAD",
         year: 2025,
         cost: 2365,
-        img: "https://images.unsplash.com/photo-1551288049-bebda4e38f71?w=400&h=400&fit=crop",
-        category: "Boring Tools",
-        description: "TWE2026-C rough boring head for heavy-duty boring and facing operations."
+        img: "https://cdn.shopify.com/s/files/1/0558/6413/1539/products/TWE2026-C_720x.jpg",
+        category: "BORING TOOLS",
+        description: "TWE2026-C rough boring head for heavy-duty boring and facing operations. Ships within 24 hours."
     },
     {
-        id: "CNMG Turning Insert",
+        id: "TURNING INSERT CNMG120408-PM UPT35",
         year: 2025,
         cost: 1211,
-        img: "https://images.unsplash.com/photo-1581092949020-9f2f036e4db5?w=400&h=400&fit=crop",
-        category: "Inserts",
-        description: "CNMG120408-PM UPT35 turning insert for precision lathe operations and finishing."
+        img: "https://cdn.shopify.com/s/files/1/0558/6413/1539/products/CNMG120408_720x.jpg",
+        category: "INSERTS",
+        description: "CNMG120408-PM UPT35 turning insert for precision lathe operations and finishing. Ships within 24 hours."
     },
     {
-        id: "CCMT Turning Insert",
+        id: "TURNING INSERT CCMT09T304-UPT25",
         year: 2025,
         cost: 934,
-        img: "https://images.unsplash.com/photo-1581092162392-8c6d87de0d6d?w=400&h=400&fit=crop",
-        category: "Inserts",
-        description: "CCMT09T304-UPT25 turning insert for steel and cast iron cutting."
+        img: "https://cdn.shopify.com/s/files/1/0558/6413/1539/products/CCMT09T304_720x.jpg",
+        category: "INSERTS",
+        description: "CCMT09T304-UPT25 turning insert for steel and cast iron cutting. Ships within 24 hours."
     },
     {
-        id: "TNMG Turning Insert Medium",
+        id: "TURNING INSERT CNMG120404-PM UPT35",
+        year: 2025,
+        cost: 1211,
+        img: "https://cdn.shopify.com/s/files/1/0558/6413/1539/products/CNMG120404_720x.jpg",
+        category: "INSERTS",
+        description: "CNMG120404-PM UPT35 turning insert for general purpose lathe operations. Ships within 14 days."
+    },
+    {
+        id: "TURNING INSERT TNMG160408-PM UPT35",
         year: 2025,
         cost: 1130,
-        img: "https://images.unsplash.com/photo-1581092916550-e323be2ae537?w=400&h=400&fit=crop",
-        category: "Inserts",
-        description: "TNMG160408-PM UPT35 medium turning insert for general purpose machining."
+        img: "https://cdn.shopify.com/s/files/1/0558/6413/1539/products/TNMG160408_720x.jpg",
+        category: "INSERTS",
+        description: "TNMG160408-PM UPT35 turning insert for medium cutting operations. Ships within 24 hours."
     },
     {
-        id: "SC Endmill Aluminum Large",
-        year: 2025,
-        cost: 94,
-        img: "https://images.unsplash.com/photo-1581092921274-35c56e76ed44?w=400&h=400&fit=crop",
-        category: "End Mills",
-        description: "SC endmill 45HRC aluminum Dia4*12*D4*50L*3F for high-speed cutting operations."
-    },
-    {
-        id: "BT30 ER Collet Holder",
-        year: 2025,
-        cost: 917,
-        img: "https://images.unsplash.com/photo-1581092952906-bf84d6372b3d?w=400&h=400&fit=crop",
-        category: "Tool Holders",
-        description: "BT30-ER11A-100 ER collet holder for VMC operations with 100mm length."
-    },
-    {
-        id: "SC ISO Thread Mill Small",
-        year: 2025,
-        cost: 1303,
-        img: "https://images.unsplash.com/photo-1581092934975-be2f3117e4c6?w=400&h=400&fit=crop",
-        category: "Thread Mills",
-        description: "RTMS 04027L8 SC ISO thread mill 0.6 ISO for precision thread cutting."
-    },
-    {
-        id: "SC ISO Thread Mill Medium",
-        year: 2025,
-        cost: 1703,
-        img: "https://images.unsplash.com/photo-1581092162245-8ca2bcba21f1?w=400&h=400&fit=crop",
-        category: "Thread Mills",
-        description: "RTMS 06048L12 SC ISO thread mill 1.0 ISO for metric thread applications."
-    },
-    {
-        id: "SC ISO Thread Mill Large",
-        year: 2025,
-        cost: 2911,
-        img: "https://images.unsplash.com/photo-1581092165334-a9d8a2d36f6d?w=400&h=400&fit=crop",
-        category: "Thread Mills",
-        description: "RTMS 08080L20 SC ISO thread mill 1.5 ISO for large diameter threading."
-    },
-    {
-        id: "SC Endmill Medium",
-        year: 2025,
-        cost: 94,
-        img: "https://images.unsplash.com/photo-1581092916550-e323be2ae537?w=400&h=400&fit=crop",
-        category: "End Mills",
-        description: "SC endmill 45HRC aluminum Dia2*6*D4*50L*3F for versatile milling operations."
-    },
-    {
-        id: "BT30 ER16 Collet Holder",
-        year: 2025,
-        cost: 917,
-        img: "https://images.unsplash.com/photo-1581092952906-bf84d6372b3d?w=400&h=400&fit=crop",
-        category: "Tool Holders",
-        description: "BT30-ER16A-100 ER collet holder for VMC with extended holding capacity."
-    },
-    {
-        id: "TNMG Turning Insert Finish",
+        id: "TURNING INSERT TNMG160404-PM UPT35",
         year: 2025,
         cost: 1130,
-        img: "https://images.unsplash.com/photo-1581092146274-40eb08e78f54?w=400&h=400&fit=crop",
-        category: "Inserts",
-        description: "TNMG160404-PM UPT35 finishing turning insert for smooth surface finishes."
+        img: "https://cdn.shopify.com/s/files/1/0558/6413/1539/products/TNMG160404_720x.jpg",
+        category: "INSERTS",
+        description: "TNMG160404-PM UPT35 turning insert for precision finishing operations. Ships within 24 hours."
     },
     {
-        id: "SC Endmill Large Dia",
+        id: "TURNING INSERT CCMT09T308-UPT25",
+        year: 2025,
+        cost: 934,
+        img: "https://cdn.shopify.com/s/files/1/0558/6413/1539/products/CCMT09T308_720x.jpg",
+        category: "INSERTS",
+        description: "CCMT09T308-UPT25 turning insert for heavy-duty steel cutting. Ships within 24 hours."
+    },
+    {
+        id: "SC ENDMILL 45HRC ALUMINIUM DIA4*12*D4*50L*3F",
+        year: 2025,
+        cost: 94,
+        img: "https://cdn.shopify.com/s/files/1/0558/6413/1539/products/SC-ENDMILL_720x.jpg",
+        category: "SC ENDMILL CUTTER",
+        description: "SC endmill 45HRC aluminum DIA4*12*D4*50L*3F for versatile milling operations. Ships within 24 hours."
+    },
+    {
+        id: "SC ENDMILL 45HRC ALUMINIUM DIA5*15*D5*50L*3F",
         year: 2025,
         cost: 170,
-        img: "https://images.unsplash.com/photo-1581092162245-8ca2bcba21f1?w=400&h=400&fit=crop",
-        category: "End Mills",
-        description: "SC endmill 45HRC aluminum Dia5*15*D5*50L*3F for heavy-duty milling."
+        img: "https://cdn.shopify.com/s/files/1/0558/6413/1539/products/SC-ENDMILL_720x.jpg",
+        category: "SC ENDMILL CUTTER",
+        description: "SC endmill 45HRC aluminum DIA5*15*D5*50L*3F for heavy-duty milling operations. Ships within 24 hours."
     },
     {
-        id: "SC ISO Thread Mill Large Dia",
+        id: "SC ENDMILL 45HRC ALUMINIUM DIA3*9*D4*50L*3F",
+        year: 2025,
+        cost: 94,
+        img: "https://cdn.shopify.com/s/files/1/0558/6413/1539/products/SC-ENDMILL_720x.jpg",
+        category: "SC ENDMILL CUTTER",
+        description: "SC endmill 45HRC aluminum DIA3*9*D4*50L*3F for precision cutting operations. Ships within 24 hours."
+    },
+    {
+        id: "SC ENDMILL 45HRC ALUMINIUM DIA2*6*D4*50L*3F",
+        year: 2025,
+        cost: 94,
+        img: "https://cdn.shopify.com/s/files/1/0558/6413/1539/products/SC-ENDMILL_720x.jpg",
+        category: "SC ENDMILL CUTTER",
+        description: "SC endmill 45HRC aluminum DIA2*6*D4*50L*3F for versatile milling operations. Ships within 24 hours."
+    },
+    {
+        id: "SC ENDMILL 45HRC ALUMINIUM DIA1.5*4.5*D4*50L*3F",
+        year: 2025,
+        cost: 94,
+        img: "https://cdn.shopify.com/s/files/1/0558/6413/1539/products/SC-ENDMILL_720x.jpg",
+        category: "SC ENDMILL CUTTER",
+        description: "SC endmill 45HRC aluminum DIA1.5*4.5*D4*50L*3F for fine milling operations. Ships within 24 hours."
+    },
+    {
+        id: "BT30 ER COLLET HOLDERS BT30-ER11A-100",
+        year: 2025,
+        cost: 917,
+        img: "https://cdn.shopify.com/s/files/1/0558/6413/1539/products/BT30-ER11A-100_720x.jpg",
+        category: "VMC TOOL HOLDER",
+        description: "BT30-ER11A-100 ER collet holder for VMC operations with 100mm length. Ships within 24 hours."
+    },
+    {
+        id: "BT30 ER COLLET HOLDERS BT30-ER16A-100",
+        year: 2025,
+        cost: 917,
+        img: "https://cdn.shopify.com/s/files/1/0558/6413/1539/products/BT30-ER16A-100_720x.jpg",
+        category: "VMC TOOL HOLDER",
+        description: "BT30-ER16A-100 ER collet holder for VMC operations with extended capacity. Ships within 24 hours."
+    },
+    {
+        id: "BT30 ER COLLET HOLDERS BT30-ER20A-70",
+        year: 2025,
+        cost: 917,
+        img: "https://cdn.shopify.com/s/files/1/0558/6413/1539/products/BT30-ER20A-70_720x.jpg",
+        category: "VMC TOOL HOLDER",
+        description: "BT30-ER20A-70 ER collet holder for VMC with 70mm length. Ships within 24 hours."
+    },
+    {
+        id: "BT30 ER COLLET HOLDERS BT30-ER20A-100",
+        year: 2025,
+        cost: 917,
+        img: "https://cdn.shopify.com/s/files/1/0558/6413/1539/products/BT30-ER20A-100_720x.jpg",
+        category: "VMC TOOL HOLDER",
+        description: "BT30-ER20A-100 ER collet holder for VMC operations with 100mm length. Ships within 24 hours."
+    },
+    {
+        id: "BT30 ER COLLET HOLDERS BT30-ER11A-70",
+        year: 2025,
+        cost: 917,
+        img: "https://cdn.shopify.com/s/files/1/0558/6413/1539/products/BT30-ER11A-70_720x.jpg",
+        category: "VMC TOOL HOLDER",
+        description: "BT30-ER11A-70 ER collet holder for VMC with 70mm length. Ships within 24 hours."
+    },
+    {
+        id: "BT30 ER COLLET HOLDERS BT30-ER16A-70",
+        year: 2025,
+        cost: 917,
+        img: "https://cdn.shopify.com/s/files/1/0558/6413/1539/products/BT30-ER16A-70_720x.jpg",
+        category: "VMC TOOL HOLDER",
+        description: "BT30-ER16A-70 ER collet holder for VMC with 70mm length. Ships within 24 hours."
+    },
+    {
+        id: "SC ISO THREAD MILL RTMS 08080L20 1.5 ISO",
+        year: 2025,
+        cost: 2911,
+        img: "https://cdn.shopify.com/s/files/1/0558/6413/1539/products/RTMS-08080L20_720x.jpg",
+        category: "SC THREAD MILL",
+        description: "RTMS 08080L20 SC ISO thread mill 1.5 ISO for large diameter threading. Ships within 24 hours."
+    },
+    {
+        id: "SC ISO THREAD MILL RTMS 10100L24 1.75 ISO",
         year: 2025,
         cost: 4152,
-        img: "https://images.unsplash.com/photo-1581092934975-be2f3117e4c6?w=400&h=400&fit=crop",
-        category: "Thread Mills",
-        description: "RTMS 10100L24 SC ISO thread mill 1.75 ISO for large diameter threads."
+        img: "https://cdn.shopify.com/s/files/1/0558/6413/1539/products/RTMS-10100L24_720x.jpg",
+        category: "SC THREAD MILL",
+        description: "RTMS 10100L24 SC ISO thread mill 1.75 ISO for extra large diameter threads. Ships within 24 hours."
+    },
+    {
+        id: "SC ISO THREAD MILL RTMS 06048L12 1.0 ISO",
+        year: 2025,
+        cost: 1703,
+        img: "https://cdn.shopify.com/s/files/1/0558/6413/1539/products/RTMS-06048L12_720x.jpg",
+        category: "SC THREAD MILL",
+        description: "RTMS 06048L12 SC ISO thread mill 1.0 ISO for metric thread applications. Ships within 24 hours."
+    },
+    {
+        id: "SC ISO THREAD MILL RTMS 06060L16 1.25 ISO",
+        year: 2025,
+        cost: 1703,
+        img: "https://cdn.shopify.com/s/files/1/0558/6413/1539/products/RTMS-06060L16_720x.jpg",
+        category: "SC THREAD MILL",
+        description: "RTMS 06060L16 SC ISO thread mill 1.25 ISO for medium diameter threading. Ships within 24 hours."
+    },
+    {
+        id: "SC ISO THREAD MILL RTMS 04027L8 0.6 ISO",
+        year: 2025,
+        cost: 1303,
+        img: "https://cdn.shopify.com/s/files/1/0558/6413/1539/products/RTMS-04027L8_720x.jpg",
+        category: "SC THREAD MILL",
+        description: "RTMS 04027L8 SC ISO thread mill 0.6 ISO for precision thread cutting. Ships within 14 days."
+    },
+    {
+        id: "SC ISO THREAD MILL RTMS 04015L6 0.4 ISO",
+        year: 2025,
+        cost: 1303,
+        img: "https://cdn.shopify.com/s/files/1/0558/6413/1539/products/RTMS-04015L6_720x.jpg",
+        category: "SC THREAD MILL",
+        description: "RTMS 04015L6 SC ISO thread mill 0.4 ISO for fine thread applications. Ships within 24 hours."
     },
 ];
 
@@ -314,7 +394,7 @@ function App() {
       {/* Product Page */}
       <div id="p" className={`page ${activePage === 'p' ? 'active' : ''}`}>
         <div className="container my-4">
-          <h2 className="text-center mb-4">Industrial Tools & Machining Products</h2>
+          <h2 className="text-center mb-4">Shop By Category</h2>
           <div className="d-flex justify-content-center gap-3 mb-4 flex-wrap">
             <input
               type="text"
@@ -400,7 +480,7 @@ function App() {
           <div className="container">
             <div className="text-center py-5">
               <h1 className="display-3 fw-bold mb-3">Welcome To ShopMaster</h1>
-              <p className="lead mb-4">Industrial Tools & Machining Products at Unbeatable Prices</p>
+              <p className="lead mb-4">Industrial Machining Tools at Unbeatable Prices</p>
               <button className="btn btn-primary btn-lg px-5" onClick={() => setActivePage('p')}>
                 Shop Now
               </button>
