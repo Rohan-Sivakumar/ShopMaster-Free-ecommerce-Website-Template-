@@ -5,17 +5,16 @@ import './GoogleAuth.css';
 const GOOGLE_CLIENT_ID = '902043632684-87h6kimr4divhgqhuabu11l8713vc240.apps.googleusercontent.com';
 
 // Microsoft OAuth Configuration
-// Note: You'll need to register your app at https://portal.azure.com/
-const MICROSOFT_CLIENT_ID = 'YOUR_MICROSOFT_CLIENT_ID'; // Replace with your Microsoft App ID
-const MICROSOFT_REDIRECT_URI = window.location.origin; // Your app's URL
+const MICROSOFT_CLIENT_ID = 'YOUR_MICROSOFT_CLIENT_ID';
+const MICROSOFT_REDIRECT_URI = window.location.origin;
 
 const Auth = ({ onSignInSuccess, onSignInFailure }) => {
   const [isSignedIn, setIsSignedIn] = useState(false);
   const [userInfo, setUserInfo] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [isGoogleLoading, setIsGoogleLoading] = useState(false);
 
   useEffect(() => {
-    // Load Google Sign-In script
     const loadGoogleScript = () => {
       const script = document.createElement('script');
       script.src = 'https://accounts.google.com/gsi/client';
@@ -44,22 +43,25 @@ const Auth = ({ onSignInSuccess, onSignInFailure }) => {
         cancel_on_tap_outside: true,
       });
 
-      window.google.accounts.id.renderButton(
-        document.getElementById('googleSignInButton'),
-        {
-          theme: 'outline',
-          size: 'large',
-          width: 250,
-          text: 'signin_with',
-          shape: 'rectangular',
+      // Don't render the default button, we'll use our custom one
+    }
+  };
+
+  const handleGoogleSignInClick = () => {
+    setIsGoogleLoading(true);
+    setIsLoading(true);
+    
+    if (window.google) {
+      window.google.accounts.id.prompt((notification) => {
+        if (notification.isNotDisplayed() || notification.isSkippedMoment()) {
+          setIsGoogleLoading(false);
+          setIsLoading(false);
         }
-      );
+      });
     }
   };
 
   const handleGoogleCredentialResponse = (response) => {
-    setIsLoading(true);
-    
     try {
       const userObject = parseJwt(response.credential);
       
@@ -89,6 +91,7 @@ const Auth = ({ onSignInSuccess, onSignInFailure }) => {
         onSignInFailure(error);
       }
     } finally {
+      setIsGoogleLoading(false);
       setIsLoading(false);
     }
   };
@@ -96,7 +99,6 @@ const Auth = ({ onSignInSuccess, onSignInFailure }) => {
   const handleMicrosoftSignIn = () => {
     setIsLoading(true);
     
-    // Microsoft OAuth 2.0 authorization endpoint
     const authUrl = `https://login.microsoftonline.com/common/oauth2/v2.0/authorize`;
     const params = new URLSearchParams({
       client_id: MICROSOFT_CLIENT_ID,
@@ -108,11 +110,9 @@ const Auth = ({ onSignInSuccess, onSignInFailure }) => {
       nonce: Math.random().toString(36).substring(7),
     });
 
-    // Redirect to Microsoft login
     window.location.href = `${authUrl}?${params.toString()}`;
   };
 
-  // Handle Microsoft OAuth redirect callback
   useEffect(() => {
     const handleMicrosoftCallback = async () => {
       const hash = window.location.hash.substring(1);
@@ -124,14 +124,13 @@ const Auth = ({ onSignInSuccess, onSignInFailure }) => {
         setIsLoading(true);
         
         try {
-          // Parse the ID token to get user info
           const userObject = parseJwt(idToken);
           
           const userData = {
             provider: 'microsoft',
             email: userObject.email || userObject.preferred_username,
             name: userObject.name,
-            picture: null, // Microsoft doesn't provide picture in ID token
+            picture: null,
             sub: userObject.sub,
             loginTime: new Date().toISOString(),
           };
@@ -144,7 +143,6 @@ const Auth = ({ onSignInSuccess, onSignInFailure }) => {
           
           window.dispatchEvent(new Event('userChanged'));
           
-          // Clean up URL
           window.history.replaceState({}, document.title, window.location.pathname);
           
           if (onSignInSuccess) {
@@ -196,7 +194,6 @@ const Auth = ({ onSignInSuccess, onSignInFailure }) => {
     window.location.reload();
   };
 
-  // Check if user is already signed in
   useEffect(() => {
     const storedUser = sessionStorage.getItem('authUser');
     const storedToken = sessionStorage.getItem('authToken');
@@ -224,7 +221,7 @@ const Auth = ({ onSignInSuccess, onSignInFailure }) => {
     }
   }, []);
 
-  if (isLoading) {
+  if (isLoading && !isSignedIn) {
     return (
       <div className="google-auth-loading">
         <div className="spinner"></div>
@@ -268,7 +265,50 @@ const Auth = ({ onSignInSuccess, onSignInFailure }) => {
 
   return (
     <div className="google-auth-container">
-      <div id="googleSignInButton"></div>
+      {/* Custom Google Sign-In Button with Loading Spinner */}
+      <button
+        onClick={handleGoogleSignInClick}
+        disabled={isGoogleLoading}
+        style={{
+          width: '250px',
+          padding: '10px 20px',
+          backgroundColor: 'white',
+          border: '1px solid #dadce0',
+          borderRadius: '4px',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          gap: '10px',
+          cursor: isGoogleLoading ? 'not-allowed' : 'pointer',
+          fontSize: '14px',
+          fontWeight: '500',
+          transition: 'background-color 0.2s, box-shadow 0.2s',
+          boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
+          position: 'relative',
+          opacity: isGoogleLoading ? 0.7 : 1
+        }}
+        onMouseEnter={(e) => !isGoogleLoading && (e.currentTarget.style.backgroundColor = '#f8f9fa')}
+        onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = 'white')}
+      >
+        {isGoogleLoading ? (
+          <div style={{
+            width: '18px',
+            height: '18px',
+            border: '3px solid #f3f3f3',
+            borderTop: '3px solid #4285f4',
+            borderRadius: '50%',
+            animation: 'spin 1s linear infinite'
+          }}></div>
+        ) : (
+          <svg width="18" height="18" viewBox="0 0 18 18">
+            <path fill="#4285F4" d="M17.64 9.2c0-.637-.057-1.251-.164-1.84H9v3.481h4.844c-.209 1.125-.843 2.078-1.796 2.716v2.259h2.908c1.702-1.567 2.684-3.874 2.684-6.615z"/>
+            <path fill="#34A853" d="M9 18c2.43 0 4.467-.806 5.956-2.184l-2.908-2.259c-.806.54-1.837.86-3.048.86-2.344 0-4.328-1.584-5.036-3.711H.957v2.332C2.438 15.983 5.482 18 9 18z"/>
+            <path fill="#FBBC05" d="M3.964 10.706c-.18-.54-.282-1.117-.282-1.706 0-.593.102-1.17.282-1.706V4.958H.957C.347 6.173 0 7.548 0 9c0 1.452.348 2.827.957 4.042l3.007-2.336z"/>
+            <path fill="#EA4335" d="M9 3.58c1.321 0 2.508.454 3.44 1.345l2.582-2.58C13.463.891 11.426 0 9 0 5.482 0 2.438 2.017.957 4.958L3.964 7.29C4.672 5.163 6.656 3.58 9 3.58z"/>
+          </svg>
+        )}
+        <span>{isGoogleLoading ? 'Signing in...' : 'Sign in with Google'}</span>
+      </button>
       
       <div style={{margin: '15px 0', textAlign: 'center', color: '#666'}}>
         <span>or</span>
@@ -276,6 +316,7 @@ const Auth = ({ onSignInSuccess, onSignInFailure }) => {
       
       <button
         onClick={handleMicrosoftSignIn}
+        disabled={isLoading}
         style={{
           width: '250px',
           padding: '10px 20px',
@@ -286,13 +327,14 @@ const Auth = ({ onSignInSuccess, onSignInFailure }) => {
           alignItems: 'center',
           justifyContent: 'center',
           gap: '10px',
-          cursor: 'pointer',
+          cursor: isLoading ? 'not-allowed' : 'pointer',
           fontSize: '14px',
           fontWeight: '500',
           transition: 'background-color 0.2s',
+          opacity: isLoading ? 0.7 : 1
         }}
-        onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#f5f5f5'}
-        onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'white'}
+        onMouseEnter={(e) => !isLoading && (e.currentTarget.style.backgroundColor = '#f5f5f5')}
+        onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = 'white')}
       >
         <svg width="21" height="21" viewBox="0 0 21 21" fill="none">
           <rect x="1" y="1" width="9" height="9" fill="#F25022"/>
@@ -311,6 +353,13 @@ const Auth = ({ onSignInSuccess, onSignInFailure }) => {
           🔒 Secure session - automatically expires when you close your browser
         </small>
       </p>
+      
+      <style>{`
+        @keyframes spin {
+          0% { transform: rotate(0deg); }
+          100% { transform: rotate(360deg); }
+        }
+      `}</style>
     </div>
   );
 };
