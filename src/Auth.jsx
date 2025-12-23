@@ -5,7 +5,7 @@ import './GoogleAuth.css';
 const GOOGLE_CLIENT_ID = '902043632684-87h6kimr4divhgqhuabu11l8713vc240.apps.googleusercontent.com';
 
 // Microsoft OAuth Configuration
-const MICROSOFT_CLIENT_ID = 'YOUR_MICROSOFT_CLIENT_ID';
+const MICROSOFT_CLIENT_ID = '6c947523-2ba5-4f18-815c-bfc826c5ba95';
 const MICROSOFT_REDIRECT_URI = window.location.origin;
 
 const Auth = ({ onSignInSuccess, onSignInFailure }) => {
