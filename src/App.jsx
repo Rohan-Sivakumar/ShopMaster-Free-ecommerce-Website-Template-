@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo, useCallback } from "react";
 import Navigation from "./Navigation";
-import GoogleAuth from "./GoogleAuth";
+import Auth from "./Auth";
 import "./App.css";
 import { getCart, saveCart, addToCart, removeFromCart, getCurrentUser } from "./cartService";
 import Swal from 'sweetalert2';
@@ -166,7 +166,7 @@ function App() {
       Swal.fire({
         icon: 'warning',
         title: 'Please Sign In',
-        text: 'You need to sign in with Google to add items to your cart',
+        text: 'You need to sign in to add items to your cart',
         confirmButtonText: 'Sign In',
       }).then((result) => {
         if (result.isConfirmed) {
@@ -198,8 +198,8 @@ function App() {
     setCartItems(updatedCart);
   }, [currentUser, cartItems]);
 
-  // Google Sign-In success handler
-  const handleGoogleSignInSuccess = useCallback((userData) => {
+  // Sign-In success handler
+  const handleSignInSuccess = useCallback((userData) => {
     setCurrentUser(userData);
     
     // Load user's cart
@@ -219,12 +219,12 @@ function App() {
     }, 2000);
   }, []);
 
-  // Google Sign-In failure handler
-  const handleGoogleSignInFailure = useCallback((error) => {
+  // Sign-In failure handler
+  const handleSignInFailure = useCallback((error) => {
     Swal.fire({
       icon: 'error',
       title: 'Sign In Failed',
-      text: 'There was an error signing in with Google. Please try again.',
+      text: 'There was an error signing in. Please try again.',
     });
   }, []);
 
@@ -410,7 +410,7 @@ function App() {
         </div>
       </div>
 
-      {/* Login Page - Google Only */}
+      {/* Login Page - Google & Microsoft */}
       <div id="login" className={`page ${activePage === 'login' ? 'active' : ''}`}>
         <div className="container my-5">
           <div className="row justify-content-center">
@@ -418,19 +418,19 @@ function App() {
               <div className="card shadow">
                 <div className="card-body p-5 text-center">
                   <h2 className="card-title mb-3">Sign In to ShopMaster</h2>
-                  <p className="text-muted mb-4">Sign in with your Google account to start shopping</p>
+                  <p className="text-muted mb-4">Choose your preferred sign-in method</p>
                   
-                  {/* Google Sign-In Only */}
+                  {/* Google & Microsoft Sign-In */}
                   <div className="d-flex justify-content-center mb-4">
-                    <GoogleAuth 
-                      onSignInSuccess={handleGoogleSignInSuccess}
-                      onSignInFailure={handleGoogleSignInFailure}
+                    <Auth 
+                      onSignInSuccess={handleSignInSuccess}
+                      onSignInFailure={handleSignInFailure}
                     />
                   </div>
                   
                   <div className="mt-4">
                     <p className="small text-muted">
-                      <i className="bi bi-shield-check"></i> Secure sign-in with Google
+                      <i className="bi bi-shield-check"></i> Secure sign-in with Google or Microsoft
                     </p>
                     <p className="small text-muted">
                       Your cart and preferences are saved automatically
@@ -453,7 +453,7 @@ function App() {
                   <h2 className="card-title mb-4">Your Cart</h2>
                   {!currentUser ? (
                     <div className="alert alert-info text-center" role="alert">
-                      Please <a href="#" onClick={() => setActivePage('login')} className="alert-link">sign in with Google</a> to view your cart.
+                      Please <a href="#" onClick={() => setActivePage('login')} className="alert-link">sign in</a> to view your cart.
                     </div>
                   ) : cartItems.length === 0 ? (
                     <div className="alert alert-warning" role="alert">
@@ -520,9 +520,9 @@ function App() {
               <p className="lead">Please sign in to view your dashboard</p>
             )}
             <div className="mt-4">
-              <GoogleAuth 
-                onSignInSuccess={handleGoogleSignInSuccess}
-                onSignInFailure={handleGoogleSignInFailure}
+              <Auth 
+                onSignInSuccess={handleSignInSuccess}
+                onSignInFailure={handleSignInFailure}
               />
             </div>
           </div>
