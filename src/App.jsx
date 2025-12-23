@@ -74,7 +74,7 @@ const initialProducts = [
         id: "Laptop Stand",
         year: 2025,
         cost: 899,
-        img: "/images/stand.jpeg",
+        img: "https://images.unsplash.com/photo-1527864550417-7fd91fc51a46?w=400&h=400&fit=crop",
         category: "Accessories",
         description: "Adjustable aluminum laptop stand for better ergonomics and cooling."
     },
@@ -82,7 +82,7 @@ const initialProducts = [
         id: "Gaming Keyboard",
         year: 2024,
         cost: 3499,
-        img: "/images/keyboard.jpeg",
+        img: "https://images.unsplash.com/photo-1587829741301-dc798b83add3?w=400&h=400&fit=crop",
         category: "Electronics",
         description: "Mechanical gaming keyboard with RGB lighting and programmable keys."
     },
@@ -90,7 +90,7 @@ const initialProducts = [
         id: "Webcam HD",
         year: 2025,
         cost: 2499,
-        img: "/images/webcam.jpeg",
+        img: "https://images.unsplash.com/photo-1575909812264-6902b55846ad?w=400&h=400&fit=crop",
         category: "Electronics",
         description: "1080p HD webcam with auto-focus and built-in microphone."
     },
@@ -98,7 +98,7 @@ const initialProducts = [
         id: "Screen Protector",
         year: 2024,
         cost: 199,
-        img: "/images/protector.jpeg",
+        img: "https://images.unsplash.com/photo-1556656793-08538906a9f8?w=400&h=400&fit=crop",
         category: "Accessories",
         description: "Tempered glass screen protector with anti-fingerprint coating."
     },
@@ -106,7 +106,7 @@ const initialProducts = [
         id: "Earbuds Pro",
         year: 2025,
         cost: 5999,
-        img: "/images/earbuds.jpeg",
+        img: "https://images.unsplash.com/photo-1590658268037-6bf12165a8df?w=400&h=400&fit=crop",
         category: "Electronics",
         description: "True wireless earbuds with active noise cancellation and premium audio."
     },
@@ -114,7 +114,7 @@ const initialProducts = [
         id: "Tablet Stand",
         year: 2024,
         cost: 599,
-        img: "/images/tabletstand.jpeg",
+        img: "https://images.unsplash.com/photo-1585790050230-5dd28404f01a?w=400&h=400&fit=crop",
         category: "Accessories",
         description: "Universal tablet stand with adjustable angles and stable base."
     },
@@ -122,7 +122,7 @@ const initialProducts = [
         id: "LED Desk Lamp",
         year: 2025,
         cost: 1299,
-        img: "/images/lamp.jpeg",
+        img: "https://images.unsplash.com/photo-1507473885765-e6ed057f782c?w=400&h=400&fit=crop",
         category: "Electronics",
         description: "Smart LED desk lamp with adjustable brightness and color temperature."
     },
@@ -130,7 +130,7 @@ const initialProducts = [
         id: "Car Charger",
         year: 2024,
         cost: 399,
-        img: "/images/carcharger.jpeg",
+        img: "https://images.unsplash.com/photo-1593941707874-ef25b8b4a92b?w=400&h=400&fit=crop",
         category: "Accessories",
         description: "Dual-port car charger with fast charging technology."
     },
@@ -138,7 +138,7 @@ const initialProducts = [
         id: "Smart Ring",
         year: 2025,
         cost: 6999,
-        img: "/images/ring.jpeg",
+        img: "https://images.unsplash.com/photo-1605100804763-247f67b3557e?w=400&h=400&fit=crop",
         category: "Wearables",
         description: "Smart ring for fitness tracking, sleep monitoring, and notifications."
     },
@@ -146,7 +146,7 @@ const initialProducts = [
         id: "Portable SSD",
         year: 2024,
         cost: 4499,
-        img: "/images/ssd.jpeg",
+        img: "https://images.unsplash.com/photo-1597872200969-2b65d56bd16b?w=400&h=400&fit=crop",
         category: "Electronics",
         description: "1TB portable SSD with high-speed data transfer and compact design."
     },
@@ -332,8 +332,7 @@ function App() {
             >
               {categories.map(cat => (
                 <option key={cat} value={cat}>{cat}</option>
-              ))}
-            </select>
+              ))}            </select>
           </div>
           
           {filteredProducts.length === 0 ? (
