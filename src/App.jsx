@@ -7,148 +7,148 @@ import Swal from 'sweetalert2';
 
 const initialProducts = [
     {
-        id: "Wireless headphone",
+        id: "LBK1 Boring Bar Extension",
         year: 2025,
-        cost: 9999,
-        img: "/images/headphone.jpeg",
-        category: "Electronics",
-        description: "High-quality wireless headphones with noise cancellation."
+        cost: 1464,
+        img: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=400&h=400&fit=crop",
+        category: "Boring Tools",
+        description: "LBK1 boring bar extension with 60mm length for precision boring operations."
     },
     {
-        id: "Smart Watch",
-        year: 2024,
-        cost: 4999,
-        img: "/images/watch.jpeg",
-        category: "Wearables",
-        description: "Feature-rich smart watch with health tracking."
-    },
-    {
-        id: "Bluetooth Speaker",
+        id: "Fine Boring Bar Inserts",
         year: 2025,
-        cost: 2999,
-        img: "/images/speaker.jpeg",
-        category: "Electronics",
-        description: "Portable Bluetooth speaker with premium sound quality and 12-hour battery life."
+        cost: 1234,
+        img: "https://images.unsplash.com/photo-1581092918056-0c4c3acd3789?w=400&h=400&fit=crop",
+        category: "Inserts",
+        description: "TPGT080204L-UP15 fine boring bar inserts for precision finishing operations."
     },
     {
-        id: "Wireless Mouse",
-        year: 2024,
-        cost: 799,
-        img: "/images/mouse.jpeg",
-        category: "Electronics",
-        description: "Ergonomic wireless mouse with precision tracking and long battery life."
-    },
-    {
-        id: "USB-C Cable",
+        id: "BT40 Locking Device",
         year: 2025,
-        cost: 299,
-        img: "/images/cable.jpeg",
-        category: "Accessories",
-        description: "Fast charging USB-C cable with durable braided design."
+        cost: 1386,
+        img: "https://images.unsplash.com/photo-1565043666747-69f6646db940?w=400&h=400&fit=crop",
+        category: "Tool Holders",
+        description: "BT40 locking device tool boy for secure tool holding and positioning."
     },
     {
-        id: "Fitness Band",
-        year: 2024,
-        cost: 1999,
-        img: "/images/band.jpeg",
-        category: "Wearables",
-        description: "Track your fitness goals with heart rate monitoring and sleep tracking."
-    },
-    {
-        id: "Phone Case",
+        id: "SC Endmill 45HRC",
         year: 2025,
-        cost: 499,
-        img: "/images/case.jpeg",
-        category: "Accessories",
-        description: "Shockproof phone case with premium finish and raised edges."
+        cost: 94,
+        img: "https://images.unsplash.com/photo-1513694203232-fe5acdc3fb15?w=400&h=400&fit=crop",
+        category: "End Mills",
+        description: "SC endmill 45HRC aluminum cutting tool Dia1*3*D4*50L*3F for CNC operations."
     },
     {
-        id: "Power Bank",
-        year: 2024,
-        cost: 1499,
-        img: "/images/powerbank.jpeg",
-        category: "Electronics",
-        description: "20000mAh power bank with fast charging support for multiple devices."
-    },
-    {
-        id: "Laptop Stand",
+        id: "Rough Boring Head",
         year: 2025,
-        cost: 899,
-        img: "https://images.unsplash.com/photo-1527864550417-7fd91fc51a46?w=400&h=400&fit=crop",
-        category: "Accessories",
-        description: "Adjustable aluminum laptop stand for better ergonomics and cooling."
+        cost: 2365,
+        img: "https://images.unsplash.com/photo-1551288049-bebda4e38f71?w=400&h=400&fit=crop",
+        category: "Boring Tools",
+        description: "TWE2026-C rough boring head for heavy-duty boring and facing operations."
     },
     {
-        id: "Gaming Keyboard",
-        year: 2024,
-        cost: 3499,
-        img: "https://images.unsplash.com/photo-1587829741301-dc798b83add3?w=400&h=400&fit=crop",
-        category: "Electronics",
-        description: "Mechanical gaming keyboard with RGB lighting and programmable keys."
-    },
-    {
-        id: "Webcam HD",
+        id: "CNMG Turning Insert",
         year: 2025,
-        cost: 2499,
-        img: "https://images.unsplash.com/photo-1575909812264-6902b55846ad?w=400&h=400&fit=crop",
-        category: "Electronics",
-        description: "1080p HD webcam with auto-focus and built-in microphone."
+        cost: 1211,
+        img: "https://images.unsplash.com/photo-1581092949020-9f2f036e4db5?w=400&h=400&fit=crop",
+        category: "Inserts",
+        description: "CNMG120408-PM UPT35 turning insert for precision lathe operations and finishing."
     },
     {
-        id: "Screen Protector",
-        year: 2024,
-        cost: 199,
-        img: "https://images.unsplash.com/photo-1556656793-08538906a9f8?w=400&h=400&fit=crop",
-        category: "Accessories",
-        description: "Tempered glass screen protector with anti-fingerprint coating."
-    },
-    {
-        id: "Earbuds Pro",
+        id: "CCMT Turning Insert",
         year: 2025,
-        cost: 5999,
-        img: "https://images.unsplash.com/photo-1590658268037-6bf12165a8df?w=400&h=400&fit=crop",
-        category: "Electronics",
-        description: "True wireless earbuds with active noise cancellation and premium audio."
+        cost: 934,
+        img: "https://images.unsplash.com/photo-1581092162392-8c6d87de0d6d?w=400&h=400&fit=crop",
+        category: "Inserts",
+        description: "CCMT09T304-UPT25 turning insert for steel and cast iron cutting."
     },
     {
-        id: "Tablet Stand",
-        year: 2024,
-        cost: 599,
-        img: "https://images.unsplash.com/photo-1585790050230-5dd28404f01a?w=400&h=400&fit=crop",
-        category: "Accessories",
-        description: "Universal tablet stand with adjustable angles and stable base."
-    },
-    {
-        id: "LED Desk Lamp",
+        id: "TNMG Turning Insert Medium",
         year: 2025,
-        cost: 1299,
-        img: "https://images.unsplash.com/photo-1507473885765-e6ed057f782c?w=400&h=400&fit=crop",
-        category: "Electronics",
-        description: "Smart LED desk lamp with adjustable brightness and color temperature."
+        cost: 1130,
+        img: "https://images.unsplash.com/photo-1581092916550-e323be2ae537?w=400&h=400&fit=crop",
+        category: "Inserts",
+        description: "TNMG160408-PM UPT35 medium turning insert for general purpose machining."
     },
     {
-        id: "Car Charger",
-        year: 2024,
-        cost: 399,
-        img: "https://images.unsplash.com/photo-1593941707874-ef25b8b4a92b?w=400&h=400&fit=crop",
-        category: "Accessories",
-        description: "Dual-port car charger with fast charging technology."
-    },
-    {
-        id: "Smart Ring",
+        id: "SC Endmill Aluminum Large",
         year: 2025,
-        cost: 6999,
-        img: "https://images.unsplash.com/photo-1605100804763-247f67b3557e?w=400&h=400&fit=crop",
-        category: "Wearables",
-        description: "Smart ring for fitness tracking, sleep monitoring, and notifications."
+        cost: 94,
+        img: "https://images.unsplash.com/photo-1581092921274-35c56e76ed44?w=400&h=400&fit=crop",
+        category: "End Mills",
+        description: "SC endmill 45HRC aluminum Dia4*12*D4*50L*3F for high-speed cutting operations."
     },
     {
-        id: "Portable SSD",
-        year: 2024,
-        cost: 4499,
-        img: "https://images.unsplash.com/photo-1597872200969-2b65d56bd16b?w=400&h=400&fit=crop",
-        category: "Electronics",
-        description: "1TB portable SSD with high-speed data transfer and compact design."
+        id: "BT30 ER Collet Holder",
+        year: 2025,
+        cost: 917,
+        img: "https://images.unsplash.com/photo-1581092952906-bf84d6372b3d?w=400&h=400&fit=crop",
+        category: "Tool Holders",
+        description: "BT30-ER11A-100 ER collet holder for VMC operations with 100mm length."
+    },
+    {
+        id: "SC ISO Thread Mill Small",
+        year: 2025,
+        cost: 1303,
+        img: "https://images.unsplash.com/photo-1581092934975-be2f3117e4c6?w=400&h=400&fit=crop",
+        category: "Thread Mills",
+        description: "RTMS 04027L8 SC ISO thread mill 0.6 ISO for precision thread cutting."
+    },
+    {
+        id: "SC ISO Thread Mill Medium",
+        year: 2025,
+        cost: 1703,
+        img: "https://images.unsplash.com/photo-1581092162245-8ca2bcba21f1?w=400&h=400&fit=crop",
+        category: "Thread Mills",
+        description: "RTMS 06048L12 SC ISO thread mill 1.0 ISO for metric thread applications."
+    },
+    {
+        id: "SC ISO Thread Mill Large",
+        year: 2025,
+        cost: 2911,
+        img: "https://images.unsplash.com/photo-1581092165334-a9d8a2d36f6d?w=400&h=400&fit=crop",
+        category: "Thread Mills",
+        description: "RTMS 08080L20 SC ISO thread mill 1.5 ISO for large diameter threading."
+    },
+    {
+        id: "SC Endmill Medium",
+        year: 2025,
+        cost: 94,
+        img: "https://images.unsplash.com/photo-1581092916550-e323be2ae537?w=400&h=400&fit=crop",
+        category: "End Mills",
+        description: "SC endmill 45HRC aluminum Dia2*6*D4*50L*3F for versatile milling operations."
+    },
+    {
+        id: "BT30 ER16 Collet Holder",
+        year: 2025,
+        cost: 917,
+        img: "https://images.unsplash.com/photo-1581092952906-bf84d6372b3d?w=400&h=400&fit=crop",
+        category: "Tool Holders",
+        description: "BT30-ER16A-100 ER collet holder for VMC with extended holding capacity."
+    },
+    {
+        id: "TNMG Turning Insert Finish",
+        year: 2025,
+        cost: 1130,
+        img: "https://images.unsplash.com/photo-1581092146274-40eb08e78f54?w=400&h=400&fit=crop",
+        category: "Inserts",
+        description: "TNMG160404-PM UPT35 finishing turning insert for smooth surface finishes."
+    },
+    {
+        id: "SC Endmill Large Dia",
+        year: 2025,
+        cost: 170,
+        img: "https://images.unsplash.com/photo-1581092162245-8ca2bcba21f1?w=400&h=400&fit=crop",
+        category: "End Mills",
+        description: "SC endmill 45HRC aluminum Dia5*15*D5*50L*3F for heavy-duty milling."
+    },
+    {
+        id: "SC ISO Thread Mill Large Dia",
+        year: 2025,
+        cost: 4152,
+        img: "https://images.unsplash.com/photo-1581092934975-be2f3117e4c6?w=400&h=400&fit=crop",
+        category: "Thread Mills",
+        description: "RTMS 10100L24 SC ISO thread mill 1.75 ISO for large diameter threads."
     },
 ];
 
@@ -314,7 +314,7 @@ function App() {
       {/* Product Page */}
       <div id="p" className={`page ${activePage === 'p' ? 'active' : ''}`}>
         <div className="container my-4">
-          <h2 className="text-center mb-4">Products</h2>
+          <h2 className="text-center mb-4">Industrial Tools & Machining Products</h2>
           <div className="d-flex justify-content-center gap-3 mb-4 flex-wrap">
             <input
               type="text"
@@ -332,7 +332,8 @@ function App() {
             >
               {categories.map(cat => (
                 <option key={cat} value={cat}>{cat}</option>
-              ))}            </select>
+              ))}
+            </select>
           </div>
           
           {filteredProducts.length === 0 ? (
@@ -399,7 +400,7 @@ function App() {
           <div className="container">
             <div className="text-center py-5">
               <h1 className="display-3 fw-bold mb-3">Welcome To ShopMaster</h1>
-              <p className="lead mb-4">Here You Can Buy Products In Unbeatable Prices</p>
+              <p className="lead mb-4">Industrial Tools & Machining Products at Unbeatable Prices</p>
               <button className="btn btn-primary btn-lg px-5" onClick={() => setActivePage('p')}>
                 Shop Now
               </button>
@@ -490,7 +491,7 @@ function App() {
                           </button>
                         </>
                       );
-                    })()
+                    })()  
                   )}
                 </div>
               </div>
