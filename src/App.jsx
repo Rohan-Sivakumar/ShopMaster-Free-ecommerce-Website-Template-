@@ -116,8 +116,9 @@ function App() {
   const [search, setSearch] = useState("");
   const [filter, setFilter] = useState("All");
   const [selectedProduct, setSelectedProduct] = useState(null);
+  const [isLoading, setIsLoading] = useState(true);
 
-  // Load user and cart on mount
+  // Load user and cart on mount + simulate loading
   useEffect(() => {
     const user = getCurrentUser();
     if (user) {
@@ -125,6 +126,13 @@ function App() {
       const savedCart = getCart(user.email);
       setCartItems(savedCart);
     }
+    
+    // Simulate loading delay (like makeyoueasy.com)
+    const loadingTimer = setTimeout(() => {
+      setIsLoading(false);
+    }, 2000);
+
+    return () => clearTimeout(loadingTimer);
   }, []);
 
   // Memoize categories
@@ -226,6 +234,79 @@ function App() {
     setCartItems([]);
     setActivePage('home');
   }, []);
+
+  // Loading Screen
+  if (isLoading) {
+    return (
+      <div style={{
+        position: 'fixed',
+        top: 0,
+        left: 0,
+        width: '100%',
+        height: '100vh',
+        background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        justifyContent: 'center',
+        zIndex: 9999
+      }}>
+        <div style={{
+          animation: 'fadeInScale 0.8s ease-out',
+          textAlign: 'center'
+        }}>
+          <h1 style={{
+            color: 'white',
+            fontSize: '3.5rem',
+            fontWeight: 'bold',
+            marginBottom: '30px',
+            animation: 'pulse 2s ease-in-out infinite'
+          }}>ShopMaster</h1>
+          
+          {/* Spinner */}
+          <div style={{
+            width: '60px',
+            height: '60px',
+            border: '6px solid rgba(255, 255, 255, 0.3)',
+            borderTop: '6px solid white',
+            borderRadius: '50%',
+            margin: '0 auto',
+            animation: 'spin 1s linear infinite'
+          }}></div>
+          
+          <p style={{
+            color: 'rgba(255, 255, 255, 0.9)',
+            marginTop: '30px',
+            fontSize: '1.2rem',
+            animation: 'pulse 2s ease-in-out infinite'
+          }}>Loading amazing deals...</p>
+        </div>
+        
+        <style>{`
+          @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+          }
+          
+          @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.7; }
+          }
+          
+          @keyframes fadeInScale {
+            0% {
+              opacity: 0;
+              transform: scale(0.8);
+            }
+            100% {
+              opacity: 1;
+              transform: scale(1);
+            }
+          }
+        `}</style>
+      </div>
+    );
+  }
 
   return (
     <>
