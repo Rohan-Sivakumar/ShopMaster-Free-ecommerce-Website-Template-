@@ -215,7 +215,7 @@ function App() {
     setCartItems(updatedCart);
   }, [currentUser, cartItems]);
 
-  // Sign-In success handler
+  // Sign-In success handler - Stay on login page, just update navigation
   const handleSignInSuccess = useCallback((userData) => {
     setCurrentUser(userData);
     
@@ -231,9 +231,8 @@ function App() {
       showConfirmButton: false
     });
     
-    setTimeout(() => {
-      setActivePage('dashboard');
-    }, 2000);
+    // Don't redirect - stay on login page
+    // Navigation will update automatically to show user's name
   }, []);
 
   // Sign-In failure handler
