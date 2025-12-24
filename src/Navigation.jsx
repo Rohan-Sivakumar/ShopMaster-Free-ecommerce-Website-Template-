@@ -31,6 +31,12 @@ export default function Navigation({ activePage, onPageChange, cartCount = 0 }) 
     setMobileMenuOpen(!mobileMenuOpen);
   };
 
+  // Get first name from full name
+  const getFirstName = (fullName) => {
+    if (!fullName) return 'User';
+    return fullName.split(' ')[0];
+  };
+
   return (
     <nav className={`navigation ${mobileMenuOpen ? 'mobile-menu-open' : ''}`}>
       <h2 className="heading" onClick={() => {
@@ -62,7 +68,7 @@ export default function Navigation({ activePage, onPageChange, cartCount = 0 }) 
         ) : (
           <li className={activePage === "dashboard" ? "active-nav-link" : ""}>
             <a href="#dashboard" onClick={go("dashboard")}>
-              {currentUser.name}
+              {getFirstName(currentUser.name)}
             </a>
           </li>
         )}
