@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { registerSeller, getSeller } from './api';
+import { registerSeller, getSeller, checkBackendHealth } from './api';
 import { getCurrentUser } from './cartService';
 import Swal from 'sweetalert2';
 import './SellerRegister.css';
@@ -9,6 +9,7 @@ const SellerRegister = ({ onNavigate }) => {
   const [existingSeller, setExistingSeller] = useState(null);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
+  const [backendOnline, setBackendOnline] = useState(true);
 
   const [formData, setFormData] = useState({
     businessName: '',
@@ -33,10 +34,31 @@ const SellerRegister = ({ onNavigate }) => {
 
       setCurrentUser(user);
 
-      // Check if already registered
-      const seller = await getSeller(user.email);
-      if (seller) {
-        setExistingSeller(seller);
+      // Check backend status
+      const isOnline = await checkBackendHealth();
+      setBackendOnline(isOnline);
+
+      // Check if already registered (from MongoDB or localStorage)
+      try {
+        const seller = await getSeller(user.email);
+        if (seller) {
+          setExistingSeller(seller);
+        } else {
+          // Check localStorage as fallback
+          const localSellers = JSON.parse(localStorage.getItem('sellers') || '[]');
+          const existingLocal = localSellers.find(s => s.email === user.email);
+          if (existingLocal) {
+            setExistingSeller(existingLocal);
+          }
+        }
+      } catch (error) {
+        console.warn('Error checking seller:', error);
+        // Fallback to localStorage
+        const localSellers = JSON.parse(localStorage.getItem('sellers') || '[]');
+        const existingLocal = localSellers.find(s => s.email === user.email);
+        if (existingLocal) {
+          setExistingSeller(existingLocal);
+        }
       }
 
       setLoading(false);
@@ -58,11 +80,21 @@ const SellerRegister = ({ onNavigate }) => {
     }
 
     // Validation
-    if (!formData.businessName || !formData.phone) {
+    if (!formData.businessName?.trim() || !formData.phone?.trim()) {
       Swal.fire({
         icon: 'error',
         title: 'Validation Error',
-        text: 'Please fill in all required fields'
+        text: 'Please fill in all required fields (Business Name and Phone)'
+      });
+      return;
+    }
+
+    // Phone validation (basic)
+    if (formData.phone.length < 10) {
+      Swal.fire({
+        icon: 'error',
+        title: 'Invalid Phone',
+        text: 'Please enter a valid phone number (at least 10 digits)'
       });
       return;
     }
@@ -73,32 +105,100 @@ const SellerRegister = ({ onNavigate }) => {
       const sellerData = {
         email: currentUser.email,
         name: currentUser.name,
-        businessName: formData.businessName,
-        phone: formData.phone,
-        address: formData.address
+        businessName: formData.businessName.trim(),
+        phone: formData.phone.trim(),
+        address: formData.address?.trim() || '',
+        createdAt: new Date().toISOString(),
+        isApproved: false,
+        isSuperAdmin: false
       };
 
-      await registerSeller(sellerData);
+      // Try to register on backend
+      let registrationSuccess = false;
+      let registrationData = sellerData;
 
-      Swal.fire({
-        icon: 'success',
-        title: 'Registration Successful!',
-        html: `
-          <p>Your seller account has been registered successfully!</p>
-          <p class="text-muted">Your account is pending approval. You'll be able to add products once approved by the admin.</p>
-        `,
-        confirmButtonText: 'Go to Dashboard'
-      }).then(() => {
-        onNavigate('admin');
-      });
+      try {
+        registrationData = await registerSeller(sellerData);
+        registrationSuccess = true;
+      } catch (apiError) {
+        console.warn('Backend registration failed:', apiError.message);
+        
+        // If backend is down, use localStorage
+        if (!backendOnline || apiError.message.includes('Database connection') || apiError.message.includes('503')) {
+          console.log('Using localStorage fallback for registration');
+          
+          // Save to localStorage
+          const sellers = JSON.parse(localStorage.getItem('sellers') || '[]');
+          
+          // Check if already exists
+          if (sellers.find(s => s.email === sellerData.email)) {
+            throw new Error('Seller already registered with this email');
+          }
+          
+          sellers.push(registrationData);
+          localStorage.setItem('sellers', JSON.stringify(sellers));
+          registrationSuccess = true;
+          
+          // Show warning that it's using localStorage
+          Swal.fire({
+            icon: 'warning',
+            title: 'Registered Locally',
+            html: `
+              <p>Backend is temporarily offline.</p>
+              <p>Your registration has been saved locally on your device.</p>
+              <p class="text-muted" style="margin-top: 1rem;"><small>Once backend is online, sync will happen automatically.</small></p>
+            `,
+            confirmButtonText: 'Continue'
+          }).then(() => {
+            setExistingSeller(registrationData);
+            setSubmitting(false);
+          });
+          return;
+        } else {
+          throw apiError;
+        }
+      }
+
+      if (registrationSuccess) {
+        Swal.fire({
+          icon: 'success',
+          title: 'Registration Successful!',
+          html: `
+            <p>Your seller account has been registered successfully!</p>
+            <p class="text-muted">Your account is pending approval. You'll be able to add products once approved by the admin.</p>
+            ${!backendOnline ? '<p style="color: #ff9800; margin-top: 1rem;"><small>⚠️ Syncing with backend when online...</small></p>' : ''}
+          `,
+          confirmButtonText: 'Go to Dashboard'
+        }).then(() => {
+          setExistingSeller(registrationData);
+          onNavigate('admin');
+        });
+      }
 
       setSubmitting(false);
     } catch (error) {
       setSubmitting(false);
+      console.error('Registration error:', error);
+      
+      // Provide helpful error messages
+      let errorMessage = error.message || 'An error occurred during registration';
+      
+      if (errorMessage.includes('already registered')) {
+        errorMessage = 'This email is already registered as a seller';
+      } else if (errorMessage.includes('Database connection')) {
+        errorMessage = 'Database connection failed. Please check if backend is running.';
+      } else if (errorMessage.includes('503')) {
+        errorMessage = 'Backend service is temporarily unavailable. Please try again in a moment.';
+      }
+
       Swal.fire({
         icon: 'error',
         title: 'Registration Failed',
-        text: error.message || 'An error occurred during registration. Please try again.'
+        html: `
+          <p>${errorMessage}</p>
+          ${!backendOnline ? '<p style="color: #ff9800; margin-top: 1rem;"><small>💡 Tip: Try again when backend is online, or it will save locally</small></p>' : ''}
+        `,
+        confirmButtonText: 'Try Again'
       });
     }
   };
@@ -109,6 +209,7 @@ const SellerRegister = ({ onNavigate }) => {
         <div className="spinner-border text-primary" role="status">
           <span className="visually-hidden">Loading...</span>
         </div>
+        <p className="mt-3 text-muted">Checking registration status...</p>
       </div>
     );
   }
@@ -126,9 +227,9 @@ const SellerRegister = ({ onNavigate }) => {
                     <h3 className="mt-3">✓ You're Already a Seller!</h3>
                     <p className="text-muted">Your seller account is active and approved.</p>
                     <div className="mt-4">
-                      <p><strong>Business Name:</strong> {existingSeller.businessName}</p>
+                      <p><strong>Business Name:</strong> {existingSeller.businessName || 'N/A'}</p>
                       <p><strong>Email:</strong> {existingSeller.email}</p>
-                      <p><strong>Phone:</strong> {existingSeller.phone}</p>
+                      <p><strong>Phone:</strong> {existingSeller.phone || 'N/A'}</p>
                       {existingSeller.address && <p><strong>Address:</strong> {existingSeller.address}</p>}
                     </div>
                     <button 
@@ -144,12 +245,17 @@ const SellerRegister = ({ onNavigate }) => {
                     <h3 className="mt-3">⏳ Registration Pending</h3>
                     <p className="text-muted">Your seller account is under review. You'll receive approval soon!</p>
                     <div className="mt-4">
-                      <p><strong>Business Name:</strong> {existingSeller.businessName}</p>
+                      <p><strong>Business Name:</strong> {existingSeller.businessName || 'N/A'}</p>
                       <p><strong>Email:</strong> {existingSeller.email}</p>
-                      <p><strong>Phone:</strong> {existingSeller.phone}</p>
+                      <p><strong>Phone:</strong> {existingSeller.phone || 'N/A'}</p>
                       {existingSeller.address && <p><strong>Address:</strong> {existingSeller.address}</p>}
-                      <p className="text-muted mt-3">Registered on: {new Date(existingSeller.createdAt).toLocaleString()}</p>
+                      <p className="text-muted mt-3">Registered on: {existingSeller.createdAt ? new Date(existingSeller.createdAt).toLocaleString() : 'Recently'}</p>
                     </div>
+                    {!backendOnline && (
+                      <div className="alert alert-info mt-3">
+                        <small>💡 Backend is offline. Your registration was saved locally and will sync when online.</small>
+                      </div>
+                    )}
                     <button 
                       className="btn btn-secondary btn-lg mt-4"
                       onClick={() => onNavigate('home')}
@@ -177,6 +283,11 @@ const SellerRegister = ({ onNavigate }) => {
                   <i className="bi bi-shop" style={{fontSize: '3rem', color: '#667eea'}}></i>
                   <h2 className="mt-3">Become a Seller</h2>
                   <p className="text-muted">Join our marketplace and start selling your products</p>
+                  {!backendOnline && (
+                    <div className="alert alert-warning mt-3" role="alert">
+                      <small>⚠️ Backend is offline. Registrations will be saved locally.</small>
+                    </div>
+                  )}
                 </div>
 
                 <form onSubmit={handleSubmit}>
@@ -225,7 +336,7 @@ const SellerRegister = ({ onNavigate }) => {
                       placeholder="+91 1234567890"
                       required
                     />
-                    <small className="text-muted">For order notifications and support</small>
+                    <small className="text-muted">For order notifications and support (min 10 digits)</small>
                   </div>
 
                   <div className="mb-4">
