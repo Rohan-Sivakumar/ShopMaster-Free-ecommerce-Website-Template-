@@ -1,9 +1,12 @@
 import React, { useState, useEffect, useMemo, useCallback } from "react";
 import Navigation from "./Navigation";
 import Auth from "./Auth";
+import AdminPanel from "./AdminPanel";
 import "./App.css";
 import { getCart, saveCart, addToCart, removeFromCart, getCurrentUser } from "./cartService";
 import Swal from 'sweetalert2';
+
+const ADMIN_EMAIL = 'rohan.sivaa@gmail.com';
 
 const initialProducts = [
     {
@@ -117,29 +120,56 @@ function App() {
   const [filter, setFilter] = useState("All");
   const [selectedProduct, setSelectedProduct] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [isAdmin, setIsAdmin] = useState(false);
+
+  // Track page view
+  const trackPageView = useCallback(() => {
+    const stats = JSON.parse(localStorage.getItem('adminStats') || '{}');
+    const today = new Date().toLocaleDateString();
+    
+    if (!stats.lastViewDate || stats.lastViewDate !== today) {
+      stats.todayViews = 1;
+      stats.lastViewDate = today;
+    } else {
+      stats.todayViews = (stats.todayViews || 0) + 1;
+    }
+    
+    stats.totalViews = (stats.totalViews || 0) + 1;
+    stats.viewsHistory = stats.viewsHistory || [];
+    stats.ordersHistory = stats.ordersHistory || [];
+    stats.totalOrders = stats.totalOrders || 0;
+    stats.todayOrders = stats.todayOrders || 0;
+    
+    localStorage.setItem('adminStats', JSON.stringify(stats));
+  }, []);
 
   // Load user and cart on mount + simulate loading
   useEffect(() => {
     const user = getCurrentUser();
     if (user) {
       setCurrentUser(user);
+      setIsAdmin(user.email === ADMIN_EMAIL);
       const savedCart = getCart(user.email);
       setCartItems(savedCart);
     }
     
-    // Simulate loading delay (like makeyoueasy.com)
+    // Track page view
+    trackPageView();
+    
+    // Simulate loading delay
     const loadingTimer = setTimeout(() => {
       setIsLoading(false);
     }, 2000);
 
     return () => clearTimeout(loadingTimer);
-  }, []);
+  }, [trackPageView]);
 
   // Listen for user changes
   useEffect(() => {
     const handleUserChange = () => {
       const user = getCurrentUser();
       setCurrentUser(user);
+      setIsAdmin(user ? user.email === ADMIN_EMAIL : false);
       if (user) {
         const savedCart = getCart(user.email);
         setCartItems(savedCart);
@@ -215,9 +245,50 @@ function App() {
     setCartItems(updatedCart);
   }, [currentUser, cartItems]);
 
-  // Sign-In success handler - Stay on login page, just update navigation
+  // Handle checkout - Track order
+  const handleCheckout = useCallback(() => {
+    if (!currentUser || cartItems.length === 0) return;
+
+    const groupedCart = cartItems.reduce((acc, item) => {
+      const existingItem = acc.find(i => i.id === item.id);
+      if (existingItem) {
+        existingItem.quantity++;
+      } else {
+        acc.push({ ...item, quantity: 1 });
+      }
+      return acc;
+    }, []);
+
+    const totalPrice = groupedCart.reduce((sum, item) => sum + (item.cost * item.quantity), 0);
+
+    // Dispatch order event
+    const orderEvent = new CustomEvent('newOrder', {
+      detail: {
+        user: currentUser.email,
+        items: cartItems.length,
+        total: totalPrice
+      }
+    });
+    window.dispatchEvent(orderEvent);
+
+    // Show success message
+    Swal.fire({
+      icon: 'success',
+      title: 'Order Placed!',
+      text: `Your order of ₹${totalPrice} has been placed successfully`,
+      confirmButtonText: 'OK'
+    }).then(() => {
+      // Clear cart
+      setCartItems([]);
+      saveCart(currentUser.email, []);
+      setActivePage('home');
+    });
+  }, [currentUser, cartItems]);
+
+  // Sign-In success handler
   const handleSignInSuccess = useCallback((userData) => {
     setCurrentUser(userData);
+    setIsAdmin(userData.email === ADMIN_EMAIL);
     
     // Load user's cart
     const savedCart = getCart(userData.email);
@@ -230,9 +301,6 @@ function App() {
       timer: 2000,
       showConfirmButton: false
     });
-    
-    // Don't redirect - stay on login page
-    // Navigation will update automatically to show user's name
   }, []);
 
   // Sign-In failure handler
@@ -260,6 +328,7 @@ function App() {
         
         setCurrentUser(null);
         setCartItems([]);
+        setIsAdmin(false);
         
         window.dispatchEvent(new Event('userChanged'));
         
@@ -306,7 +375,6 @@ function App() {
             animation: 'pulse 2s ease-in-out infinite'
           }}>ShopMaster</h1>
           
-          {/* Spinner */}
           <div style={{
             width: '60px',
             height: '60px',
@@ -324,7 +392,6 @@ function App() {
             animation: 'pulse 2s ease-in-out infinite'
           }}>Loading amazing deals...</p>
           
-          {/* Development Notice */}
           <div style={{
             marginTop: '40px',
             padding: '15px 30px',
@@ -370,7 +437,21 @@ function App() {
 
   return (
     <>
-      <Navigation activePage={activePage} onPageChange={handlePageChange} cartCount={cartItems.length} />
+      <Navigation activePage={activePage} onPageChange={handlePageChange} cartCount={cartItems.length} isAdmin={isAdmin} />
+
+      {/* Admin Panel - Only for rohan.sivaa@gmail.com */}
+      <div id="admin" className={`page ${activePage === 'admin' ? 'active' : ''}`}>
+        {isAdmin ? (
+          <AdminPanel />
+        ) : (
+          <div className="container my-5 text-center">
+            <div className="alert alert-danger">
+              <h3>⛔ Access Denied</h3>
+              <p>You don't have permission to access the admin panel.</p>
+            </div>
+          </div>
+        )}
+      </div>
 
       {/* Product Page */}
       <div id="p" className={`page ${activePage === 'p' ? 'active' : ''}`}>
@@ -470,7 +551,7 @@ function App() {
         </div>
       </div>
 
-      {/* Login Page - Google & Microsoft */}
+      {/* Login Page */}
       <div id="login" className={`page ${activePage === 'login' ? 'active' : ''}`}>
         <div className="container my-5">
           <div className="row justify-content-center">
@@ -480,7 +561,6 @@ function App() {
                   <h2 className="card-title mb-3">Sign In to ShopMaster</h2>
                   <p className="text-muted mb-4">Choose your preferred sign-in method</p>
                   
-                  {/* Google & Microsoft Sign-In */}
                   <div className="d-flex justify-content-center mb-4">
                     <Auth 
                       onSignInSuccess={handleSignInSuccess}
@@ -547,7 +627,7 @@ function App() {
                             <h4 className="mb-0">Total:</h4>
                             <h4 className="text-success mb-0">₹{totalPrice}</h4>
                           </div>
-                          <button className="btn btn-primary w-100 mt-3 btn-lg">
+                          <button className="btn btn-primary w-100 mt-3 btn-lg" onClick={handleCheckout}>
                             Proceed to Checkout
                           </button>
                         </>
@@ -574,6 +654,11 @@ function App() {
                   <p>Cart Items: <strong>{cartItems.length}</strong></p>
                   <button className="btn btn-primary me-2" onClick={() => setActivePage('p')}>Shop Now</button>
                   <button className="btn btn-secondary me-2" onClick={() => setActivePage('Cart')}>View Cart</button>
+                  {isAdmin && (
+                    <button className="btn btn-warning me-2" onClick={() => setActivePage('admin')}>
+                      🔑 Admin Panel
+                    </button>
+                  )}
                   <button className="btn btn-danger" onClick={handleSignOut}>Sign Out</button>
                 </div>
               </>
