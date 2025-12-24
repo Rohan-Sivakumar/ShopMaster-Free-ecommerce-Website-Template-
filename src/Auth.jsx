@@ -39,9 +39,12 @@ const Auth = ({ onSignInSuccess, onSignInFailure }) => {
       window.google.accounts.id.initialize({
         client_id: GOOGLE_CLIENT_ID,
         callback: handleGoogleCredentialResponse,
-        auto_select: false,
+        auto_select: false, // Disable auto-select
         cancel_on_tap_outside: true,
       });
+      
+      // Disable auto-select to prevent automatic sign-in after sign-out
+      window.google.accounts.id.disableAutoSelect();
     }
   };
 
@@ -242,6 +245,8 @@ const Auth = ({ onSignInSuccess, onSignInFailure }) => {
     
     setIsSignedIn(false);
     setUserInfo(null);
+    setIsLoading(false);
+    setIsGoogleLoading(false);
     
     sessionStorage.removeItem('authUser');
     sessionStorage.removeItem('authToken');
@@ -282,6 +287,8 @@ const Auth = ({ onSignInSuccess, onSignInFailure }) => {
       } else {
         setUserInfo(null);
         setIsSignedIn(false);
+        setIsLoading(false);
+        setIsGoogleLoading(false);
       }
     };
 
