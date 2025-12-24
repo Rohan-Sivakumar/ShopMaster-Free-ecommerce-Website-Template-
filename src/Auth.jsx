@@ -135,7 +135,7 @@ const Auth = ({ onSignInSuccess, onSignInFailure }) => {
         client_id: MICROSOFT_CLIENT_ID,
         response_type: 'code',
         redirect_uri: MICROSOFT_REDIRECT_URI,
-        scope: 'openid profile email User.Read',
+        scope: 'openid profile email',
         response_mode: 'query',
         state: Math.random().toString(36).substring(7),
         code_challenge: codeChallenge,
@@ -183,25 +183,31 @@ const Auth = ({ onSignInSuccess, onSignInFailure }) => {
 
       if (code) {
         setIsLoading(true);
+        console.log('Microsoft: Received authorization code');
         
         try {
           const codeVerifier = sessionStorage.getItem('pkce_code_verifier');
           
           if (!codeVerifier) {
+            console.error('Code verifier not found in session storage');
             throw new Error('Code verifier not found');
           }
 
-          // Exchange code for tokens
+          console.log('Microsoft: Exchanging code for tokens...');
+          
+          // Exchange code for tokens using correct endpoint and format
           const tokenUrl = 'https://login.microsoftonline.com/common/oauth2/v2.0/token';
           const tokenParams = new URLSearchParams({
             client_id: MICROSOFT_CLIENT_ID,
-            scope: 'openid profile email User.Read',
+            scope: 'openid profile email',
             code: code,
             redirect_uri: MICROSOFT_REDIRECT_URI,
             grant_type: 'authorization_code',
             code_verifier: codeVerifier,
           });
 
+          console.log('Microsoft: Sending token request...');
+          
           const tokenResponse = await fetch(tokenUrl, {
             method: 'POST',
             headers: {
@@ -210,13 +216,25 @@ const Auth = ({ onSignInSuccess, onSignInFailure }) => {
             body: tokenParams.toString(),
           });
 
+          console.log('Microsoft: Token response status:', tokenResponse.status);
+
           if (!tokenResponse.ok) {
-            const errorData = await tokenResponse.json();
-            throw new Error(errorData.error_description || 'Token exchange failed');
+            const errorText = await tokenResponse.text();
+            console.error('Microsoft token error response:', errorText);
+            let errorData;
+            try {
+              errorData = JSON.parse(errorText);
+            } catch (e) {
+              errorData = { error_description: errorText };
+            }
+            throw new Error(errorData.error_description || `Token exchange failed: ${tokenResponse.status}`);
           }
 
           const tokens = await tokenResponse.json();
+          console.log('Microsoft: Tokens received successfully');
+          
           const userObject = parseJwt(tokens.id_token);
+          console.log('Microsoft: User data parsed:', userObject.name, userObject.email);
           
           const userData = {
             provider: 'microsoft',
@@ -239,14 +257,17 @@ const Auth = ({ onSignInSuccess, onSignInFailure }) => {
           // Clean up URL
           window.history.replaceState({}, document.title, window.location.pathname);
           
+          console.log('Microsoft: Sign-in successful!');
+          
           // Only call onSignInSuccess after everything is set
           if (onSignInSuccess) {
             onSignInSuccess(userData);
           }
         } catch (error) {
-          console.error('Error processing Microsoft sign-in:', error);
+          console.error('Microsoft sign-in error details:', error);
           sessionStorage.removeItem('pkce_code_verifier');
           window.history.replaceState({}, document.title, window.location.pathname);
+          setIsLoading(false);
           if (onSignInFailure) {
             onSignInFailure(error);
           }
