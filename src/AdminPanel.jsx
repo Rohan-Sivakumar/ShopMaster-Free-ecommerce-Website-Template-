@@ -446,7 +446,7 @@ const AdminPanel = () => {
             {currentSeller.isSuperAdmin ? (
               <>
                 <div className="stat-card">
-                  <div className="stat-icon" style={{background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)'}}>{
+                  <div className="stat-icon" style={{background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)'}}>
                     <i className="bi bi-eye-fill"></i>
                   </div>
                   <div className="stat-details">
@@ -456,7 +456,7 @@ const AdminPanel = () => {
                 </div>
 
                 <div className="stat-card">
-                  <div className="stat-icon" style={{background: 'linear-gradient(135deg, #f093fb 0%, #f5576c 100%)'}}>{
+                  <div className="stat-icon" style={{background: 'linear-gradient(135deg, #f093fb 0%, #f5576c 100%)'}}>
                     <i className="bi bi-cart-fill"></i>
                   </div>
                   <div className="stat-details">
@@ -466,7 +466,7 @@ const AdminPanel = () => {
                 </div>
 
                 <div className="stat-card">
-                  <div className="stat-icon" style={{background: 'linear-gradient(135deg, #4facfe 0%, #00f2fe 100%)'}}>{
+                  <div className="stat-icon" style={{background: 'linear-gradient(135deg, #4facfe 0%, #00f2fe 100%)'}}>
                     <i className="bi bi-calendar-day"></i>
                   </div>
                   <div className="stat-details">
@@ -476,7 +476,7 @@ const AdminPanel = () => {
                 </div>
 
                 <div className="stat-card">
-                  <div className="stat-icon" style={{background: 'linear-gradient(135deg, #43e97b 0%, #38f9d7 100%)'}}>{
+                  <div className="stat-icon" style={{background: 'linear-gradient(135deg, #43e97b 0%, #38f9d7 100%)'}}>
                     <i className="bi bi-bag-check-fill"></i>
                   </div>
                   <div className="stat-details">
@@ -488,7 +488,7 @@ const AdminPanel = () => {
             ) : (
               <>
                 <div className="stat-card">
-                  <div className="stat-icon" style={{background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)'}}>{
+                  <div className="stat-icon" style={{background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)'}}>
                     <i className="bi bi-box-seam"></i>
                   </div>
                   <div className="stat-details">
@@ -498,7 +498,7 @@ const AdminPanel = () => {
                 </div>
 
                 <div className="stat-card">
-                  <div className="stat-icon" style={{background: 'linear-gradient(135deg, #f093fb 0%, #f5576c 100%)'}}>{
+                  <div className="stat-icon" style={{background: 'linear-gradient(135deg, #f093fb 0%, #f5576c 100%)'}}>
                     <i className="bi bi-cart-check"></i>
                   </div>
                   <div className="stat-details">
@@ -508,7 +508,7 @@ const AdminPanel = () => {
                 </div>
 
                 <div className="stat-card">
-                  <div className="stat-icon" style={{background: 'linear-gradient(135deg, #43e97b 0%, #38f9d7 100%)'}}>{
+                  <div className="stat-icon" style={{background: 'linear-gradient(135deg, #43e97b 0%, #38f9d7 100%)'}}>
                     <i className="bi bi-currency-rupee"></i>
                   </div>
                   <div className="stat-details">
@@ -518,7 +518,7 @@ const AdminPanel = () => {
                 </div>
 
                 <div className="stat-card">
-                  <div className="stat-icon" style={{background: 'linear-gradient(135deg, #4facfe 0%, #00f2fe 100%)'}}>{
+                  <div className="stat-icon" style={{background: 'linear-gradient(135deg, #4facfe 0%, #00f2fe 100%)'}}>
                     <i className="bi bi-check-circle"></i>
                   </div>
                   <div className="stat-details">
