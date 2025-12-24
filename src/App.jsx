@@ -2,7 +2,6 @@ import React, { useState, useEffect, useMemo, useCallback } from "react";
 import Navigation from "./Navigation";
 import Auth from "./Auth";
 import AdminPanel from "./AdminPanel";
-import SellerRegister from "./SellerRegister";
 import "./App.css";
 import { getCart, saveCart, addToCart, removeFromCart, getCurrentUser } from "./cartService";
 import { trackView, createOrder, getProducts } from "./api";
@@ -25,13 +24,6 @@ const ProductCard = React.memo(({ product, quantity, onShowDetails, onAddCart, o
         <div className="card-body d-flex flex-column">
           <h5 className="card-title">{product.id}</h5>
           <p className="card-text fw-bold text-success">₹{product.cost}</p>
-          {product.sellerBusinessName && (
-            <p className="card-text">
-              <small className="text-muted">
-                <i className="bi bi-shop"></i> Sold by: {product.sellerBusinessName}
-              </small>
-            </p>
-          )}
           <div className="mt-auto" onClick={e => e.stopPropagation()}>
             {quantity === 0 ? (
               <button className="btn btn-primary w-100" onClick={() => onAddCart(product)}>
@@ -225,9 +217,7 @@ function App() {
         products: groupedCart.map(item => ({
           name: item.id,
           quantity: item.quantity,
-          price: item.cost,
-          sellerEmail: item.sellerEmail,
-          sellerName: item.sellerBusinessName
+          price: item.cost
         }))
       };
 
@@ -415,12 +405,7 @@ function App() {
     <>
       <Navigation activePage={activePage} onPageChange={handlePageChange} cartCount={cartItems.length} isAdmin={isAdmin} />
 
-      {/* Seller Registration Page */}
-      <div id="seller-register" className={`page ${activePage === 'seller-register' ? 'active' : ''}`}>
-        <SellerRegister onNavigate={handlePageChange} />
-      </div>
-
-      {/* Admin/Seller Panel */}
+      {/* Admin Panel */}
       <div id="admin" className={`page ${activePage === 'admin' ? 'active' : ''}`}>
         <AdminPanel />
       </div>
@@ -463,7 +448,7 @@ function App() {
                 <>
                   <i className="bi bi-box-seam" style={{fontSize: '3rem', display: 'block', marginBottom: '1rem'}}></i>
                   <h5>No products available</h5>
-                  <p className="mb-0">{isAdmin ? 'Go to Seller Dashboard to add products.' : 'Please check back later.'}</p>
+                  <p className="mb-0">{isAdmin ? 'Go to Admin Panel to add products.' : 'Please check back later.'}</p>
                 </>
               ) : (
                 'No products found matching your search.'
@@ -506,13 +491,6 @@ function App() {
                         <p className="card-text">{selectedProduct.description}</p>
                         <p className="card-text"><small className="text-muted">Category: {selectedProduct.category}</small></p>
                         <p className="card-text"><small className="text-muted">Year: {selectedProduct.year}</small></p>
-                        {selectedProduct.sellerBusinessName && (
-                          <p className="card-text">
-                            <small className="text-muted">
-                              <i className="bi bi-shop"></i> Sold by: <strong>{selectedProduct.sellerBusinessName}</strong>
-                            </small>
-                          </p>
-                        )}
                         <h4 className="text-success mb-3">₹{selectedProduct.cost}</h4>
                         <button className="btn btn-primary btn-lg w-100" onClick={() => handleAddToCart(selectedProduct)}>
                           Add to Cart
@@ -536,16 +514,11 @@ function App() {
           <div className="container">
             <div className="text-center py-5">
               <h1 className="display-3 fw-bold mb-3">Welcome To ShopMaster</h1>
-              <p className="lead mb-4">Multi-Seller Marketplace - Shop from Multiple Sellers</p>
+              <p className="lead mb-4">Your Single-Seller Marketplace</p>
               <div className="d-flex justify-content-center gap-3 flex-wrap">
                 <button className="btn btn-primary btn-lg px-5" onClick={() => setActivePage('p')}>
                   Shop Now
                 </button>
-                {currentUser && (
-                  <button className="btn btn-outline-light btn-lg px-5" onClick={() => setActivePage('seller-register')}>
-                    Become a Seller
-                  </button>
-                )}
               </div>
             </div>
           </div>
@@ -621,13 +594,6 @@ function App() {
                               <li key={item.id} className="list-group-item d-flex justify-content-between align-items-center">
                                 <div>
                                   <span>{item.id}{item.quantity > 1 ? ` × ${item.quantity}` : ''}</span>
-                                  {item.sellerBusinessName && (
-                                    <div>
-                                      <small className="text-muted">
-                                        <i className="bi bi-shop"></i> {item.sellerBusinessName}
-                                      </small>
-                                    </div>
-                                  )}
                                 </div>
                                 <span className="badge bg-success rounded-pill fs-6">₹{item.cost * item.quantity}</span>
                               </li>
@@ -664,9 +630,6 @@ function App() {
                   <p>Cart Items: <strong>{cartItems.length}</strong></p>
                   <button className="btn btn-primary me-2" onClick={() => setActivePage('p')}>Shop Now</button>
                   <button className="btn btn-secondary me-2" onClick={() => setActivePage('Cart')}>View Cart</button>
-                  <button className="btn btn-info me-2" onClick={() => setActivePage('seller-register')}>
-                    <i className="bi bi-shop"></i> Become a Seller
-                  </button>
                   {isAdmin && (
                     <button className="btn btn-warning me-2" onClick={() => setActivePage('admin')}>
                       🔑 Admin Panel
