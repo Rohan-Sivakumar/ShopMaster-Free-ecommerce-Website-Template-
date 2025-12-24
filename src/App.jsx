@@ -261,7 +261,43 @@ function App() {
 
     const totalPrice = groupedCart.reduce((sum, item) => sum + (item.cost * item.quantity), 0);
 
-    // Dispatch order event
+    // DIRECTLY save to localStorage adminStats
+    const stats = JSON.parse(localStorage.getItem('adminStats') || '{}');
+    const today = new Date().toLocaleDateString();
+    
+    // Initialize if needed
+    stats.totalViews = stats.totalViews || 0;
+    stats.todayViews = stats.todayViews || 0;
+    stats.totalOrders = stats.totalOrders || 0;
+    stats.todayOrders = stats.todayOrders || 0;
+    stats.ordersHistory = stats.ordersHistory || [];
+    stats.viewsHistory = stats.viewsHistory || [];
+    
+    // Check if we need to reset today's count
+    if (!stats.lastOrderDate || stats.lastOrderDate !== today) {
+      stats.todayOrders = 0;
+      stats.lastOrderDate = today;
+    }
+    
+    // Add order
+    stats.totalOrders = stats.totalOrders + 1;
+    stats.todayOrders = stats.todayOrders + 1;
+    stats.ordersHistory = [
+      {
+        id: Date.now(),
+        date: new Date().toISOString(),
+        user: currentUser.email,
+        items: cartItems.length,
+        total: totalPrice
+      },
+      ...stats.ordersHistory
+    ].slice(0, 50); // Keep last 50 orders
+    
+    // Save to localStorage
+    localStorage.setItem('adminStats', JSON.stringify(stats));
+    console.log('Order saved to adminStats:', stats); // Debug log
+
+    // Also dispatch event for real-time updates
     const orderEvent = new CustomEvent('newOrder', {
       detail: {
         user: currentUser.email,
