@@ -63,10 +63,10 @@ export const clearCart = (userEmail) => {
   }
 };
 
-// Get current logged-in user
+// Get current logged-in user (works for both Google and Microsoft)
 export const getCurrentUser = () => {
   try {
-    const userData = sessionStorage.getItem('googleUser');
+    const userData = sessionStorage.getItem('authUser');
     return userData ? JSON.parse(userData) : null;
   } catch (error) {
     console.error('Error getting user:', error);
