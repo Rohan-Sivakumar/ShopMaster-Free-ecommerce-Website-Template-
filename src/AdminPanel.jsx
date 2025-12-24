@@ -12,6 +12,7 @@ const AdminPanel = () => {
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [lastUpdated, setLastUpdated] = useState(null);
 
   // Load stats and orders from Firebase
   const loadData = async () => {
@@ -26,6 +27,7 @@ const AdminPanel = () => {
       
       setStats(statsData);
       setOrders(ordersData);
+      setLastUpdated(new Date());
       setLoading(false);
     } catch (err) {
       console.error('Error loading admin data:', err);
@@ -38,14 +40,19 @@ const AdminPanel = () => {
     // Initial load
     loadData();
     
-    // Auto-refresh every 5 seconds
-    const intervalId = setInterval(loadData, 5000);
+    // Auto-refresh every 30 minutes (1800000 milliseconds)
+    const intervalId = setInterval(loadData, 30 * 60 * 1000);
     
     return () => clearInterval(intervalId);
   }, []);
 
   const getRecentOrdersList = () => {
     return orders.slice(0, 10);
+  };
+
+  const formatLastUpdated = () => {
+    if (!lastUpdated) return '';
+    return lastUpdated.toLocaleTimeString();
   };
 
   if (loading && orders.length === 0) {
@@ -85,9 +92,23 @@ const AdminPanel = () => {
         <div>
           <h2>Admin Dashboard</h2>
           <small className="text-muted">☁️ Synced across all browsers & devices</small>
+          {lastUpdated && (
+            <div>
+              <small className="text-muted">Last updated: {formatLastUpdated()} • Auto-refresh: Every 30 min</small>
+            </div>
+          )}
         </div>
-        <button className="btn btn-info btn-sm" onClick={loadData}>
-          <i className="bi bi-arrow-clockwise"></i> Refresh Now
+        <button className="btn btn-info btn-sm" onClick={loadData} disabled={loading}>
+          {loading ? (
+            <>
+              <span className="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
+              Refreshing...
+            </>
+          ) : (
+            <>
+              <i className="bi bi-arrow-clockwise"></i> Refresh Now
+            </>
+          )}
         </button>
       </div>
 
