@@ -17,6 +17,7 @@ const AdminPanel = () => {
   const [lastUpdated, setLastUpdated] = useState(null);
   const [activeTab, setActiveTab] = useState('dashboard'); // 'dashboard' or 'products'
   const [productLoading, setProductLoading] = useState(false);
+  const [imagePreview, setImagePreview] = useState(null);
 
   // New product form state
   const [newProduct, setNewProduct] = useState({
@@ -65,6 +66,40 @@ const AdminPanel = () => {
     return () => clearInterval(intervalId);
   }, []);
 
+  // Handle image file selection
+  const handleImageChange = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      // Validate file type
+      if (!file.type.startsWith('image/')) {
+        Swal.fire({
+          icon: 'error',
+          title: 'Invalid File',
+          text: 'Please select an image file (JPG, PNG, WEBP, etc.)'
+        });
+        return;
+      }
+
+      // Validate file size (max 5MB)
+      if (file.size > 5 * 1024 * 1024) {
+        Swal.fire({
+          icon: 'error',
+          title: 'File Too Large',
+          text: 'Image size should be less than 5MB'
+        });
+        return;
+      }
+
+      // Create preview
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setImagePreview(reader.result);
+        setNewProduct({...newProduct, img: reader.result});
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
   const handleAddProduct = async (e) => {
     e.preventDefault();
     
@@ -73,7 +108,7 @@ const AdminPanel = () => {
       Swal.fire({
         icon: 'error',
         title: 'Validation Error',
-        text: 'Please fill in all fields'
+        text: 'Please fill in all fields and upload an image'
       });
       return;
     }
@@ -113,6 +148,7 @@ const AdminPanel = () => {
         category: '',
         description: ''
       });
+      setImagePreview(null);
 
       // Reload products
       await loadData();
@@ -398,16 +434,38 @@ const AdminPanel = () => {
                     </div>
 
                     <div className="mb-3">
-                      <label className="form-label">Image URL *</label>
+                      <label className="form-label">Product Image *</label>
                       <input
-                        type="text"
+                        type="file"
                         className="form-control"
-                        value={newProduct.img}
-                        onChange={(e) => setNewProduct({...newProduct, img: e.target.value})}
-                        placeholder="/images/product.webp"
-                        required
+                        accept="image/*"
+                        onChange={handleImageChange}
+                        required={!newProduct.img}
                       />
-                      <small className="text-muted">Use relative path (e.g., /images/product.webp) or full URL</small>
+                      <small className="text-muted">Choose an image file (JPG, PNG, WEBP, etc.) - Max 5MB</small>
+                      
+                      {imagePreview && (
+                        <div className="mt-3 text-center">
+                          <img 
+                            src={imagePreview} 
+                            alt="Preview" 
+                            className="img-thumbnail"
+                            style={{maxWidth: '200px', maxHeight: '200px', objectFit: 'contain'}}
+                          />
+                          <div className="mt-2">
+                            <button 
+                              type="button" 
+                              className="btn btn-sm btn-outline-danger"
+                              onClick={() => {
+                                setImagePreview(null);
+                                setNewProduct({...newProduct, img: ''});
+                              }}
+                            >
+                              <i className="bi bi-x-circle"></i> Remove Image
+                            </button>
+                          </div>
+                        </div>
+                      )}
                     </div>
 
                     <div className="mb-3">
