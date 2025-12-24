@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { getStats, getOrders, checkBackendHealth } from './api';
 import './AdminPanel.css';
 
 const AdminPanel = () => {
@@ -6,55 +7,99 @@ const AdminPanel = () => {
     totalViews: 0,
     totalOrders: 0,
     todayViews: 0,
-    todayOrders: 0,
-    ordersHistory: []
+    todayOrders: 0
   });
+  const [orders, setOrders] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [backendOnline, setBackendOnline] = useState(false);
+  const [lastUpdated, setLastUpdated] = useState(null);
 
-  // Load stats from localStorage
-  const loadStats = () => {
-    const savedStats = JSON.parse(localStorage.getItem('adminStats') || '{}');
-    setStats({
-      totalViews: savedStats.totalViews || 0,
-      totalOrders: savedStats.totalOrders || 0,
-      todayViews: savedStats.todayViews || 0,
-      todayOrders: savedStats.todayOrders || 0,
-      ordersHistory: savedStats.ordersHistory || []
-    });
+  // Load stats and orders from MongoDB (with localStorage fallback)
+  const loadData = async () => {
+    try {
+      setLoading(true);
+      
+      // Check if backend is available
+      const isOnline = await checkBackendHealth();
+      setBackendOnline(isOnline);
+      
+      const [statsData, ordersData] = await Promise.all([
+        getStats(),
+        getOrders(50)
+      ]);
+      
+      setStats(statsData);
+      setOrders(ordersData);
+      setLastUpdated(new Date());
+      setLoading(false);
+    } catch (error) {
+      console.error('Error loading admin data:', error);
+      setBackendOnline(false);
+      setLoading(false);
+    }
   };
 
   useEffect(() => {
     // Initial load
-    loadStats();
-    
-    // Listen for new orders
-    const handleNewOrder = () => {
-      loadStats();
-    };
-
-    window.addEventListener('newOrder', handleNewOrder);
+    loadData();
     
     // Auto-refresh every 30 minutes
-    const intervalId = setInterval(loadStats, 30 * 60 * 1000);
+    const intervalId = setInterval(loadData, 30 * 60 * 1000);
     
-    return () => {
-      window.removeEventListener('newOrder', handleNewOrder);
-      clearInterval(intervalId);
-    };
+    return () => clearInterval(intervalId);
   }, []);
 
   const getRecentOrders = () => {
-    return stats.ordersHistory.slice(0, 10);
+    return orders.slice(0, 10);
   };
+
+  const formatLastUpdated = () => {
+    if (!lastUpdated) return '';
+    return lastUpdated.toLocaleTimeString();
+  };
+
+  if (loading && orders.length === 0) {
+    return (
+      <div className="admin-panel">
+        <div className="text-center py-5">
+          <div className="spinner-border text-primary" role="status">
+            <span className="visually-hidden">Loading...</span>
+          </div>
+          <p className="mt-3 text-muted">Loading admin data...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="admin-panel">
       <div className="admin-header">
         <div>
           <h2>Admin Dashboard</h2>
-          <small className="text-muted">Real-time statistics and orders</small>
+          <small className="text-muted">
+            {backendOnline ? (
+              <span className="text-success">☁️ MongoDB Connected - Cross-browser sync enabled</span>
+            ) : (
+              <span className="text-warning">⚠️ Using local storage - Backend offline</span>
+            )}
+          </small>
+          {lastUpdated && (
+            <div>
+              <small className="text-muted">Last updated: {formatLastUpdated()} • Auto-refresh: Every 30 min</small>
+            </div>
+          )}
         </div>
-        <button className="btn btn-info btn-sm" onClick={loadStats}>
-          <i className="bi bi-arrow-clockwise"></i> Refresh
+        <button className="btn btn-info btn-sm" onClick={loadData} disabled={loading}>
+          {loading ? (
+            <>
+              <span className="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
+              Refreshing...
+            </>
+          ) : (
+            <>
+              <i className="bi bi-arrow-clockwise"></i> Refresh Now
+            </>
+          )}
         </button>
       </div>
 
@@ -103,7 +148,7 @@ const AdminPanel = () => {
 
       {/* Recent Orders */}
       <div className="recent-orders">
-        <h3>Recent Orders ({stats.ordersHistory.length} total)</h3>
+        <h3>Recent Orders ({orders.length} total)</h3>
         {getRecentOrders().length === 0 ? (
           <div className="alert alert-info">
             No orders yet. Orders will appear here when customers complete checkout.
@@ -121,15 +166,24 @@ const AdminPanel = () => {
                 </tr>
               </thead>
               <tbody>
-                {getRecentOrders().map(order => (
-                  <tr key={order.id}>
-                    <td>#{String(order.id).slice(-6)}</td>
-                    <td>{new Date(order.date).toLocaleString()}</td>
-                    <td>{order.user}</td>
-                    <td>{order.items} items</td>
-                    <td className="text-success fw-bold">₹{order.total}</td>
-                  </tr>
-                ))}
+                {getRecentOrders().map(order => {
+                  const orderId = order._id || order.id || 'N/A';
+                  const displayId = typeof orderId === 'string' ? orderId.slice(-6) : orderId;
+                  const orderDate = order.createdAt || order.date;
+                  
+                  return (
+                    <tr key={orderId}>
+                      <td>#{displayId}</td>
+                      <td>{orderDate ? new Date(orderDate).toLocaleString() : 'N/A'}</td>
+                      <td>
+                        <div>{order.userName || 'Unknown'}</div>
+                        <small className="text-muted">{order.user}</small>
+                      </td>
+                      <td>{order.items} items</td>
+                      <td className="text-success fw-bold">₹{order.total}</td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>
@@ -138,17 +192,33 @@ const AdminPanel = () => {
 
       {/* Quick Actions */}
       <div className="quick-actions">
-        <h3>Quick Actions</h3>
+        <h3>Backend Status</h3>
         <div className="action-buttons">
-          <button className="btn btn-primary">
-            <i className="bi bi-download"></i> Export Data
-          </button>
-          <button className="btn btn-success">
-            <i className="bi bi-graph-up"></i> View Analytics
-          </button>
-          <button className="btn btn-warning">
-            <i className="bi bi-gear"></i> Settings
-          </button>
+          {backendOnline ? (
+            <>
+              <button className="btn btn-success" disabled>
+                <i className="bi bi-cloud-check"></i> MongoDB Connected
+              </button>
+              <button className="btn btn-success" disabled>
+                <i className="bi bi-globe"></i> Cross-Browser Sync
+              </button>
+              <button className="btn btn-success" disabled>
+                <i className="bi bi-database"></i> Cloud Database
+              </button>
+            </>
+          ) : (
+            <>
+              <button className="btn btn-warning" disabled>
+                <i className="bi bi-exclamation-triangle"></i> Backend Offline
+              </button>
+              <button className="btn btn-info" disabled>
+                <i className="bi bi-hdd"></i> Using localStorage
+              </button>
+              <a href="/MONGODB_SETUP.md" target="_blank" className="btn btn-primary">
+                <i className="bi bi-book"></i> Setup Guide
+              </a>
+            </>
+          )}
         </div>
       </div>
     </div>
