@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { getStats, getOrders, checkBackendHealth, getProducts, addProduct, deleteProduct } from './api';
+import { getStats, getOrders, checkBackendHealth, getProducts, addProduct, deleteProduct, getSeller, getAllSellers, approveSeller } from './api';
+import { getCurrentUser } from './cartService';
 import './AdminPanel.css';
 import Swal from 'sweetalert2';
 
@@ -12,10 +13,12 @@ const AdminPanel = () => {
   });
   const [orders, setOrders] = useState([]);
   const [products, setProducts] = useState([]);
+  const [sellers, setSellers] = useState([]);
+  const [currentSeller, setCurrentSeller] = useState(null);
   const [loading, setLoading] = useState(true);
   const [backendOnline, setBackendOnline] = useState(false);
   const [lastUpdated, setLastUpdated] = useState(null);
-  const [activeTab, setActiveTab] = useState('dashboard'); // 'dashboard' or 'products'
+  const [activeTab, setActiveTab] = useState('dashboard'); // 'dashboard', 'products', or 'sellers'
   const [productLoading, setProductLoading] = useState(false);
   const [imagePreview, setImagePreview] = useState(null);
 
@@ -29,6 +32,21 @@ const AdminPanel = () => {
     description: ''
   });
 
+  // Load current seller info
+  const loadSellerInfo = async () => {
+    const user = getCurrentUser();
+    if (!user) return;
+
+    try {
+      const seller = await getSeller(user.email);
+      setCurrentSeller(seller);
+      return seller;
+    } catch (error) {
+      console.error('Error loading seller info:', error);
+      return null;
+    }
+  };
+
   // Load stats and orders from MongoDB (with localStorage fallback)
   const loadData = async () => {
     try {
@@ -37,16 +55,29 @@ const AdminPanel = () => {
       // Check if backend is available
       const isOnline = await checkBackendHealth();
       setBackendOnline(isOnline);
+
+      // Load seller info
+      const seller = await loadSellerInfo();
+      
+      // Load data (filter by seller if not super admin)
+      const sellerEmail = (seller && !seller.isSuperAdmin) ? seller.email : null;
       
       const [statsData, ordersData, productsData] = await Promise.all([
-        getStats(),
-        getOrders(50),
-        getProducts()
+        getStats(sellerEmail),
+        getOrders(50, sellerEmail),
+        getProducts(sellerEmail)
       ]);
       
       setStats(statsData);
       setOrders(ordersData);
       setProducts(productsData);
+
+      // Load all sellers if super admin
+      if (seller && seller.isSuperAdmin) {
+        const sellersData = await getAllSellers();
+        setSellers(sellersData);
+      }
+      
       setLastUpdated(new Date());
       setLoading(false);
     } catch (error) {
@@ -102,6 +133,25 @@ const AdminPanel = () => {
 
   const handleAddProduct = async (e) => {
     e.preventDefault();
+
+    // Check if seller is registered and approved
+    if (!currentSeller) {
+      Swal.fire({
+        icon: 'error',
+        title: 'Not Registered',
+        text: 'You need to register as a seller first!'
+      });
+      return;
+    }
+
+    if (!currentSeller.isApproved) {
+      Swal.fire({
+        icon: 'warning',
+        title: 'Pending Approval',
+        text: 'Your seller account is pending approval. Please wait for admin approval.'
+      });
+      return;
+    }
     
     // Validation
     if (!newProduct.id || !newProduct.cost || !newProduct.img || !newProduct.category || !newProduct.description) {
@@ -127,7 +177,8 @@ const AdminPanel = () => {
       const productData = {
         ...newProduct,
         cost: parseFloat(newProduct.cost),
-        year: parseInt(newProduct.year)
+        year: parseInt(newProduct.year),
+        sellerEmail: currentSeller.email
       };
 
       await addProduct(productData);
@@ -158,7 +209,7 @@ const AdminPanel = () => {
       Swal.fire({
         icon: 'error',
         title: 'Error',
-        text: 'Failed to add product. Please try again.'
+        text: error.message || 'Failed to add product. Please try again.'
       });
     }
   };
@@ -178,7 +229,7 @@ const AdminPanel = () => {
     if (result.isConfirmed) {
       try {
         setProductLoading(true);
-        await deleteProduct(productId);
+        await deleteProduct(productId, currentSeller.email);
         
         Swal.fire({
           icon: 'success',
@@ -195,7 +246,40 @@ const AdminPanel = () => {
         Swal.fire({
           icon: 'error',
           title: 'Error',
-          text: 'Failed to delete product. Please try again.'
+          text: error.message || 'Failed to delete product. Please try again.'
+        });
+      }
+    }
+  };
+
+  const handleApproveSeller = async (email) => {
+    const result = await Swal.fire({
+      title: 'Approve Seller?',
+      text: `Approve ${email} to start selling on the platform?`,
+      icon: 'question',
+      showCancelButton: true,
+      confirmButtonText: 'Yes, approve',
+      cancelButtonText: 'Cancel'
+    });
+
+    if (result.isConfirmed) {
+      try {
+        await approveSeller(email);
+        
+        Swal.fire({
+          icon: 'success',
+          title: 'Approved!',
+          text: 'Seller has been approved successfully',
+          timer: 2000
+        });
+
+        // Reload data
+        await loadData();
+      } catch (error) {
+        Swal.fire({
+          icon: 'error',
+          title: 'Error',
+          text: 'Failed to approve seller. Please try again.'
         });
       }
     }
@@ -223,11 +307,45 @@ const AdminPanel = () => {
     );
   }
 
+  // Check seller status
+  if (!currentSeller) {
+    return (
+      <div className="admin-panel">
+        <div className="container my-5">
+          <div className="alert alert-warning text-center">
+            <h4>🛍️ You're not registered as a seller</h4>
+            <p>To access the seller dashboard and manage products, you need to register as a seller.</p>
+            <button className="btn btn-primary mt-3" onClick={() => window.location.href = '#/seller-register'}>
+              Register as Seller
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (!currentSeller.isApproved && !currentSeller.isSuperAdmin) {
+    return (
+      <div className="admin-panel">
+        <div className="container my-5">
+          <div className="alert alert-info text-center">
+            <h4>⏳ Seller Account Pending Approval</h4>
+            <p>Your seller account is under review. You'll be able to add products once approved by the admin.</p>
+            <div className="mt-3">
+              <p><strong>Business Name:</strong> {currentSeller.businessName}</p>
+              <p><strong>Email:</strong> {currentSeller.email}</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="admin-panel">
       <div className="admin-header">
         <div>
-          <h2>Admin Dashboard</h2>
+          <h2>{currentSeller.isSuperAdmin ? 'Super Admin' : 'Seller'} Dashboard</h2>
           <small className="text-muted">
             {backendOnline ? (
               <span className="text-success">☁️ MongoDB Connected - Cross-browser sync enabled</span>
@@ -240,6 +358,10 @@ const AdminPanel = () => {
               <small className="text-muted">Last updated: {formatLastUpdated()} • Auto-refresh: Every 30 min</small>
             </div>
           )}
+          <div className="mt-2">
+            <span className="badge bg-primary">{currentSeller.businessName}</span>
+            {currentSeller.isSuperAdmin && <span className="badge bg-warning ms-2">👑 Super Admin</span>}
+          </div>
         </div>
         <button className="btn btn-info btn-sm" onClick={loadData} disabled={loading}>
           {loading ? (
@@ -264,11 +386,19 @@ const AdminPanel = () => {
           <i className="bi bi-speedometer2"></i> Dashboard
         </button>
         <button 
-          className={`btn ${activeTab === 'products' ? 'btn-primary' : 'btn-outline-primary'}`}
+          className={`btn ${activeTab === 'products' ? 'btn-primary' : 'btn-outline-primary'} me-2`}
           onClick={() => setActiveTab('products')}
         >
-          <i className="bi bi-box-seam"></i> Manage Products
+          <i className="bi bi-box-seam"></i> My Products
         </button>
+        {currentSeller.isSuperAdmin && (
+          <button 
+            className={`btn ${activeTab === 'sellers' ? 'btn-primary' : 'btn-outline-primary'}`}
+            onClick={() => setActiveTab('sellers')}
+          >
+            <i className="bi bi-people"></i> Manage Sellers
+          </button>
+        )}
       </div>
 
       {/* Dashboard Tab */}
@@ -276,45 +406,91 @@ const AdminPanel = () => {
         <>
           {/* Stats Cards */}
           <div className="stats-grid">
-            <div className="stat-card">
-              <div className="stat-icon" style={{background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)'}}>
-                <i className="bi bi-eye-fill"></i>
-              </div>
-              <div className="stat-details">
-                <h3>{stats.totalViews}</h3>
-                <p>Total Views</p>
-              </div>
-            </div>
+            {currentSeller.isSuperAdmin ? (
+              <>
+                <div className="stat-card">
+                  <div className="stat-icon" style={{background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)'}}>
+                    <i className="bi bi-eye-fill"></i>
+                  </div>
+                  <div className="stat-details">
+                    <h3>{stats.totalViews}</h3>
+                    <p>Total Views</p>
+                  </div>
+                </div>
 
-            <div className="stat-card">
-              <div className="stat-icon" style={{background: 'linear-gradient(135deg, #f093fb 0%, #f5576c 100%)'}}>
-                <i className="bi bi-cart-fill"></i>
-              </div>
-              <div className="stat-details">
-                <h3>{stats.totalOrders}</h3>
-                <p>Total Orders</p>
-              </div>
-            </div>
+                <div className="stat-card">
+                  <div className="stat-icon" style={{background: 'linear-gradient(135deg, #f093fb 0%, #f5576c 100%)'}}>
+                    <i className="bi bi-cart-fill"></i>
+                  </div>
+                  <div className="stat-details">
+                    <h3>{stats.totalOrders}</h3>
+                    <p>Total Orders</p>
+                  </div>
+                </div>
 
-            <div className="stat-card">
-              <div className="stat-icon" style={{background: 'linear-gradient(135deg, #4facfe 0%, #00f2fe 100%)'}}>
-                <i className="bi bi-calendar-day"></i>
-              </div>
-              <div className="stat-details">
-                <h3>{stats.todayViews}</h3>
-                <p>Today's Views</p>
-              </div>
-            </div>
+                <div className="stat-card">
+                  <div className="stat-icon" style={{background: 'linear-gradient(135deg, #4facfe 0%, #00f2fe 100%)'}}>
+                    <i className="bi bi-calendar-day"></i>
+                  </div>
+                  <div className="stat-details">
+                    <h3>{stats.todayViews}</h3>
+                    <p>Today's Views</p>
+                  </div>
+                </div>
 
-            <div className="stat-card">
-              <div className="stat-icon" style={{background: 'linear-gradient(135deg, #43e97b 0%, #38f9d7 100%)'}}>
-                <i className="bi bi-bag-check-fill"></i>
-              </div>
-              <div className="stat-details">
-                <h3>{stats.todayOrders}</h3>
-                <p>Today's Orders</p>
-              </div>
-            </div>
+                <div className="stat-card">
+                  <div className="stat-icon" style={{background: 'linear-gradient(135deg, #43e97b 0%, #38f9d7 100%)'}}>
+                    <i className="bi bi-bag-check-fill"></i>
+                  </div>
+                  <div className="stat-details">
+                    <h3>{stats.todayOrders}</h3>
+                    <p>Today's Orders</p>
+                  </div>
+                </div>
+              </>
+            ) : (
+              <>
+                <div className="stat-card">
+                  <div className="stat-icon" style={{background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)'}}>
+                    <i className="bi bi-box-seam"></i>
+                  </div>
+                  <div className="stat-details">
+                    <h3>{stats.totalProducts || products.length}</h3>
+                    <p>Total Products</p>
+                  </div>
+                </div>
+
+                <div className="stat-card">
+                  <div className="stat-icon" style={{background: 'linear-gradient(135deg, #f093fb 0%, #f5576c 100%)'}}>
+                    <i className="bi bi-cart-check"></i>
+                  </div>
+                  <div className="stat-details">
+                    <h3>{stats.totalOrders || 0}</h3>
+                    <p>Total Orders</p>
+                  </div>
+                </div>
+
+                <div className="stat-card">
+                  <div className="stat-icon" style={{background: 'linear-gradient(135deg, #43e97b 0%, #38f9d7 100%)'}}>
+                    <i className="bi bi-currency-rupee"></i>
+                  </div>
+                  <div className="stat-details">
+                    <h3>₹{stats.totalRevenue || 0}</h3>
+                    <p>Total Revenue</p>
+                  </div>
+                </div>
+
+                <div className="stat-card">
+                  <div className="stat-icon" style={{background: 'linear-gradient(135deg, #4facfe 0%, #00f2fe 100%)'}}>
+                    <i className="bi bi-check-circle"></i>
+                  </div>
+                  <div className="stat-details">
+                    <h3>{stats.activeProducts || products.filter(p => p.isActive).length}</h3>
+                    <p>Active Products</p>
+                  </div>
+                </div>
+              </>
+            )}
           </div>
 
           {/* Recent Orders */}
@@ -361,7 +537,7 @@ const AdminPanel = () => {
             )}
           </div>
 
-          {/* Quick Actions */}
+          {/* Backend Status */}
           <div className="quick-actions">
             <h3>Backend Status</h3>
             <div className="action-buttons">
@@ -385,9 +561,6 @@ const AdminPanel = () => {
                   <button className="btn btn-info" disabled>
                     <i className="bi bi-hdd"></i> Using localStorage
                   </button>
-                  <a href="/MONGODB_SETUP.md" target="_blank" className="btn btn-primary">
-                    <i className="bi bi-book"></i> Setup Guide
-                  </a>
                 </>
               )}
             </div>
@@ -530,7 +703,7 @@ const AdminPanel = () => {
               <div className="card shadow">
                 <div className="card-body">
                   <h3 className="card-title mb-4">
-                    <i className="bi bi-box-seam"></i> All Products ({products.length})
+                    <i className="bi bi-box-seam"></i> My Products ({products.length})
                   </h3>
                   
                   {products.length === 0 ? (
@@ -555,6 +728,11 @@ const AdminPanel = () => {
                               <h5 className="mb-1">{product.id}</h5>
                               <p className="mb-1 text-success fw-bold">₹{product.cost}</p>
                               <small className="text-muted">{product.category} • {product.year}</small>
+                              {product.sellerBusinessName && (
+                                <div>
+                                  <small className="text-muted">By: {product.sellerBusinessName}</small>
+                                </div>
+                              )}
                             </div>
                             <div className="col-md-3 text-end">
                               <button 
@@ -572,6 +750,72 @@ const AdminPanel = () => {
                   )}
                 </div>
               </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Sellers Tab (Super Admin Only) */}
+      {activeTab === 'sellers' && currentSeller.isSuperAdmin && (
+        <div className="sellers-management">
+          <div className="card shadow">
+            <div className="card-body">
+              <h3 className="card-title mb-4">
+                <i className="bi bi-people"></i> All Sellers ({sellers.length})
+              </h3>
+              
+              {sellers.length === 0 ? (
+                <div className="alert alert-info">
+                  <i className="bi bi-info-circle"></i> No sellers registered yet.
+                </div>
+              ) : (
+                <div className="table-responsive">
+                  <table className="table table-hover">
+                    <thead>
+                      <tr>
+                        <th>Business Name</th>
+                        <th>Name</th>
+                        <th>Email</th>
+                        <th>Phone</th>
+                        <th>Status</th>
+                        <th>Registered</th>
+                        <th>Action</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {sellers.map(seller => (
+                        <tr key={seller.email}>
+                          <td>
+                            <strong>{seller.businessName}</strong>
+                            {seller.isSuperAdmin && <span className="badge bg-warning ms-2">👑</span>}
+                          </td>
+                          <td>{seller.name}</td>
+                          <td>{seller.email}</td>
+                          <td>{seller.phone || 'N/A'}</td>
+                          <td>
+                            {seller.isApproved ? (
+                              <span className="badge bg-success">✓ Approved</span>
+                            ) : (
+                              <span className="badge bg-warning">⏳ Pending</span>
+                            )}
+                          </td>
+                          <td>{new Date(seller.createdAt).toLocaleDateString()}</td>
+                          <td>
+                            {!seller.isApproved && !seller.isSuperAdmin && (
+                              <button 
+                                className="btn btn-sm btn-success"
+                                onClick={() => handleApproveSeller(seller.email)}
+                              >
+                                <i className="bi bi-check-circle"></i> Approve
+                              </button>
+                            )}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
             </div>
           </div>
         </div>
