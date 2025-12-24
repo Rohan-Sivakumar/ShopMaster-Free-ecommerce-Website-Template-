@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { getStats, getOrders, checkBackendHealth } from './api';
+import { getStats, getOrders, checkBackendHealth, getProducts, addProduct, deleteProduct } from './api';
 import './AdminPanel.css';
+import Swal from 'sweetalert2';
 
 const AdminPanel = () => {
   const [stats, setStats] = useState({
@@ -10,9 +11,22 @@ const AdminPanel = () => {
     todayOrders: 0
   });
   const [orders, setOrders] = useState([]);
+  const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [backendOnline, setBackendOnline] = useState(false);
   const [lastUpdated, setLastUpdated] = useState(null);
+  const [activeTab, setActiveTab] = useState('dashboard'); // 'dashboard' or 'products'
+  const [productLoading, setProductLoading] = useState(false);
+
+  // New product form state
+  const [newProduct, setNewProduct] = useState({
+    id: '',
+    year: new Date().getFullYear(),
+    cost: '',
+    img: '',
+    category: '',
+    description: ''
+  });
 
   // Load stats and orders from MongoDB (with localStorage fallback)
   const loadData = async () => {
@@ -23,13 +37,15 @@ const AdminPanel = () => {
       const isOnline = await checkBackendHealth();
       setBackendOnline(isOnline);
       
-      const [statsData, ordersData] = await Promise.all([
+      const [statsData, ordersData, productsData] = await Promise.all([
         getStats(),
-        getOrders(50)
+        getOrders(50),
+        getProducts()
       ]);
       
       setStats(statsData);
       setOrders(ordersData);
+      setProducts(productsData);
       setLastUpdated(new Date());
       setLoading(false);
     } catch (error) {
@@ -48,6 +64,106 @@ const AdminPanel = () => {
     
     return () => clearInterval(intervalId);
   }, []);
+
+  const handleAddProduct = async (e) => {
+    e.preventDefault();
+    
+    // Validation
+    if (!newProduct.id || !newProduct.cost || !newProduct.img || !newProduct.category || !newProduct.description) {
+      Swal.fire({
+        icon: 'error',
+        title: 'Validation Error',
+        text: 'Please fill in all fields'
+      });
+      return;
+    }
+
+    if (isNaN(newProduct.cost) || newProduct.cost <= 0) {
+      Swal.fire({
+        icon: 'error',
+        title: 'Invalid Price',
+        text: 'Please enter a valid price'
+      });
+      return;
+    }
+
+    try {
+      setProductLoading(true);
+      const productData = {
+        ...newProduct,
+        cost: parseFloat(newProduct.cost),
+        year: parseInt(newProduct.year)
+      };
+
+      await addProduct(productData);
+      
+      Swal.fire({
+        icon: 'success',
+        title: 'Product Added!',
+        text: `${newProduct.id} has been added successfully`,
+        timer: 2000
+      });
+
+      // Reset form
+      setNewProduct({
+        id: '',
+        year: new Date().getFullYear(),
+        cost: '',
+        img: '',
+        category: '',
+        description: ''
+      });
+
+      // Reload products
+      await loadData();
+      setProductLoading(false);
+    } catch (error) {
+      setProductLoading(false);
+      Swal.fire({
+        icon: 'error',
+        title: 'Error',
+        text: 'Failed to add product. Please try again.'
+      });
+    }
+  };
+
+  const handleDeleteProduct = async (productId) => {
+    const result = await Swal.fire({
+      title: 'Delete Product?',
+      text: `Are you sure you want to delete "${productId}"? This action cannot be undone.`,
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonColor: '#d33',
+      cancelButtonColor: '#3085d6',
+      confirmButtonText: 'Yes, delete it!',
+      cancelButtonText: 'Cancel'
+    });
+
+    if (result.isConfirmed) {
+      try {
+        setProductLoading(true);
+        await deleteProduct(productId);
+        
+        Swal.fire({
+          icon: 'success',
+          title: 'Deleted!',
+          text: 'Product has been deleted successfully',
+          timer: 2000
+        });
+
+        // Reload products
+        await loadData();
+        setProductLoading(false);
+      } catch (error) {
+        setProductLoading(false);
+        Swal.fire({
+          icon: 'error',
+          title: 'Error',
+          text: 'Failed to delete product. Please try again.'
+        });
+      }
+    }
+  };
 
   const getRecentOrders = () => {
     return orders.slice(0, 10);
@@ -103,124 +219,305 @@ const AdminPanel = () => {
         </button>
       </div>
 
-      {/* Stats Cards */}
-      <div className="stats-grid">
-        <div className="stat-card">
-          <div className="stat-icon" style={{background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)'}}>
-            <i className="bi bi-eye-fill"></i>
-          </div>
-          <div className="stat-details">
-            <h3>{stats.totalViews}</h3>
-            <p>Total Views</p>
-          </div>
-        </div>
-
-        <div className="stat-card">
-          <div className="stat-icon" style={{background: 'linear-gradient(135deg, #f093fb 0%, #f5576c 100%)'}}>
-            <i className="bi bi-cart-fill"></i>
-          </div>
-          <div className="stat-details">
-            <h3>{stats.totalOrders}</h3>
-            <p>Total Orders</p>
-          </div>
-        </div>
-
-        <div className="stat-card">
-          <div className="stat-icon" style={{background: 'linear-gradient(135deg, #4facfe 0%, #00f2fe 100%)'}}>
-            <i className="bi bi-calendar-day"></i>
-          </div>
-          <div className="stat-details">
-            <h3>{stats.todayViews}</h3>
-            <p>Today's Views</p>
-          </div>
-        </div>
-
-        <div className="stat-card">
-          <div className="stat-icon" style={{background: 'linear-gradient(135deg, #43e97b 0%, #38f9d7 100%)'}}>
-            <i className="bi bi-bag-check-fill"></i>
-          </div>
-          <div className="stat-details">
-            <h3>{stats.todayOrders}</h3>
-            <p>Today's Orders</p>
-          </div>
-        </div>
+      {/* Tab Navigation */}
+      <div className="admin-tabs mb-4">
+        <button 
+          className={`btn ${activeTab === 'dashboard' ? 'btn-primary' : 'btn-outline-primary'} me-2`}
+          onClick={() => setActiveTab('dashboard')}
+        >
+          <i className="bi bi-speedometer2"></i> Dashboard
+        </button>
+        <button 
+          className={`btn ${activeTab === 'products' ? 'btn-primary' : 'btn-outline-primary'}`}
+          onClick={() => setActiveTab('products')}
+        >
+          <i className="bi bi-box-seam"></i> Manage Products
+        </button>
       </div>
 
-      {/* Recent Orders */}
-      <div className="recent-orders">
-        <h3>Recent Orders ({orders.length} total)</h3>
-        {getRecentOrders().length === 0 ? (
-          <div className="alert alert-info">
-            No orders yet. Orders will appear here when customers complete checkout.
+      {/* Dashboard Tab */}
+      {activeTab === 'dashboard' && (
+        <>
+          {/* Stats Cards */}
+          <div className="stats-grid">
+            <div className="stat-card">
+              <div className="stat-icon" style={{background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)'}}>
+                <i className="bi bi-eye-fill"></i>
+              </div>
+              <div className="stat-details">
+                <h3>{stats.totalViews}</h3>
+                <p>Total Views</p>
+              </div>
+            </div>
+
+            <div className="stat-card">
+              <div className="stat-icon" style={{background: 'linear-gradient(135deg, #f093fb 0%, #f5576c 100%)'}}>
+                <i className="bi bi-cart-fill"></i>
+              </div>
+              <div className="stat-details">
+                <h3>{stats.totalOrders}</h3>
+                <p>Total Orders</p>
+              </div>
+            </div>
+
+            <div className="stat-card">
+              <div className="stat-icon" style={{background: 'linear-gradient(135deg, #4facfe 0%, #00f2fe 100%)'}}>
+                <i className="bi bi-calendar-day"></i>
+              </div>
+              <div className="stat-details">
+                <h3>{stats.todayViews}</h3>
+                <p>Today's Views</p>
+              </div>
+            </div>
+
+            <div className="stat-card">
+              <div className="stat-icon" style={{background: 'linear-gradient(135deg, #43e97b 0%, #38f9d7 100%)'}}>
+                <i className="bi bi-bag-check-fill"></i>
+              </div>
+              <div className="stat-details">
+                <h3>{stats.todayOrders}</h3>
+                <p>Today's Orders</p>
+              </div>
+            </div>
           </div>
-        ) : (
-          <div className="table-responsive">
-            <table className="table table-hover">
-              <thead>
-                <tr>
-                  <th>Order ID</th>
-                  <th>Date</th>
-                  <th>Customer</th>
-                  <th>Items</th>
-                  <th>Total</th>
-                </tr>
-              </thead>
-              <tbody>
-                {getRecentOrders().map(order => {
-                  const orderId = order._id || order.id || 'N/A';
-                  const displayId = typeof orderId === 'string' ? orderId.slice(-6) : orderId;
-                  const orderDate = order.createdAt || order.date;
-                  
-                  return (
-                    <tr key={orderId}>
-                      <td>#{displayId}</td>
-                      <td>{orderDate ? new Date(orderDate).toLocaleString() : 'N/A'}</td>
-                      <td>
-                        <div>{order.userName || 'Unknown'}</div>
-                        <small className="text-muted">{order.user}</small>
-                      </td>
-                      <td>{order.items} items</td>
-                      <td className="text-success fw-bold">₹{order.total}</td>
+
+          {/* Recent Orders */}
+          <div className="recent-orders">
+            <h3>Recent Orders ({orders.length} total)</h3>
+            {getRecentOrders().length === 0 ? (
+              <div className="alert alert-info">
+                No orders yet. Orders will appear here when customers complete checkout.
+              </div>
+            ) : (
+              <div className="table-responsive">
+                <table className="table table-hover">
+                  <thead>
+                    <tr>
+                      <th>Order ID</th>
+                      <th>Date</th>
+                      <th>Customer</th>
+                      <th>Items</th>
+                      <th>Total</th>
                     </tr>
-                  );
-                })}
-              </tbody>
-            </table>
+                  </thead>
+                  <tbody>
+                    {getRecentOrders().map(order => {
+                      const orderId = order._id || order.id || 'N/A';
+                      const displayId = typeof orderId === 'string' ? orderId.slice(-6) : orderId;
+                      const orderDate = order.createdAt || order.date;
+                      
+                      return (
+                        <tr key={orderId}>
+                          <td>#{displayId}</td>
+                          <td>{orderDate ? new Date(orderDate).toLocaleString() : 'N/A'}</td>
+                          <td>
+                            <div>{order.userName || 'Unknown'}</div>
+                            <small className="text-muted">{order.user}</small>
+                          </td>
+                          <td>{order.items} items</td>
+                          <td className="text-success fw-bold">₹{order.total}</td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            )}
           </div>
-        )}
-      </div>
 
-      {/* Quick Actions */}
-      <div className="quick-actions">
-        <h3>Backend Status</h3>
-        <div className="action-buttons">
-          {backendOnline ? (
-            <>
-              <button className="btn btn-success" disabled>
-                <i className="bi bi-cloud-check"></i> MongoDB Connected
-              </button>
-              <button className="btn btn-success" disabled>
-                <i className="bi bi-globe"></i> Cross-Browser Sync
-              </button>
-              <button className="btn btn-success" disabled>
-                <i className="bi bi-database"></i> Cloud Database
-              </button>
-            </>
-          ) : (
-            <>
-              <button className="btn btn-warning" disabled>
-                <i className="bi bi-exclamation-triangle"></i> Backend Offline
-              </button>
-              <button className="btn btn-info" disabled>
-                <i className="bi bi-hdd"></i> Using localStorage
-              </button>
-              <a href="/MONGODB_SETUP.md" target="_blank" className="btn btn-primary">
-                <i className="bi bi-book"></i> Setup Guide
-              </a>
-            </>
-          )}
+          {/* Quick Actions */}
+          <div className="quick-actions">
+            <h3>Backend Status</h3>
+            <div className="action-buttons">
+              {backendOnline ? (
+                <>
+                  <button className="btn btn-success" disabled>
+                    <i className="bi bi-cloud-check"></i> MongoDB Connected
+                  </button>
+                  <button className="btn btn-success" disabled>
+                    <i className="bi bi-globe"></i> Cross-Browser Sync
+                  </button>
+                  <button className="btn btn-success" disabled>
+                    <i className="bi bi-database"></i> Cloud Database
+                  </button>
+                </>
+              ) : (
+                <>
+                  <button className="btn btn-warning" disabled>
+                    <i className="bi bi-exclamation-triangle"></i> Backend Offline
+                  </button>
+                  <button className="btn btn-info" disabled>
+                    <i className="bi bi-hdd"></i> Using localStorage
+                  </button>
+                  <a href="/MONGODB_SETUP.md" target="_blank" className="btn btn-primary">
+                    <i className="bi bi-book"></i> Setup Guide
+                  </a>
+                </>
+              )}
+            </div>
+          </div>
+        </>
+      )}
+
+      {/* Products Tab */}
+      {activeTab === 'products' && (
+        <div className="products-management">
+          <div className="row">
+            {/* Add Product Form */}
+            <div className="col-lg-5 mb-4">
+              <div className="card shadow">
+                <div className="card-body">
+                  <h3 className="card-title mb-4">
+                    <i className="bi bi-plus-circle"></i> Add New Product
+                  </h3>
+                  <form onSubmit={handleAddProduct}>
+                    <div className="mb-3">
+                      <label className="form-label">Product Name *</label>
+                      <input
+                        type="text"
+                        className="form-control"
+                        value={newProduct.id}
+                        onChange={(e) => setNewProduct({...newProduct, id: e.target.value})}
+                        placeholder="e.g., Wireless Headphones"
+                        required
+                      />
+                    </div>
+
+                    <div className="mb-3">
+                      <label className="form-label">Price (₹) *</label>
+                      <input
+                        type="number"
+                        className="form-control"
+                        value={newProduct.cost}
+                        onChange={(e) => setNewProduct({...newProduct, cost: e.target.value})}
+                        placeholder="e.g., 9999"
+                        min="0"
+                        step="0.01"
+                        required
+                      />
+                    </div>
+
+                    <div className="mb-3">
+                      <label className="form-label">Image URL *</label>
+                      <input
+                        type="text"
+                        className="form-control"
+                        value={newProduct.img}
+                        onChange={(e) => setNewProduct({...newProduct, img: e.target.value})}
+                        placeholder="/images/product.webp"
+                        required
+                      />
+                      <small className="text-muted">Use relative path (e.g., /images/product.webp) or full URL</small>
+                    </div>
+
+                    <div className="mb-3">
+                      <label className="form-label">Category *</label>
+                      <input
+                        type="text"
+                        className="form-control"
+                        value={newProduct.category}
+                        onChange={(e) => setNewProduct({...newProduct, category: e.target.value})}
+                        placeholder="e.g., Electronics"
+                        required
+                      />
+                    </div>
+
+                    <div className="mb-3">
+                      <label className="form-label">Year</label>
+                      <input
+                        type="number"
+                        className="form-control"
+                        value={newProduct.year}
+                        onChange={(e) => setNewProduct({...newProduct, year: e.target.value})}
+                        min="2000"
+                        max="2100"
+                      />
+                    </div>
+
+                    <div className="mb-3">
+                      <label className="form-label">Description *</label>
+                      <textarea
+                        className="form-control"
+                        value={newProduct.description}
+                        onChange={(e) => setNewProduct({...newProduct, description: e.target.value})}
+                        placeholder="Product description..."
+                        rows="3"
+                        required
+                      />
+                    </div>
+
+                    <button 
+                      type="submit" 
+                      className="btn btn-success w-100"
+                      disabled={productLoading}
+                    >
+                      {productLoading ? (
+                        <>
+                          <span className="spinner-border spinner-border-sm me-2"></span>
+                          Adding...
+                        </>
+                      ) : (
+                        <>
+                          <i className="bi bi-plus-lg"></i> Add Product
+                        </>
+                      )}
+                    </button>
+                  </form>
+                </div>
+              </div>
+            </div>
+
+            {/* Product List */}
+            <div className="col-lg-7">
+              <div className="card shadow">
+                <div className="card-body">
+                  <h3 className="card-title mb-4">
+                    <i className="bi bi-box-seam"></i> All Products ({products.length})
+                  </h3>
+                  
+                  {products.length === 0 ? (
+                    <div className="alert alert-info">
+                      <i className="bi bi-info-circle"></i> No products available. Add your first product!
+                    </div>
+                  ) : (
+                    <div className="products-list" style={{maxHeight: '600px', overflowY: 'auto'}}>
+                      {products.map(product => (
+                        <div key={product.id || product._id} className="product-item border rounded p-3 mb-3">
+                          <div className="row align-items-center">
+                            <div className="col-md-2">
+                              <img 
+                                src={product.img} 
+                                alt={product.id} 
+                                className="img-fluid rounded"
+                                style={{width: '100%', height: '60px', objectFit: 'cover'}}
+                                onError={(e) => e.target.src = 'https://via.placeholder.com/60'}
+                              />
+                            </div>
+                            <div className="col-md-7">
+                              <h5 className="mb-1">{product.id}</h5>
+                              <p className="mb-1 text-success fw-bold">₹{product.cost}</p>
+                              <small className="text-muted">{product.category} • {product.year}</small>
+                            </div>
+                            <div className="col-md-3 text-end">
+                              <button 
+                                className="btn btn-danger btn-sm"
+                                onClick={() => handleDeleteProduct(product.id)}
+                                disabled={productLoading}
+                              >
+                                <i className="bi bi-trash"></i> Delete
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
-      </div>
+      )}
     </div>
   );
 };
