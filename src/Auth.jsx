@@ -42,8 +42,6 @@ const Auth = ({ onSignInSuccess, onSignInFailure }) => {
         auto_select: false,
         cancel_on_tap_outside: true,
       });
-
-      // Don't render the default button, we'll use our custom one
     }
   };
 
@@ -96,35 +94,115 @@ const Auth = ({ onSignInSuccess, onSignInFailure }) => {
     }
   };
 
-  const handleMicrosoftSignIn = () => {
+  // Generate PKCE code verifier and challenge
+  const generateCodeVerifier = () => {
+    const array = new Uint8Array(32);
+    crypto.getRandomValues(array);
+    return base64URLEncode(array);
+  };
+
+  const base64URLEncode = (buffer) => {
+    return btoa(String.fromCharCode.apply(null, buffer))
+      .replace(/\+/g, '-')
+      .replace(/\//g, '_')
+      .replace(/=/g, '');
+  };
+
+  const sha256 = async (plain) => {
+    const encoder = new TextEncoder();
+    const data = encoder.encode(plain);
+    return await crypto.subtle.digest('SHA-256', data);
+  };
+
+  const base64URLEncodeFromBuffer = (buffer) => {
+    return base64URLEncode(new Uint8Array(buffer));
+  };
+
+  const handleMicrosoftSignIn = async () => {
     setIsLoading(true);
     
-    const authUrl = `https://login.microsoftonline.com/common/oauth2/v2.0/authorize`;
-    const params = new URLSearchParams({
-      client_id: MICROSOFT_CLIENT_ID,
-      response_type: 'token id_token',
-      redirect_uri: MICROSOFT_REDIRECT_URI,
-      scope: 'openid profile email User.Read',
-      response_mode: 'fragment',
-      state: Math.random().toString(36).substring(7),
-      nonce: Math.random().toString(36).substring(7),
-    });
+    try {
+      // Generate PKCE parameters
+      const codeVerifier = generateCodeVerifier();
+      const codeChallenge = base64URLEncodeFromBuffer(await sha256(codeVerifier));
+      
+      // Store code verifier for later use
+      sessionStorage.setItem('pkce_code_verifier', codeVerifier);
+      
+      const authUrl = `https://login.microsoftonline.com/common/oauth2/v2.0/authorize`;
+      const params = new URLSearchParams({
+        client_id: MICROSOFT_CLIENT_ID,
+        response_type: 'code',
+        redirect_uri: MICROSOFT_REDIRECT_URI,
+        scope: 'openid profile email User.Read',
+        response_mode: 'query',
+        state: Math.random().toString(36).substring(7),
+        code_challenge: codeChallenge,
+        code_challenge_method: 'S256',
+      });
 
-    window.location.href = `${authUrl}?${params.toString()}`;
+      window.location.href = `${authUrl}?${params.toString()}`;
+    } catch (error) {
+      console.error('Error initiating Microsoft sign-in:', error);
+      setIsLoading(false);
+      if (onSignInFailure) {
+        onSignInFailure(error);
+      }
+    }
   };
 
   useEffect(() => {
     const handleMicrosoftCallback = async () => {
-      const hash = window.location.hash.substring(1);
-      const params = new URLSearchParams(hash);
-      const idToken = params.get('id_token');
-      const accessToken = params.get('access_token');
+      const urlParams = new URLSearchParams(window.location.search);
+      const code = urlParams.get('code');
+      const error = urlParams.get('error');
 
-      if (idToken && accessToken) {
+      if (error) {
+        console.error('Microsoft auth error:', error, urlParams.get('error_description'));
+        setIsLoading(false);
+        if (onSignInFailure) {
+          onSignInFailure(new Error(urlParams.get('error_description')));
+        }
+        window.history.replaceState({}, document.title, window.location.pathname);
+        return;
+      }
+
+      if (code) {
         setIsLoading(true);
         
         try {
-          const userObject = parseJwt(idToken);
+          const codeVerifier = sessionStorage.getItem('pkce_code_verifier');
+          
+          if (!codeVerifier) {
+            throw new Error('Code verifier not found');
+          }
+
+          // Exchange code for tokens
+          const tokenUrl = 'https://login.microsoftonline.com/common/oauth2/v2.0/token';
+          const tokenParams = new URLSearchParams({
+            client_id: MICROSOFT_CLIENT_ID,
+            scope: 'openid profile email User.Read',
+            code: code,
+            redirect_uri: MICROSOFT_REDIRECT_URI,
+            grant_type: 'authorization_code',
+            code_verifier: codeVerifier,
+          });
+
+          const tokenResponse = await fetch(tokenUrl, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/x-www-form-urlencoded',
+            },
+            body: tokenParams.toString(),
+          });
+
+          if (!tokenResponse.ok) {
+            const errorData = await tokenResponse.json();
+            throw new Error(errorData.error_description || 'Token exchange failed');
+          }
+
+          const tokens = await tokenResponse.json();
+          const userObject = parseJwt(tokens.id_token);
           
           const userData = {
             provider: 'microsoft',
@@ -139,10 +217,12 @@ const Auth = ({ onSignInSuccess, onSignInFailure }) => {
           setIsSignedIn(true);
           
           sessionStorage.setItem('authUser', JSON.stringify(userData));
-          sessionStorage.setItem('authToken', accessToken);
+          sessionStorage.setItem('authToken', tokens.access_token);
+          sessionStorage.removeItem('pkce_code_verifier');
           
           window.dispatchEvent(new Event('userChanged'));
           
+          // Clean up URL
           window.history.replaceState({}, document.title, window.location.pathname);
           
           if (onSignInSuccess) {
@@ -150,6 +230,7 @@ const Auth = ({ onSignInSuccess, onSignInFailure }) => {
           }
         } catch (error) {
           console.error('Error processing Microsoft sign-in:', error);
+          sessionStorage.removeItem('pkce_code_verifier');
           if (onSignInFailure) {
             onSignInFailure(error);
           }
@@ -189,6 +270,7 @@ const Auth = ({ onSignInSuccess, onSignInFailure }) => {
     
     sessionStorage.removeItem('authUser');
     sessionStorage.removeItem('authToken');
+    sessionStorage.removeItem('pkce_code_verifier');
     
     window.dispatchEvent(new Event('userChanged'));
     window.location.reload();
