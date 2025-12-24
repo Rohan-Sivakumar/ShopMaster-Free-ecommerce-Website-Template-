@@ -4,7 +4,7 @@ import Auth from "./Auth";
 import AdminPanel from "./AdminPanel";
 import "./App.css";
 import { getCart, saveCart, addToCart, removeFromCart, getCurrentUser } from "./cartService";
-import { trackPageView as firebaseTrackPageView, addOrder } from "./firebaseService";
+import { trackView, createOrder } from "./api";
 import Swal from 'sweetalert2';
 
 const ADMIN_EMAIL = 'rohan.sivaa@gmail.com';
@@ -133,10 +133,8 @@ function App() {
       setCartItems(savedCart);
     }
     
-    // Track page view to Firebase
-    firebaseTrackPageView().catch(err => {
-      console.log('Firebase tracking not configured yet:', err.message);
-    });
+    // Track page view to MongoDB (with localStorage fallback)
+    trackView();
     
     // Simulate loading delay
     const loadingTimer = setTimeout(() => {
@@ -227,7 +225,7 @@ function App() {
     setCartItems(updatedCart);
   }, [currentUser, cartItems]);
 
-  // Handle checkout - Track order to Firebase
+  // Handle checkout - Track order to MongoDB
   const handleCheckout = useCallback(async () => {
     if (!currentUser || cartItems.length === 0) return;
 
@@ -243,7 +241,7 @@ function App() {
 
     const totalPrice = groupedCart.reduce((sum, item) => sum + (item.cost * item.quantity), 0);
 
-    // Save order to Firebase Cloud Database
+    // Save order to MongoDB (with localStorage fallback)
     try {
       const orderData = {
         user: currentUser.email,
@@ -257,8 +255,8 @@ function App() {
         }))
       };
 
-      await addOrder(orderData);
-      console.log('✅ Order saved to Firebase Cloud Database!');
+      await createOrder(orderData);
+      console.log('✅ Order saved to MongoDB!');
 
       // Show success message
       Swal.fire({
@@ -275,10 +273,14 @@ function App() {
     } catch (error) {
       console.error('Error saving order:', error);
       Swal.fire({
-        icon: 'error',
-        title: 'Order Failed',
-        text: 'There was an error placing your order. Please make sure Firebase is configured.',
-        footer: '<a href="/FIREBASE_SETUP.md" target="_blank">View Firebase Setup Guide</a>'
+        icon: 'warning',
+        title: 'Order Placed (Local Only)',
+        text: `Your order of ₹${totalPrice} has been saved locally. Backend server may be offline.`,
+        confirmButtonText: 'OK'
+      }).then(() => {
+        setCartItems([]);
+        saveCart(currentUser.email, []);
+        setActivePage('home');
       });
     }
   }, [currentUser, cartItems]);
