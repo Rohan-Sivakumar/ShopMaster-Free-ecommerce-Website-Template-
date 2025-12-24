@@ -247,9 +247,36 @@ function App() {
 
   // Handle sign out
   const handleSignOut = useCallback(() => {
-    setCurrentUser(null);
-    setCartItems([]);
-    setActivePage('home');
+    Swal.fire({
+      title: 'Sign Out?',
+      text: 'Are you sure you want to sign out?',
+      icon: 'question',
+      showCancelButton: true,
+      confirmButtonText: 'Yes, sign out',
+      cancelButtonText: 'Cancel'
+    }).then((result) => {
+      if (result.isConfirmed) {
+        sessionStorage.removeItem('authUser');
+        sessionStorage.removeItem('authToken');
+        
+        setCurrentUser(null);
+        setCartItems([]);
+        
+        window.dispatchEvent(new Event('userChanged'));
+        
+        Swal.fire({
+          icon: 'success',
+          title: 'Signed Out',
+          text: 'You have been signed out successfully',
+          timer: 1500,
+          showConfirmButton: false
+        });
+        
+        setTimeout(() => {
+          setActivePage('home');
+        }, 1500);
+      }
+    });
   }, []);
 
   // Loading Screen
@@ -531,6 +558,7 @@ function App() {
                   <p>Cart Items: <strong>{cartItems.length}</strong></p>
                   <button className="btn btn-primary me-2" onClick={() => setActivePage('p')}>Shop Now</button>
                   <button className="btn btn-secondary me-2" onClick={() => setActivePage('Cart')}>View Cart</button>
+                  <button className="btn btn-danger" onClick={handleSignOut}>Sign Out</button>
                 </div>
               </>
             ) : (
