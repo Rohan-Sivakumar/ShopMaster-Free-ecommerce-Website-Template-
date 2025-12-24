@@ -21,12 +21,70 @@ app.use(cors({
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ limit: '50mb', extended: true }));
 
-// MongoDB Connection
+// MongoDB Connection with proper error handling
 const MONGODB_URI = process.env.MONGODB_URI || 'mongodb://localhost:27017/shopmaster';
 
-mongoose.connect(MONGODB_URI)
-  .then(() => console.log('✅ Connected to MongoDB'))
-  .catch(err => console.error('❌ MongoDB connection error:', err));
+// Configure mongoose settings
+mongoose.set('strictQuery', false);
+mongoose.set('bufferTimeoutMS', 30000); // Increase buffer timeout to 30 seconds
+
+// Connection flag
+let isConnected = false;
+
+// Connect to MongoDB with retry logic
+const connectDB = async () => {
+  if (isConnected) {
+    console.log('✅ MongoDB already connected');
+    return;
+  }
+
+  try {
+    await mongoose.connect(MONGODB_URI, {
+      serverSelectionTimeoutMS: 10000, // Timeout after 10s instead of 30s
+      socketTimeoutMS: 45000, // Close sockets after 45s of inactivity
+      family: 4 // Use IPv4, skip trying IPv6
+    });
+    
+    isConnected = true;
+    console.log('✅ Connected to MongoDB');
+    
+    // Initialize data after successful connection
+    await initializeData();
+  } catch (err) {
+    console.error('❌ MongoDB connection error:', err.message);
+    isConnected = false;
+    
+    // Retry connection after 5 seconds
+    console.log('⏳ Retrying MongoDB connection in 5 seconds...');
+    setTimeout(connectDB, 5000);
+  }
+};
+
+// Handle connection events
+mongoose.connection.on('connected', () => {
+  isConnected = true;
+  console.log('🔗 Mongoose connected to MongoDB');
+});
+
+mongoose.connection.on('disconnected', () => {
+  isConnected = false;
+  console.log('⚠️ Mongoose disconnected from MongoDB');
+});
+
+mongoose.connection.on('error', (err) => {
+  isConnected = false;
+  console.error('❌ Mongoose connection error:', err);
+});
+
+// Graceful shutdown
+process.on('SIGINT', async () => {
+  await mongoose.connection.close();
+  console.log('👋 MongoDB connection closed through app termination');
+  process.exit(0);
+});
+
+// Start connection
+connectDB();
 
 // Seller Schema
 const sellerSchema = new mongoose.Schema({
@@ -96,22 +154,17 @@ const statsSchema = new mongoose.Schema({
 
 const Stats = mongoose.model('Stats', statsSchema);
 
-// Initialize stats if not exists
-const initializeStats = async () => {
+// Initialize all data - called after MongoDB connection
+const initializeData = async () => {
   try {
+    // Initialize stats if not exists
     const stats = await Stats.findOne();
     if (!stats) {
       await Stats.create({});
       console.log('📊 Stats initialized');
     }
-  } catch (error) {
-    console.log('Stats initialization pending...');
-  }
-};
 
-// Initialize super admin seller
-const initializeSuperAdmin = async () => {
-  try {
+    // Initialize super admin seller
     const superAdmin = await Seller.findOne({ email: 'rohan.sivaa@gmail.com' });
     if (!superAdmin) {
       await Seller.create({
@@ -123,14 +176,8 @@ const initializeSuperAdmin = async () => {
       });
       console.log('👑 Super admin seller initialized');
     }
-  } catch (error) {
-    console.log('Super admin initialization pending...');
-  }
-};
 
-// Initialize with default products if empty
-const initializeProducts = async () => {
-  try {
+    // Initialize with default products if empty
     const count = await Product.countDocuments();
     if (count === 0) {
       const defaultProducts = [
@@ -227,21 +274,37 @@ const initializeProducts = async () => {
       await Product.insertMany(defaultProducts);
       console.log('📦 Default products initialized');
     }
+
+    console.log('✅ All data initialized successfully');
   } catch (error) {
-    console.log('Products initialization pending...');
+    console.error('❌ Error initializing data:', error.message);
   }
 };
 
-initializeStats();
-initializeSuperAdmin();
-initializeProducts();
+// Middleware to check database connection
+const checkDbConnection = (req, res, next) => {
+  if (!isConnected) {
+    return res.status(503).json({ 
+      error: 'Database connection not available',
+      message: 'Please try again in a few moments'
+    });
+  }
+  next();
+};
 
 // Routes
 
-// Health check
+// Health check (doesn't require DB)
 app.get('/api/health', (req, res) => {
-  res.json({ status: 'ok', message: 'Server is running' });
+  res.json({ 
+    status: 'ok', 
+    message: 'Server is running',
+    database: isConnected ? 'connected' : 'disconnected'
+  });
 });
+
+// Apply DB check middleware to all API routes
+app.use('/api', checkDbConnection);
 
 // ========== SELLER ROUTES ==========
 
@@ -251,7 +314,7 @@ app.post('/api/sellers/register', async (req, res) => {
     const { email, name, businessName, phone, address } = req.body;
     
     // Check if seller already exists
-    const existing = await Seller.findOne({ email });
+    const existing = await Seller.findOne({ email }).maxTimeMS(5000);
     if (existing) {
       return res.status(400).json({ error: 'Seller already registered with this email' });
     }
@@ -267,6 +330,7 @@ app.post('/api/sellers/register', async (req, res) => {
     
     res.status(201).json(seller);
   } catch (error) {
+    console.error('Register seller error:', error);
     res.status(500).json({ error: error.message });
   }
 });
@@ -274,12 +338,13 @@ app.post('/api/sellers/register', async (req, res) => {
 // Get seller by email
 app.get('/api/sellers/:email', async (req, res) => {
   try {
-    const seller = await Seller.findOne({ email: req.params.email });
+    const seller = await Seller.findOne({ email: req.params.email }).maxTimeMS(5000);
     if (!seller) {
       return res.status(404).json({ error: 'Seller not found' });
     }
     res.json(seller);
   } catch (error) {
+    console.error('Get seller error:', error);
     res.status(500).json({ error: error.message });
   }
 });
@@ -287,9 +352,10 @@ app.get('/api/sellers/:email', async (req, res) => {
 // Get all sellers (super admin only)
 app.get('/api/sellers', async (req, res) => {
   try {
-    const sellers = await Seller.find().sort({ createdAt: -1 });
+    const sellers = await Seller.find().sort({ createdAt: -1 }).maxTimeMS(5000);
     res.json(sellers);
   } catch (error) {
+    console.error('Get all sellers error:', error);
     res.status(500).json({ error: error.message });
   }
 });
@@ -301,7 +367,7 @@ app.put('/api/sellers/:email/approve', async (req, res) => {
       { email: req.params.email },
       { isApproved: true, updatedAt: new Date() },
       { new: true }
-    );
+    ).maxTimeMS(5000);
     
     if (!seller) {
       return res.status(404).json({ error: 'Seller not found' });
@@ -309,6 +375,7 @@ app.put('/api/sellers/:email/approve', async (req, res) => {
     
     res.json(seller);
   } catch (error) {
+    console.error('Approve seller error:', error);
     res.status(500).json({ error: error.message });
   }
 });
@@ -325,9 +392,10 @@ app.get('/api/products', async (req, res) => {
       filter.sellerEmail = sellerEmail;
     }
     
-    const products = await Product.find(filter).sort({ createdAt: -1 });
+    const products = await Product.find(filter).sort({ createdAt: -1 }).maxTimeMS(5000);
     res.json(products);
   } catch (error) {
+    console.error('Get products error:', error);
     res.status(500).json({ error: error.message });
   }
 });
@@ -335,9 +403,10 @@ app.get('/api/products', async (req, res) => {
 // Get products by seller
 app.get('/api/sellers/:email/products', async (req, res) => {
   try {
-    const products = await Product.find({ sellerEmail: req.params.email }).sort({ createdAt: -1 });
+    const products = await Product.find({ sellerEmail: req.params.email }).sort({ createdAt: -1 }).maxTimeMS(5000);
     res.json(products);
   } catch (error) {
+    console.error('Get seller products error:', error);
     res.status(500).json({ error: error.message });
   }
 });
@@ -345,12 +414,13 @@ app.get('/api/sellers/:email/products', async (req, res) => {
 // Get product by ID
 app.get('/api/products/:id', async (req, res) => {
   try {
-    const product = await Product.findOne({ id: req.params.id });
+    const product = await Product.findOne({ id: req.params.id }).maxTimeMS(5000);
     if (!product) {
       return res.status(404).json({ error: 'Product not found' });
     }
     res.json(product);
   } catch (error) {
+    console.error('Get product error:', error);
     res.status(500).json({ error: error.message });
   }
 });
@@ -361,7 +431,7 @@ app.post('/api/products', async (req, res) => {
     const { id, year, cost, img, category, description, sellerEmail } = req.body;
     
     // Check if seller exists and is approved
-    const seller = await Seller.findOne({ email: sellerEmail });
+    const seller = await Seller.findOne({ email: sellerEmail }).maxTimeMS(5000);
     if (!seller) {
       return res.status(403).json({ error: 'Seller not registered' });
     }
@@ -370,7 +440,7 @@ app.post('/api/products', async (req, res) => {
     }
     
     // Check if product with same ID already exists for this seller
-    const existing = await Product.findOne({ id, sellerEmail });
+    const existing = await Product.findOne({ id, sellerEmail }).maxTimeMS(5000);
     if (existing) {
       return res.status(400).json({ error: 'You already have a product with this name' });
     }
@@ -389,6 +459,7 @@ app.post('/api/products', async (req, res) => {
     
     res.status(201).json(product);
   } catch (error) {
+    console.error('Add product error:', error);
     res.status(500).json({ error: error.message });
   }
 });
@@ -399,7 +470,7 @@ app.put('/api/products/:id', async (req, res) => {
     const { year, cost, img, category, description, sellerEmail, stock, isActive } = req.body;
     
     // Find product and verify ownership
-    const product = await Product.findOne({ id: req.params.id, sellerEmail });
+    const product = await Product.findOne({ id: req.params.id, sellerEmail }).maxTimeMS(5000);
     if (!product) {
       return res.status(404).json({ error: 'Product not found or you do not have permission to edit it' });
     }
@@ -418,6 +489,7 @@ app.put('/api/products/:id', async (req, res) => {
     
     res.json(product);
   } catch (error) {
+    console.error('Update product error:', error);
     res.status(500).json({ error: error.message });
   }
 });
@@ -427,7 +499,7 @@ app.delete('/api/products/:id', async (req, res) => {
   try {
     const { sellerEmail } = req.query;
     
-    const product = await Product.findOneAndDelete({ id: req.params.id, sellerEmail });
+    const product = await Product.findOneAndDelete({ id: req.params.id, sellerEmail }).maxTimeMS(5000);
     
     if (!product) {
       return res.status(404).json({ error: 'Product not found or you do not have permission to delete it' });
@@ -435,6 +507,7 @@ app.delete('/api/products/:id', async (req, res) => {
     
     res.json({ message: 'Product deleted successfully', product });
   } catch (error) {
+    console.error('Delete product error:', error);
     res.status(500).json({ error: error.message });
   }
 });
@@ -448,8 +521,8 @@ app.get('/api/stats', async (req, res) => {
     
     if (sellerEmail) {
       // Get seller-specific stats
-      const products = await Product.find({ sellerEmail });
-      const orders = await Order.find({ 'products.sellerEmail': sellerEmail });
+      const products = await Product.find({ sellerEmail }).maxTimeMS(5000);
+      const orders = await Order.find({ 'products.sellerEmail': sellerEmail }).maxTimeMS(5000);
       
       const totalOrders = orders.length;
       const totalRevenue = orders.reduce((sum, order) => {
@@ -465,13 +538,14 @@ app.get('/api/stats', async (req, res) => {
       });
     } else {
       // Get global stats
-      let stats = await Stats.findOne();
+      let stats = await Stats.findOne().maxTimeMS(5000);
       if (!stats) {
         stats = await Stats.create({});
       }
       res.json(stats);
     }
   } catch (error) {
+    console.error('Get stats error:', error);
     res.status(500).json({ error: error.message });
   }
 });
@@ -479,7 +553,7 @@ app.get('/api/stats', async (req, res) => {
 // Track page view
 app.post('/api/stats/view', async (req, res) => {
   try {
-    let stats = await Stats.findOne();
+    let stats = await Stats.findOne().maxTimeMS(5000);
     if (!stats) {
       stats = await Stats.create({});
     }
@@ -500,6 +574,7 @@ app.post('/api/stats/view', async (req, res) => {
     await stats.save();
     res.json(stats);
   } catch (error) {
+    console.error('Track view error:', error);
     res.status(500).json({ error: error.message });
   }
 });
@@ -521,7 +596,7 @@ app.post('/api/orders', async (req, res) => {
     });
 
     // Update stats
-    let stats = await Stats.findOne();
+    let stats = await Stats.findOne().maxTimeMS(5000);
     if (!stats) {
       stats = await Stats.create({});
     }
@@ -543,6 +618,7 @@ app.post('/api/orders', async (req, res) => {
 
     res.status(201).json({ order, stats });
   } catch (error) {
+    console.error('Create order error:', error);
     res.status(500).json({ error: error.message });
   }
 });
@@ -558,15 +634,18 @@ app.get('/api/orders', async (req, res) => {
       // Get orders containing this seller's products
       orders = await Order.find({ 'products.sellerEmail': sellerEmail })
         .sort({ createdAt: -1 })
-        .limit(orderLimit);
+        .limit(orderLimit)
+        .maxTimeMS(5000);
     } else {
       orders = await Order.find()
         .sort({ createdAt: -1 })
-        .limit(orderLimit);
+        .limit(orderLimit)
+        .maxTimeMS(5000);
     }
     
     res.json(orders);
   } catch (error) {
+    console.error('Get orders error:', error);
     res.status(500).json({ error: error.message });
   }
 });
@@ -574,12 +653,13 @@ app.get('/api/orders', async (req, res) => {
 // Get order by ID
 app.get('/api/orders/:id', async (req, res) => {
   try {
-    const order = await Order.findById(req.params.id);
+    const order = await Order.findById(req.params.id).maxTimeMS(5000);
     if (!order) {
       return res.status(404).json({ error: 'Order not found' });
     }
     res.json(order);
   } catch (error) {
+    console.error('Get order error:', error);
     res.status(500).json({ error: error.message });
   }
 });
