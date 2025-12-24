@@ -10,7 +10,7 @@ const initialProducts = [
         id: "Wireless headphone",
         year: 2025,
         cost: 9999,
-        img: "/images/headphone.jpeg",
+        img: "/images/headphone.webp",
         category: "Electronics",
         description: "High-quality wireless headphones with noise cancellation."
     },
@@ -18,7 +18,7 @@ const initialProducts = [
         id: "Smart Watch",
         year: 2024,
         cost: 4999,
-        img: "/images/watch.jpeg",
+        img: "/images/watch.webp",
         category: "Wearables",
         description: "Feature-rich smart watch with health tracking."
     },
@@ -26,7 +26,7 @@ const initialProducts = [
         id: "Bluetooth Speaker",
         year: 2025,
         cost: 2999,
-        img: "/images/speaker.jpeg",
+        img: "/images/speaker.webp",
         category: "Electronics",
         description: "Portable Bluetooth speaker with premium sound quality and 12-hour battery life."
     },
@@ -34,7 +34,7 @@ const initialProducts = [
         id: "Wireless Mouse",
         year: 2024,
         cost: 799,
-        img: "/images/mouse.jpeg",
+        img: "/images/mouse.webp",
         category: "Electronics",
         description: "Ergonomic wireless mouse with precision tracking and long battery life."
     },
@@ -42,7 +42,7 @@ const initialProducts = [
         id: "USB-C Cable",
         year: 2025,
         cost: 299,
-        img: "/images/cable.jpeg",
+        img: "/images/cable.webp",
         category: "Accessories",
         description: "Fast charging USB-C cable with durable braided design."
     },
@@ -50,7 +50,7 @@ const initialProducts = [
         id: "Fitness Band",
         year: 2024,
         cost: 1999,
-        img: "/images/band.jpeg",
+        img: "/images/band.webp",
         category: "Wearables",
         description: "Track your fitness goals with heart rate monitoring and sleep tracking."
     },
@@ -58,7 +58,7 @@ const initialProducts = [
         id: "Phone Case",
         year: 2025,
         cost: 499,
-        img: "/images/case.jpeg",
+        img: "/images/case.webp",
         category: "Accessories",
         description: "Shockproof phone case with premium finish and raised edges."
     },
@@ -66,7 +66,7 @@ const initialProducts = [
         id: "Power Bank",
         year: 2024,
         cost: 1499,
-        img: "/images/powerbank.jpeg",
+        img: "/images/powerbank.webp",
         category: "Electronics",
         description: "20000mAh power bank with fast charging support for multiple devices."
     },
