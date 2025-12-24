@@ -1,10 +1,10 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import './GoogleAuth.css';
 
 // OAuth Configuration
 const GOOGLE_CLIENT_ID = '902043632684-87h6kimr4divhgqhuabu11l8713vc240.apps.googleusercontent.com';
 
-// Microsoft OAuth Configuration
+// Microsoft OAuth Configuration (Simple Implicit Flow)
 const MICROSOFT_CLIENT_ID = '0ad4fe15-57b7-4e64-8189-2840b19c05f5';
 const MICROSOFT_REDIRECT_URI = window.location.origin;
 
@@ -13,7 +13,6 @@ const Auth = ({ onSignInSuccess, onSignInFailure }) => {
   const [userInfo, setUserInfo] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
   const [isGoogleLoading, setIsGoogleLoading] = useState(false);
-  const hasProcessedCallback = useRef(false);
 
   useEffect(() => {
     const loadGoogleScript = () => {
@@ -95,146 +94,91 @@ const Auth = ({ onSignInSuccess, onSignInFailure }) => {
     }
   };
 
-  // Generate PKCE code verifier and challenge
-  const generateCodeVerifier = () => {
-    const array = new Uint8Array(32);
-    crypto.getRandomValues(array);
-    return base64URLEncode(array);
-  };
-
-  const base64URLEncode = (buffer) => {
-    return btoa(String.fromCharCode.apply(null, buffer))
-      .replace(/\+/g, '-')
-      .replace(/\//g, '_')
-      .replace(/=/g, '');
-  };
-
-  const sha256 = async (plain) => {
-    const encoder = new TextEncoder();
-    const data = encoder.encode(plain);
-    return await crypto.subtle.digest('SHA-256', data);
-  };
-
-  const base64URLEncodeFromBuffer = (buffer) => {
-    return base64URLEncode(new Uint8Array(buffer));
-  };
-
-  const handleMicrosoftSignIn = async () => {
+  // Simplified Microsoft Sign-In using Popup
+  const handleMicrosoftSignIn = () => {
     setIsLoading(true);
     
-    try {
-      // Generate PKCE parameters
-      const codeVerifier = generateCodeVerifier();
-      const codeChallenge = base64URLEncodeFromBuffer(await sha256(codeVerifier));
-      
-      // Store code verifier for later use
-      sessionStorage.setItem('pkce_code_verifier', codeVerifier);
-      
-      const authUrl = `https://login.microsoftonline.com/common/oauth2/v2.0/authorize`;
-      const params = new URLSearchParams({
-        client_id: MICROSOFT_CLIENT_ID,
-        response_type: 'code',
-        redirect_uri: MICROSOFT_REDIRECT_URI,
-        scope: 'openid profile email',
-        response_mode: 'query',
-        state: Math.random().toString(36).substring(7),
-        code_challenge: codeChallenge,
-        code_challenge_method: 'S256',
-      });
+    const authUrl = 'https://login.microsoftonline.com/common/oauth2/v2.0/authorize';
+    const params = new URLSearchParams({
+      client_id: MICROSOFT_CLIENT_ID,
+      response_type: 'id_token',
+      redirect_uri: MICROSOFT_REDIRECT_URI,
+      scope: 'openid profile email',
+      response_mode: 'fragment',
+      state: Math.random().toString(36).substring(7),
+      nonce: Math.random().toString(36).substring(7),
+    });
 
-      window.location.href = `${authUrl}?${params.toString()}`;
-    } catch (error) {
-      console.error('Error initiating Microsoft sign-in:', error);
-      setIsLoading(false);
-      if (onSignInFailure) {
-        onSignInFailure(error);
+    const width = 500;
+    const height = 600;
+    const left = window.screen.width / 2 - width / 2;
+    const top = window.screen.height / 2 - height / 2;
+
+    const popup = window.open(
+      `${authUrl}?${params.toString()}`,
+      'Microsoft Sign In',
+      `width=${width},height=${height},left=${left},top=${top}`
+    );
+
+    // Listen for popup closing
+    const checkPopup = setInterval(() => {
+      if (!popup || popup.closed) {
+        clearInterval(checkPopup);
+        setIsLoading(false);
       }
-    }
+    }, 500);
+
+    // Listen for message from popup
+    const handleMessage = (event) => {
+      // Security check - only accept messages from Microsoft domain
+      if (!event.origin.includes('microsoft') && event.origin !== window.location.origin) {
+        return;
+      }
+
+      if (event.data && event.data.type === 'microsoft-auth') {
+        clearInterval(checkPopup);
+        if (popup) popup.close();
+        window.removeEventListener('message', handleMessage);
+
+        if (event.data.success) {
+          const userData = event.data.userData;
+          setUserInfo(userData);
+          setIsSignedIn(true);
+          
+          sessionStorage.setItem('authUser', JSON.stringify(userData));
+          sessionStorage.setItem('authToken', event.data.token);
+          
+          window.dispatchEvent(new Event('userChanged'));
+          
+          setIsLoading(false);
+          
+          if (onSignInSuccess) {
+            onSignInSuccess(userData);
+          }
+        } else {
+          setIsLoading(false);
+          if (onSignInFailure) {
+            onSignInFailure(new Error(event.data.error || 'Microsoft sign-in failed'));
+          }
+        }
+      }
+    };
+
+    window.addEventListener('message', handleMessage);
   };
 
+  // Handle callback in popup
   useEffect(() => {
-    // Use ref to absolutely prevent duplicate execution
-    if (hasProcessedCallback.current) {
-      return;
-    }
+    // Check if we're in a popup (has opener)
+    if (window.opener) {
+      const hash = window.location.hash.substring(1);
+      const params = new URLSearchParams(hash);
+      const idToken = params.get('id_token');
+      const error = params.get('error');
 
-    const handleMicrosoftCallback = async () => {
-      const urlParams = new URLSearchParams(window.location.search);
-      const code = urlParams.get('code');
-      const error = urlParams.get('error');
-
-      // If no code or error, this is not a callback from Microsoft
-      if (!code && !error) {
-        return;
-      }
-
-      // Mark as processed immediately
-      hasProcessedCallback.current = true;
-
-      if (error) {
-        console.error('Microsoft auth error:', error, urlParams.get('error_description'));
-        setIsLoading(false);
-        window.history.replaceState({}, document.title, window.location.pathname);
-        if (onSignInFailure) {
-          onSignInFailure(new Error(urlParams.get('error_description')));
-        }
-        return;
-      }
-
-      if (code) {
-        setIsLoading(true);
-        console.log('Microsoft: Received authorization code');
-        
+      if (idToken) {
         try {
-          const codeVerifier = sessionStorage.getItem('pkce_code_verifier');
-          
-          if (!codeVerifier) {
-            console.error('Code verifier not found in session storage');
-            throw new Error('Code verifier not found');
-          }
-
-          console.log('Microsoft: Exchanging code for tokens...');
-          
-          // Exchange code for tokens using correct endpoint and format
-          const tokenUrl = 'https://login.microsoftonline.com/common/oauth2/v2.0/token';
-          const tokenParams = new URLSearchParams({
-            client_id: MICROSOFT_CLIENT_ID,
-            scope: 'openid profile email',
-            code: code,
-            redirect_uri: MICROSOFT_REDIRECT_URI,
-            grant_type: 'authorization_code',
-            code_verifier: codeVerifier,
-          });
-
-          console.log('Microsoft: Sending token request...');
-          
-          const tokenResponse = await fetch(tokenUrl, {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/x-www-form-urlencoded',
-            },
-            body: tokenParams.toString(),
-          });
-
-          console.log('Microsoft: Token response status:', tokenResponse.status);
-
-          if (!tokenResponse.ok) {
-            const errorText = await tokenResponse.text();
-            console.error('Microsoft token error response:', errorText);
-            let errorData;
-            try {
-              errorData = JSON.parse(errorText);
-            } catch (e) {
-              errorData = { error_description: errorText };
-            }
-            throw new Error(errorData.error_description || `Token exchange failed: ${tokenResponse.status}`);
-          }
-
-          const tokens = await tokenResponse.json();
-          console.log('Microsoft: Tokens received successfully');
-          
-          const userObject = parseJwt(tokens.id_token);
-          console.log('Microsoft: User data parsed:', userObject.name, userObject.email);
+          const userObject = parseJwt(idToken);
           
           const userData = {
             provider: 'microsoft',
@@ -245,40 +189,34 @@ const Auth = ({ onSignInSuccess, onSignInFailure }) => {
             loginTime: new Date().toISOString(),
           };
 
-          setUserInfo(userData);
-          setIsSignedIn(true);
-          
-          sessionStorage.setItem('authUser', JSON.stringify(userData));
-          sessionStorage.setItem('authToken', tokens.access_token);
-          sessionStorage.removeItem('pkce_code_verifier');
-          
-          window.dispatchEvent(new Event('userChanged'));
-          
-          // Clean up URL
-          window.history.replaceState({}, document.title, window.location.pathname);
-          
-          console.log('Microsoft: Sign-in successful!');
-          
-          // Only call onSignInSuccess after everything is set
-          if (onSignInSuccess) {
-            onSignInSuccess(userData);
-          }
-        } catch (error) {
-          console.error('Microsoft sign-in error details:', error);
-          sessionStorage.removeItem('pkce_code_verifier');
-          window.history.replaceState({}, document.title, window.location.pathname);
-          setIsLoading(false);
-          if (onSignInFailure) {
-            onSignInFailure(error);
-          }
-        } finally {
-          setIsLoading(false);
-        }
-      }
-    };
+          // Send message to parent window
+          window.opener.postMessage({
+            type: 'microsoft-auth',
+            success: true,
+            userData: userData,
+            token: idToken
+          }, window.location.origin);
 
-    handleMicrosoftCallback();
-  }, []); // Empty dependency array - only run once on mount
+          // Close popup
+          window.close();
+        } catch (err) {
+          window.opener.postMessage({
+            type: 'microsoft-auth',
+            success: false,
+            error: 'Failed to process token'
+          }, window.location.origin);
+          window.close();
+        }
+      } else if (error) {
+        window.opener.postMessage({
+          type: 'microsoft-auth',
+          success: false,
+          error: params.get('error_description') || error
+        }, window.location.origin);
+        window.close();
+      }
+    }
+  }, []);
 
   const parseJwt = (token) => {
     try {
@@ -304,11 +242,9 @@ const Auth = ({ onSignInSuccess, onSignInFailure }) => {
     
     setIsSignedIn(false);
     setUserInfo(null);
-    hasProcessedCallback.current = false;
     
     sessionStorage.removeItem('authUser');
     sessionStorage.removeItem('authToken');
-    sessionStorage.removeItem('pkce_code_verifier');
     
     window.dispatchEvent(new Event('userChanged'));
     window.location.reload();
