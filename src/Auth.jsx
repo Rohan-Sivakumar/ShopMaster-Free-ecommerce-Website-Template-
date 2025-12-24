@@ -13,6 +13,7 @@ const Auth = ({ onSignInSuccess, onSignInFailure }) => {
   const [userInfo, setUserInfo] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
   const [isGoogleLoading, setIsGoogleLoading] = useState(false);
+  const [hasProcessedCallback, setHasProcessedCallback] = useState(false);
 
   useEffect(() => {
     const loadGoogleScript = () => {
@@ -152,10 +153,18 @@ const Auth = ({ onSignInSuccess, onSignInFailure }) => {
   };
 
   useEffect(() => {
+    // Prevent processing the callback multiple times
+    if (hasProcessedCallback) return;
+
     const handleMicrosoftCallback = async () => {
       const urlParams = new URLSearchParams(window.location.search);
       const code = urlParams.get('code');
       const error = urlParams.get('error');
+
+      // If no code or error, this is not a callback from Microsoft
+      if (!code && !error) return;
+
+      setHasProcessedCallback(true);
 
       if (error) {
         console.error('Microsoft auth error:', error, urlParams.get('error_description'));
@@ -241,7 +250,7 @@ const Auth = ({ onSignInSuccess, onSignInFailure }) => {
     };
 
     handleMicrosoftCallback();
-  }, []);
+  }, [hasProcessedCallback, onSignInSuccess, onSignInFailure]);
 
   const parseJwt = (token) => {
     try {
@@ -267,6 +276,7 @@ const Auth = ({ onSignInSuccess, onSignInFailure }) => {
     
     setIsSignedIn(false);
     setUserInfo(null);
+    setHasProcessedCallback(false);
     
     sessionStorage.removeItem('authUser');
     sessionStorage.removeItem('authToken');
