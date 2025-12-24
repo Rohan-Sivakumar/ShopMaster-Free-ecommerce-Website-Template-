@@ -107,12 +107,9 @@ export const createOrder = async (orderData) => {
 };
 
 // Get statistics
-export const getStats = async (sellerEmail = null) => {
+export const getStats = async () => {
   try {
-    const url = sellerEmail 
-      ? `${API_URL}/stats?sellerEmail=${encodeURIComponent(sellerEmail)}` 
-      : `${API_URL}/stats`;
-    const response = await fetchWithRetry(url);
+    const response = await fetchWithRetry(`${API_URL}/stats`);
     if (!response.ok) throw new Error('Failed to get stats');
     return await response.json();
   } catch (error) {
@@ -132,12 +129,9 @@ export const getStats = async (sellerEmail = null) => {
 };
 
 // Get all orders
-export const getOrders = async (limit = 50, sellerEmail = null) => {
+export const getOrders = async (limit = 50) => {
   try {
-    const url = sellerEmail 
-      ? `${API_URL}/orders?limit=${limit}&sellerEmail=${encodeURIComponent(sellerEmail)}`
-      : `${API_URL}/orders?limit=${limit}`;
-    const response = await fetchWithRetry(url);
+    const response = await fetchWithRetry(`${API_URL}/orders?limit=${limit}`);
     if (!response.ok) throw new Error('Failed to get orders');
     return await response.json();
   } catch (error) {
@@ -148,86 +142,12 @@ export const getOrders = async (limit = 50, sellerEmail = null) => {
   }
 };
 
-// ========== SELLER MANAGEMENT ==========
-
-// Register as seller
-export const registerSeller = async (sellerData) => {
-  try {
-    if (!sellerData.email || !sellerData.name || !sellerData.businessName) {
-      throw new Error('Missing required seller fields');
-    }
-
-    const response = await fetchWithRetry(`${API_URL}/sellers/register`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(sellerData)
-    });
-    if (!response.ok) {
-      const error = await response.json();
-      throw new Error(error.error || 'Failed to register seller');
-    }
-    return await response.json();
-  } catch (error) {
-    console.error('Error registering seller:', error.message);
-    throw error;
-  }
-};
-
-// Get seller by email
-export const getSeller = async (email) => {
-  try {
-    if (!email) throw new Error('Email is required');
-    
-    const response = await fetchWithRetry(`${API_URL}/sellers/${encodeURIComponent(email)}`);
-    if (!response.ok) {
-      if (response.status === 404) return null;
-      throw new Error('Failed to get seller');
-    }
-    return await response.json();
-  } catch (error) {
-    console.error('Error getting seller:', error.message);
-    return null;
-  }
-};
-
-// Get all sellers (super admin only)
-export const getAllSellers = async () => {
-  try {
-    const response = await fetchWithRetry(`${API_URL}/sellers`);
-    if (!response.ok) throw new Error('Failed to get sellers');
-    return await response.json();
-  } catch (error) {
-    console.error('Error getting sellers:', error.message);
-    return [];
-  }
-};
-
-// Approve seller (super admin only)
-export const approveSeller = async (email) => {
-  try {
-    if (!email) throw new Error('Email is required');
-
-    const response = await fetchWithRetry(`${API_URL}/sellers/${encodeURIComponent(email)}/approve`, {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' }
-    });
-    if (!response.ok) throw new Error('Failed to approve seller');
-    return await response.json();
-  } catch (error) {
-    console.error('Error approving seller:', error.message);
-    throw error;
-  }
-};
-
 // ========== PRODUCT MANAGEMENT ==========
 
 // Get all products
-export const getProducts = async (sellerEmail = null) => {
+export const getProducts = async () => {
   try {
-    const url = sellerEmail 
-      ? `${API_URL}/products?sellerEmail=${encodeURIComponent(sellerEmail)}`
-      : `${API_URL}/products`;
-    const response = await fetchWithRetry(url);
+    const response = await fetchWithRetry(`${API_URL}/products`);
     if (!response.ok) throw new Error('Failed to get products');
     return await response.json();
   } catch (error) {
@@ -238,24 +158,10 @@ export const getProducts = async (sellerEmail = null) => {
   }
 };
 
-// Get seller's products
-export const getSellerProducts = async (email) => {
-  try {
-    if (!email) throw new Error('Email is required');
-
-    const response = await fetchWithRetry(`${API_URL}/sellers/${encodeURIComponent(email)}/products`);
-    if (!response.ok) throw new Error('Failed to get seller products');
-    return await response.json();
-  } catch (error) {
-    console.error('Error getting seller products:', error.message);
-    return [];
-  }
-};
-
 // Add new product
 export const addProduct = async (productData) => {
   try {
-    if (!productData.id || !productData.cost || !productData.sellerEmail) {
+    if (!productData.id || !productData.cost) {
       throw new Error('Missing required product fields');
     }
 
@@ -305,12 +211,12 @@ export const updateProduct = async (productId, productData) => {
 };
 
 // Delete product
-export const deleteProduct = async (productId, sellerEmail) => {
+export const deleteProduct = async (productId) => {
   try {
-    if (!productId || !sellerEmail) throw new Error('Product ID and seller email are required');
+    if (!productId) throw new Error('Product ID is required');
 
     const response = await fetchWithRetry(
-      `${API_URL}/products/${encodeURIComponent(productId)}?sellerEmail=${encodeURIComponent(sellerEmail)}`,
+      `${API_URL}/products/${encodeURIComponent(productId)}`,
       { method: 'DELETE' }
     );
     if (!response.ok) {
