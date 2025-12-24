@@ -431,11 +431,6 @@ const Auth = ({ onSignInSuccess, onSignInFailure }) => {
       <p className="google-auth-disclaimer">
         By signing in, you agree to our Terms of Service and Privacy Policy
       </p>
-      <p className="google-auth-security">
-        <small>
-          🔒 Secure session - automatically expires when you close your browser
-        </small>
-      </p>
       
       <style>{`
         @keyframes spin {
