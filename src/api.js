@@ -60,6 +60,7 @@ export const createOrder = async (orderData) => {
         id: Date.now(),
         date: new Date().toISOString(),
         user: orderData.user,
+        userName: orderData.userName,
         items: orderData.items,
         total: orderData.total
       },
@@ -113,5 +114,67 @@ export const checkBackendHealth = async () => {
     return data.status === 'ok';
   } catch (error) {
     return false;
+  }
+};
+
+// ========== PRODUCT MANAGEMENT ==========
+
+// Get all products
+export const getProducts = async () => {
+  try {
+    const response = await fetch(`${API_URL}/products`);
+    if (!response.ok) throw new Error('Failed to get products');
+    return await response.json();
+  } catch (error) {
+    console.error('Error getting products:', error);
+    // Fallback to localStorage
+    const products = JSON.parse(localStorage.getItem('products') || '[]');
+    return products;
+  }
+};
+
+// Add new product
+export const addProduct = async (productData) => {
+  try {
+    const response = await fetch(`${API_URL}/products`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(productData)
+    });
+    if (!response.ok) throw new Error('Failed to add product');
+    return await response.json();
+  } catch (error) {
+    console.error('Error adding product:', error);
+    // Fallback to localStorage
+    const products = JSON.parse(localStorage.getItem('products') || '[]');
+    products.push(productData);
+    localStorage.setItem('products', JSON.stringify(products));
+    
+    // Trigger storage event for App.jsx to update
+    window.dispatchEvent(new CustomEvent('productsUpdated', { detail: products }));
+    
+    return { product: productData };
+  }
+};
+
+// Delete product
+export const deleteProduct = async (productId) => {
+  try {
+    const response = await fetch(`${API_URL}/products/${encodeURIComponent(productId)}`, {
+      method: 'DELETE'
+    });
+    if (!response.ok) throw new Error('Failed to delete product');
+    return await response.json();
+  } catch (error) {
+    console.error('Error deleting product:', error);
+    // Fallback to localStorage
+    const products = JSON.parse(localStorage.getItem('products') || '[]');
+    const updatedProducts = products.filter(p => p.id !== productId);
+    localStorage.setItem('products', JSON.stringify(updatedProducts));
+    
+    // Trigger storage event for App.jsx to update
+    window.dispatchEvent(new CustomEvent('productsUpdated', { detail: updatedProducts }));
+    
+    return { message: 'Product deleted successfully' };
   }
 };
