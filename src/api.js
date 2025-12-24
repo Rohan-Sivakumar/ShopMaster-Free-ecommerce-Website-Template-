@@ -16,21 +16,6 @@ const fetchWithRetry = async (url, options = {}, retries = 2) => {
   }
 };
 
-// Check if backend is available
-export const checkBackendHealth = async () => {
-  try {
-    const response = await fetch(`${API_URL.replace('/api', '')}/api/health`, {
-      signal: AbortSignal.timeout(5000)
-    });
-    if (!response.ok) return false;
-    const data = await response.json();
-    return data.status === 'ok';
-  } catch (error) {
-    console.warn('Backend health check failed:', error.message);
-    return false;
-  }
-};
-
 // Track page view
 export const trackView = async () => {
   try {
