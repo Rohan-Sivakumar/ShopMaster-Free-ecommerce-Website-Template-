@@ -53,6 +53,8 @@ function App() {
   const [cartItems, setCartItems] = useState([]);
   const [search, setSearch] = useState("");
   const [filter, setFilter] = useState("All");
+  const [brandFilter, setBrandFilter] = useState("All");
+  const [priceRange, setPriceRange] = useState([0, 100000]);
   const [selectedProduct, setSelectedProduct] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isAdmin, setIsAdmin] = useState(false);
@@ -134,6 +136,18 @@ function App() {
     [products]
   );
 
+  // Memoize brands
+  const brands = useMemo(() => 
+    ["All", ...Array.from(new Set(products.map(p => p.brand || "No Brand").filter(b => b)))],
+    [products]
+  );
+
+  // Memoize price range
+  const maxPrice = useMemo(() => {
+    if (products.length === 0) return 100000;
+    return Math.max(...products.map(p => p.cost));
+  }, [products]);
+
   const handlePageChange = useCallback((pageId) => {
     setActivePage(pageId);
     setSelectedProduct(null);
@@ -143,10 +157,12 @@ function App() {
   const filteredProducts = useMemo(() => {
     return products.filter(product => {
       const matchesSearch = product.id.toLowerCase().includes(search.toLowerCase());
-      const matchesFilter = filter === "All" || product.category === filter;
-      return matchesSearch && matchesFilter;
+      const matchesCategory = filter === "All" || product.category === filter;
+      const matchesBrand = brandFilter === "All" || (product.brand || "No Brand") === brandFilter;
+      const matchesPrice = product.cost >= priceRange[0] && product.cost <= priceRange[1];
+      return matchesSearch && matchesCategory && matchesBrand && matchesPrice;
     });
-  }, [products, search, filter]);
+  }, [products, search, filter, brandFilter, priceRange]);
 
   const showProductDetails = useCallback((product) => {
     setSelectedProduct(product);
@@ -414,6 +430,8 @@ function App() {
       <div id="p" className={`page ${activePage === 'p' ? 'active' : ''}`}>
         <div className="container my-4">
           <h2 className="text-center mb-4">Products</h2>
+          
+          {/* Search Bar */}
           <div className="d-flex justify-content-center gap-3 mb-4 flex-wrap">
             <input
               type="text"
@@ -423,17 +441,72 @@ function App() {
               onChange={e => setSearch(e.target.value)}
               style={{maxWidth: '300px'}}
             />
-            <select
-              className="form-select"
-              value={filter}
-              onChange={e => setFilter(e.target.value)}
-              style={{maxWidth: '200px'}}
-            >
-              {categories.map(cat => (
-                <option key={cat} value={cat}>{cat}</option>
-              ))}
-            </select>
           </div>
+
+          {/* Filters Row */}
+          <div className="row mb-4">
+            <div className="col-md-3">
+              <label className="form-label fw-bold">Category</label>
+              <select
+                className="form-select"
+                value={filter}
+                onChange={e => setFilter(e.target.value)}
+              >
+                {categories.map(cat => (
+                  <option key={cat} value={cat}>{cat}</option>
+                ))}
+              </select>
+            </div>
+
+            <div className="col-md-3">
+              <label className="form-label fw-bold">Brand</label>
+              <select
+                className="form-select"
+                value={brandFilter}
+                onChange={e => setBrandFilter(e.target.value)}
+              >
+                {brands.map(brand => (
+                  <option key={brand} value={brand}>{brand}</option>
+                ))}
+              </select>
+            </div>
+
+            <div className="col-md-6">
+              <label className="form-label fw-bold">Price Range</label>
+              <div className="d-flex align-items-center gap-3">
+                <input
+                  type="range"
+                  className="form-range flex-grow-1"
+                  min="0"
+                  max={maxPrice}
+                  step="1000"
+                  value={priceRange[1]}
+                  onChange={e => setPriceRange([priceRange[0], parseInt(e.target.value)])}
+                />
+                <div className="text-nowrap">
+                  <small className="text-muted">₹0 - ₹{priceRange[1].toLocaleString()}</small>
+                </div>
+              </div>
+            </div>
+          </div>
+          
+          {/* Active Filters Display */}
+          {(search || filter !== "All" || brandFilter !== "All" || priceRange[1] < maxPrice) && (
+            <div className="mb-3">
+              <button
+                className="btn btn-sm btn-outline-secondary"
+                onClick={() => {
+                  setSearch("");
+                  setFilter("All");
+                  setBrandFilter("All");
+                  setPriceRange([0, maxPrice]);
+                }}
+              >
+                Clear All Filters
+              </button>
+              <span className="ms-2 text-muted">Showing {filteredProducts.length} of {products.length} products</span>
+            </div>
+          )}
           
           {productsLoading ? (
             <div className="text-center py-5">
@@ -451,7 +524,7 @@ function App() {
                   <p className="mb-0">{isAdmin ? 'Go to Admin Panel to add products.' : 'Please check back later.'}</p>
                 </>
               ) : (
-                'No products found matching your search.'
+                'No products found matching your filters.'
               )}
             </div>
           ) : (
@@ -490,6 +563,9 @@ function App() {
                         <h3 className="card-title">{selectedProduct.id}</h3>
                         <p className="card-text">{selectedProduct.description}</p>
                         <p className="card-text"><small className="text-muted">Category: {selectedProduct.category}</small></p>
+                        {selectedProduct.brand && (
+                          <p className="card-text"><small className="text-muted">Brand: {selectedProduct.brand}</small></p>
+                        )}
                         <p className="card-text"><small className="text-muted">Year: {selectedProduct.year}</small></p>
                         <h4 className="text-success mb-3">₹{selectedProduct.cost}</h4>
                         <button className="btn btn-primary btn-lg w-100" onClick={() => handleAddToCart(selectedProduct)}>
