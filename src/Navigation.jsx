@@ -68,7 +68,7 @@ export default function Navigation({ activePage, onPageChange, cartCount = 0 }) 
         ) : (
           <li className={activePage === "dashboard" ? "active-nav-link" : ""}>
             <a href="#dashboard" onClick={go("dashboard")}>
-              {getFirstName(currentUser.name)}
+              👤 {getFirstName(currentUser.name)}
             </a>
           </li>
         )}
