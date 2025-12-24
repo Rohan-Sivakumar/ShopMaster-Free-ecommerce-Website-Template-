@@ -27,6 +27,20 @@ mongoose.connect(MONGODB_URI)
   .then(() => console.log('✅ Connected to MongoDB'))
   .catch(err => console.error('❌ MongoDB connection error:', err));
 
+// Product Schema
+const productSchema = new mongoose.Schema({
+  id: { type: String, required: true, unique: true },
+  year: { type: Number, required: true },
+  cost: { type: Number, required: true },
+  img: { type: String, required: true },
+  category: { type: String, required: true },
+  description: { type: String, required: true },
+  createdAt: { type: Date, default: Date.now },
+  updatedAt: { type: Date, default: Date.now }
+});
+
+const Product = mongoose.model('Product', productSchema);
+
 // Order Schema
 const orderSchema = new mongoose.Schema({
   user: { type: String, required: true },
@@ -69,7 +83,88 @@ const initializeStats = async () => {
   }
 };
 
+// Initialize with default products if empty
+const initializeProducts = async () => {
+  try {
+    const count = await Product.countDocuments();
+    if (count === 0) {
+      const defaultProducts = [
+        {
+          id: "Wireless headphone",
+          year: 2025,
+          cost: 9999,
+          img: "/images/headphone.webp",
+          category: "Electronics",
+          description: "High-quality wireless headphones with noise cancellation."
+        },
+        {
+          id: "Smart Watch",
+          year: 2024,
+          cost: 4999,
+          img: "/images/watch.webp",
+          category: "Wearables",
+          description: "Feature-rich smart watch with health tracking."
+        },
+        {
+          id: "Bluetooth Speaker",
+          year: 2025,
+          cost: 2999,
+          img: "/images/speaker.webp",
+          category: "Electronics",
+          description: "Portable Bluetooth speaker with premium sound quality and 12-hour battery life."
+        },
+        {
+          id: "Wireless Mouse",
+          year: 2024,
+          cost: 799,
+          img: "/images/mouse.webp",
+          category: "Electronics",
+          description: "Ergonomic wireless mouse with precision tracking and long battery life."
+        },
+        {
+          id: "USB-C Cable",
+          year: 2025,
+          cost: 299,
+          img: "/images/cable.webp",
+          category: "Accessories",
+          description: "Fast charging USB-C cable with durable braided design."
+        },
+        {
+          id: "Fitness Band",
+          year: 2024,
+          cost: 1999,
+          img: "/images/band.webp",
+          category: "Wearables",
+          description: "Track your fitness goals with heart rate monitoring and sleep tracking."
+        },
+        {
+          id: "Phone Case",
+          year: 2025,
+          cost: 499,
+          img: "/images/case.webp",
+          category: "Accessories",
+          description: "Shockproof phone case with premium finish and raised edges."
+        },
+        {
+          id: "Power Bank",
+          year: 2024,
+          cost: 1499,
+          img: "/images/powerbank.webp",
+          category: "Electronics",
+          description: "20000mAh power bank with fast charging support for multiple devices."
+        }
+      ];
+      
+      await Product.insertMany(defaultProducts);
+      console.log('📦 Default products initialized');
+    }
+  } catch (error) {
+    console.log('Products initialization pending...');
+  }
+};
+
 initializeStats();
+initializeProducts();
 
 // Routes
 
@@ -77,6 +172,95 @@ initializeStats();
 app.get('/api/health', (req, res) => {
   res.json({ status: 'ok', message: 'Server is running' });
 });
+
+// ========== PRODUCT ROUTES ==========
+
+// Get all products
+app.get('/api/products', async (req, res) => {
+  try {
+    const products = await Product.find().sort({ createdAt: -1 });
+    res.json(products);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Get product by ID
+app.get('/api/products/:id', async (req, res) => {
+  try {
+    const product = await Product.findOne({ id: req.params.id });
+    if (!product) {
+      return res.status(404).json({ error: 'Product not found' });
+    }
+    res.json(product);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Add new product
+app.post('/api/products', async (req, res) => {
+  try {
+    const { id, year, cost, img, category, description } = req.body;
+    
+    // Check if product with same ID already exists
+    const existing = await Product.findOne({ id });
+    if (existing) {
+      return res.status(400).json({ error: 'Product with this name already exists' });
+    }
+    
+    const product = await Product.create({
+      id,
+      year,
+      cost,
+      img,
+      category,
+      description
+    });
+    
+    res.status(201).json(product);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Update product
+app.put('/api/products/:id', async (req, res) => {
+  try {
+    const { year, cost, img, category, description } = req.body;
+    
+    const product = await Product.findOneAndUpdate(
+      { id: req.params.id },
+      { year, cost, img, category, description, updatedAt: new Date() },
+      { new: true }
+    );
+    
+    if (!product) {
+      return res.status(404).json({ error: 'Product not found' });
+    }
+    
+    res.json(product);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Delete product
+app.delete('/api/products/:id', async (req, res) => {
+  try {
+    const product = await Product.findOneAndDelete({ id: req.params.id });
+    
+    if (!product) {
+      return res.status(404).json({ error: 'Product not found' });
+    }
+    
+    res.json({ message: 'Product deleted successfully', product });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// ========== STATS ROUTES ==========
 
 // Get stats
 app.get('/api/stats', async (req, res) => {
@@ -118,6 +302,8 @@ app.post('/api/stats/view', async (req, res) => {
     res.status(500).json({ error: error.message });
   }
 });
+
+// ========== ORDER ROUTES ==========
 
 // Create order
 app.post('/api/orders', async (req, res) => {
