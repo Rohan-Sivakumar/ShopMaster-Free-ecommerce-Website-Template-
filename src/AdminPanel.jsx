@@ -11,12 +11,18 @@ const AdminPanel = () => {
     ordersHistory: []
   });
 
-  useEffect(() => {
-    // Load stats from localStorage
+  // Load stats from localStorage
+  const loadStats = () => {
     const savedStats = localStorage.getItem('adminStats');
     if (savedStats) {
-      setStats(JSON.parse(savedStats));
+      const parsed = JSON.parse(savedStats);
+      setStats(parsed);
     }
+  };
+
+  useEffect(() => {
+    // Load initial stats
+    loadStats();
 
     // Listen for new orders
     const handleNewOrder = (event) => {
@@ -24,8 +30,22 @@ const AdminPanel = () => {
       updateOrderStats(orderData);
     };
 
+    // Listen for stats updates (when orders are placed)
+    const handleStatsUpdate = () => {
+      loadStats();
+    };
+
     window.addEventListener('newOrder', handleNewOrder);
-    return () => window.removeEventListener('newOrder', handleNewOrder);
+    window.addEventListener('statsUpdated', handleStatsUpdate);
+    
+    // Reload stats every 2 seconds to catch any updates
+    const intervalId = setInterval(loadStats, 2000);
+    
+    return () => {
+      window.removeEventListener('newOrder', handleNewOrder);
+      window.removeEventListener('statsUpdated', handleStatsUpdate);
+      clearInterval(intervalId);
+    };
   }, []);
 
   const updateOrderStats = (orderData) => {
@@ -76,9 +96,14 @@ const AdminPanel = () => {
     <div className="admin-panel">
       <div className="admin-header">
         <h2>Admin Dashboard</h2>
-        <button className="btn btn-danger btn-sm" onClick={resetStats}>
-          Reset Stats
-        </button>
+        <div>
+          <button className="btn btn-info btn-sm me-2" onClick={loadStats}>
+            <i className="bi bi-arrow-clockwise"></i> Refresh
+          </button>
+          <button className="btn btn-danger btn-sm" onClick={resetStats}>
+            Reset Stats
+          </button>
+        </div>
       </div>
 
       {/* Stats Cards */}
@@ -126,10 +151,10 @@ const AdminPanel = () => {
 
       {/* Recent Orders */}
       <div className="recent-orders">
-        <h3>Recent Orders</h3>
+        <h3>Recent Orders ({stats.ordersHistory.length} total)</h3>
         {getRecentOrders().length === 0 ? (
           <div className="alert alert-info">
-            No orders yet
+            No orders yet. Orders will appear here when customers complete checkout.
           </div>
         ) : (
           <div className="table-responsive">
