@@ -135,6 +135,23 @@ function App() {
     return () => clearTimeout(loadingTimer);
   }, []);
 
+  // Listen for user changes
+  useEffect(() => {
+    const handleUserChange = () => {
+      const user = getCurrentUser();
+      setCurrentUser(user);
+      if (user) {
+        const savedCart = getCart(user.email);
+        setCartItems(savedCart);
+      } else {
+        setCartItems([]);
+      }
+    };
+
+    window.addEventListener('userChanged', handleUserChange);
+    return () => window.removeEventListener('userChanged', handleUserChange);
+  }, []);
+
   // Memoize categories
   const categories = useMemo(() => 
     ["All", ...Array.from(new Set(products.map(p => p.category)))],
@@ -517,14 +534,16 @@ function App() {
                 </div>
               </>
             ) : (
-              <p className="lead">Please sign in to view your dashboard</p>
+              <>
+                <p className="lead">Please sign in to view your dashboard</p>
+                <div className="mt-4">
+                  <Auth 
+                    onSignInSuccess={handleSignInSuccess}
+                    onSignInFailure={handleSignInFailure}
+                  />
+                </div>
+              </>
             )}
-            <div className="mt-4">
-              <Auth 
-                onSignInSuccess={handleSignInSuccess}
-                onSignInFailure={handleSignInFailure}
-              />
-            </div>
           </div>
         </div>
       </div>
