@@ -1,17 +1,47 @@
 // API configuration
 const API_URL = import.meta.env.VITE_API_URL || 'https://shopmaster-backend.vercel.app/api';
 
+// Retry logic for failed requests
+const fetchWithRetry = async (url, options = {}, retries = 2) => {
+  try {
+    const response = await fetch(url, options);
+    return response;
+  } catch (error) {
+    if (retries > 0) {
+      console.warn(`Retry attempt ${3 - retries} for ${url}`);
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      return fetchWithRetry(url, options, retries - 1);
+    }
+    throw error;
+  }
+};
+
+// Check if backend is available
+export const checkBackendHealth = async () => {
+  try {
+    const response = await fetch(`${API_URL.replace('/api', '')}/api/health`, {
+      signal: AbortSignal.timeout(5000)
+    });
+    if (!response.ok) return false;
+    const data = await response.json();
+    return data.status === 'ok';
+  } catch (error) {
+    console.warn('Backend health check failed:', error.message);
+    return false;
+  }
+};
+
 // Track page view
 export const trackView = async () => {
   try {
-    const response = await fetch(`${API_URL}/stats/view`, {
+    const response = await fetchWithRetry(`${API_URL}/stats/view`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' }
     });
     if (!response.ok) throw new Error('Failed to track view');
     return await response.json();
   } catch (error) {
-    console.error('Error tracking view:', error);
+    console.error('Error tracking view:', error.message);
     // Fallback to localStorage if API fails
     const stats = JSON.parse(localStorage.getItem('adminStats') || '{}');
     const today = new Date().toLocaleDateString();
@@ -32,7 +62,11 @@ export const trackView = async () => {
 // Create new order
 export const createOrder = async (orderData) => {
   try {
-    const response = await fetch(`${API_URL}/orders`, {
+    if (!orderData || !orderData.user || !orderData.userName) {
+      throw new Error('Invalid order data: missing user information');
+    }
+
+    const response = await fetchWithRetry(`${API_URL}/orders`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(orderData)
@@ -40,7 +74,7 @@ export const createOrder = async (orderData) => {
     if (!response.ok) throw new Error('Failed to create order');
     return await response.json();
   } catch (error) {
-    console.error('Error creating order:', error);
+    console.error('Error creating order:', error.message);
     // Fallback to localStorage if API fails
     const stats = JSON.parse(localStorage.getItem('adminStats') || '{}');
     const today = new Date().toLocaleDateString();
@@ -75,19 +109,24 @@ export const createOrder = async (orderData) => {
 // Get statistics
 export const getStats = async (sellerEmail = null) => {
   try {
-    const url = sellerEmail ? `${API_URL}/stats?sellerEmail=${encodeURIComponent(sellerEmail)}` : `${API_URL}/stats`;
-    const response = await fetch(url);
+    const url = sellerEmail 
+      ? `${API_URL}/stats?sellerEmail=${encodeURIComponent(sellerEmail)}` 
+      : `${API_URL}/stats`;
+    const response = await fetchWithRetry(url);
     if (!response.ok) throw new Error('Failed to get stats');
     return await response.json();
   } catch (error) {
-    console.error('Error getting stats:', error);
+    console.error('Error getting stats:', error.message);
     // Fallback to localStorage
     const stats = JSON.parse(localStorage.getItem('adminStats') || '{}');
     return {
       totalViews: stats.totalViews || 0,
       totalOrders: stats.totalOrders || 0,
       todayViews: stats.todayViews || 0,
-      todayOrders: stats.todayOrders || 0
+      todayOrders: stats.todayOrders || 0,
+      totalProducts: 0,
+      activeProducts: 0,
+      totalRevenue: 0
     };
   }
 };
@@ -98,26 +137,14 @@ export const getOrders = async (limit = 50, sellerEmail = null) => {
     const url = sellerEmail 
       ? `${API_URL}/orders?limit=${limit}&sellerEmail=${encodeURIComponent(sellerEmail)}`
       : `${API_URL}/orders?limit=${limit}`;
-    const response = await fetch(url);
+    const response = await fetchWithRetry(url);
     if (!response.ok) throw new Error('Failed to get orders');
     return await response.json();
   } catch (error) {
-    console.error('Error getting orders:', error);
+    console.error('Error getting orders:', error.message);
     // Fallback to localStorage
     const stats = JSON.parse(localStorage.getItem('adminStats') || '{}');
     return stats.ordersHistory || [];
-  }
-};
-
-// Check if backend is available
-export const checkBackendHealth = async () => {
-  try {
-    const response = await fetch(`${API_URL}/health`);
-    if (!response.ok) return false;
-    const data = await response.json();
-    return data.status === 'ok';
-  } catch (error) {
-    return false;
   }
 };
 
@@ -126,7 +153,11 @@ export const checkBackendHealth = async () => {
 // Register as seller
 export const registerSeller = async (sellerData) => {
   try {
-    const response = await fetch(`${API_URL}/sellers/register`, {
+    if (!sellerData.email || !sellerData.name || !sellerData.businessName) {
+      throw new Error('Missing required seller fields');
+    }
+
+    const response = await fetchWithRetry(`${API_URL}/sellers/register`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(sellerData)
@@ -137,7 +168,7 @@ export const registerSeller = async (sellerData) => {
     }
     return await response.json();
   } catch (error) {
-    console.error('Error registering seller:', error);
+    console.error('Error registering seller:', error.message);
     throw error;
   }
 };
@@ -145,14 +176,16 @@ export const registerSeller = async (sellerData) => {
 // Get seller by email
 export const getSeller = async (email) => {
   try {
-    const response = await fetch(`${API_URL}/sellers/${encodeURIComponent(email)}`);
+    if (!email) throw new Error('Email is required');
+    
+    const response = await fetchWithRetry(`${API_URL}/sellers/${encodeURIComponent(email)}`);
     if (!response.ok) {
       if (response.status === 404) return null;
       throw new Error('Failed to get seller');
     }
     return await response.json();
   } catch (error) {
-    console.error('Error getting seller:', error);
+    console.error('Error getting seller:', error.message);
     return null;
   }
 };
@@ -160,11 +193,11 @@ export const getSeller = async (email) => {
 // Get all sellers (super admin only)
 export const getAllSellers = async () => {
   try {
-    const response = await fetch(`${API_URL}/sellers`);
+    const response = await fetchWithRetry(`${API_URL}/sellers`);
     if (!response.ok) throw new Error('Failed to get sellers');
     return await response.json();
   } catch (error) {
-    console.error('Error getting sellers:', error);
+    console.error('Error getting sellers:', error.message);
     return [];
   }
 };
@@ -172,14 +205,16 @@ export const getAllSellers = async () => {
 // Approve seller (super admin only)
 export const approveSeller = async (email) => {
   try {
-    const response = await fetch(`${API_URL}/sellers/${encodeURIComponent(email)}/approve`, {
+    if (!email) throw new Error('Email is required');
+
+    const response = await fetchWithRetry(`${API_URL}/sellers/${encodeURIComponent(email)}/approve`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' }
     });
     if (!response.ok) throw new Error('Failed to approve seller');
     return await response.json();
   } catch (error) {
-    console.error('Error approving seller:', error);
+    console.error('Error approving seller:', error.message);
     throw error;
   }
 };
@@ -192,25 +227,27 @@ export const getProducts = async (sellerEmail = null) => {
     const url = sellerEmail 
       ? `${API_URL}/products?sellerEmail=${encodeURIComponent(sellerEmail)}`
       : `${API_URL}/products`;
-    const response = await fetch(url);
+    const response = await fetchWithRetry(url);
     if (!response.ok) throw new Error('Failed to get products');
     return await response.json();
   } catch (error) {
-    console.error('Error getting products:', error);
+    console.error('Error getting products:', error.message);
     // Fallback to localStorage
     const products = JSON.parse(localStorage.getItem('products') || '[]');
-    return products;
+    return Array.isArray(products) ? products : [];
   }
 };
 
 // Get seller's products
 export const getSellerProducts = async (email) => {
   try {
-    const response = await fetch(`${API_URL}/sellers/${encodeURIComponent(email)}/products`);
+    if (!email) throw new Error('Email is required');
+
+    const response = await fetchWithRetry(`${API_URL}/sellers/${encodeURIComponent(email)}/products`);
     if (!response.ok) throw new Error('Failed to get seller products');
     return await response.json();
   } catch (error) {
-    console.error('Error getting seller products:', error);
+    console.error('Error getting seller products:', error.message);
     return [];
   }
 };
@@ -218,7 +255,11 @@ export const getSellerProducts = async (email) => {
 // Add new product
 export const addProduct = async (productData) => {
   try {
-    const response = await fetch(`${API_URL}/products`, {
+    if (!productData.id || !productData.cost || !productData.sellerEmail) {
+      throw new Error('Missing required product fields');
+    }
+
+    const response = await fetchWithRetry(`${API_URL}/products`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(productData)
@@ -229,7 +270,7 @@ export const addProduct = async (productData) => {
     }
     return await response.json();
   } catch (error) {
-    console.error('Error adding product:', error);
+    console.error('Error adding product:', error.message);
     // Fallback to localStorage
     const products = JSON.parse(localStorage.getItem('products') || '[]');
     products.push(productData);
@@ -245,7 +286,9 @@ export const addProduct = async (productData) => {
 // Update product
 export const updateProduct = async (productId, productData) => {
   try {
-    const response = await fetch(`${API_URL}/products/${encodeURIComponent(productId)}`, {
+    if (!productId) throw new Error('Product ID is required');
+
+    const response = await fetchWithRetry(`${API_URL}/products/${encodeURIComponent(productId)}`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(productData)
@@ -256,7 +299,7 @@ export const updateProduct = async (productId, productData) => {
     }
     return await response.json();
   } catch (error) {
-    console.error('Error updating product:', error);
+    console.error('Error updating product:', error.message);
     throw error;
   }
 };
@@ -264,16 +307,19 @@ export const updateProduct = async (productId, productData) => {
 // Delete product
 export const deleteProduct = async (productId, sellerEmail) => {
   try {
-    const response = await fetch(`${API_URL}/products/${encodeURIComponent(productId)}?sellerEmail=${encodeURIComponent(sellerEmail)}`, {
-      method: 'DELETE'
-    });
+    if (!productId || !sellerEmail) throw new Error('Product ID and seller email are required');
+
+    const response = await fetchWithRetry(
+      `${API_URL}/products/${encodeURIComponent(productId)}?sellerEmail=${encodeURIComponent(sellerEmail)}`,
+      { method: 'DELETE' }
+    );
     if (!response.ok) {
       const error = await response.json();
       throw new Error(error.error || 'Failed to delete product');
     }
     return await response.json();
   } catch (error) {
-    console.error('Error deleting product:', error);
+    console.error('Error deleting product:', error.message);
     // Fallback to localStorage
     const products = JSON.parse(localStorage.getItem('products') || '[]');
     const updatedProducts = products.filter(p => p.id !== productId);
