@@ -9,7 +9,10 @@ const AdminPanel = () => {
     totalViews: 0,
     totalOrders: 0,
     todayViews: 0,
-    todayOrders: 0
+    todayOrders: 0,
+    totalProducts: 0,
+    activeProducts: 0,
+    totalRevenue: 0
   });
   const [orders, setOrders] = useState([]);
   const [products, setProducts] = useState([]);
@@ -34,10 +37,18 @@ const AdminPanel = () => {
 
   // Load current seller info
   const loadSellerInfo = async () => {
-    const user = getCurrentUser();
-    if (!user) return;
-
     try {
+      const user = getCurrentUser();
+      if (!user) {
+        console.warn('No user logged in');
+        return null;
+      }
+
+      if (!user.email) {
+        console.warn('User email is missing');
+        return null;
+      }
+
       const seller = await getSeller(user.email);
       setCurrentSeller(seller);
       return seller;
@@ -59,23 +70,40 @@ const AdminPanel = () => {
       // Load seller info
       const seller = await loadSellerInfo();
       
+      if (!seller) {
+        setLoading(false);
+        return;
+      }
+      
       // Load data (filter by seller if not super admin)
       const sellerEmail = (seller && !seller.isSuperAdmin) ? seller.email : null;
       
-      const [statsData, ordersData, productsData] = await Promise.all([
-        getStats(sellerEmail),
-        getOrders(50, sellerEmail),
-        getProducts(sellerEmail)
-      ]);
-      
-      setStats(statsData);
-      setOrders(ordersData);
-      setProducts(productsData);
+      try {
+        const [statsData, ordersData, productsData] = await Promise.all([
+          getStats(sellerEmail),
+          getOrders(50, sellerEmail),
+          getProducts(sellerEmail)
+        ]);
+        
+        setStats(statsData || {});
+        setOrders(Array.isArray(ordersData) ? ordersData : []);
+        setProducts(Array.isArray(productsData) ? productsData : []);
+      } catch (apiError) {
+        console.error('Error loading from API:', apiError);
+        setStats({});
+        setOrders([]);
+        setProducts([]);
+      }
 
       // Load all sellers if super admin
       if (seller && seller.isSuperAdmin) {
-        const sellersData = await getAllSellers();
-        setSellers(sellersData);
+        try {
+          const sellersData = await getAllSellers();
+          setSellers(Array.isArray(sellersData) ? sellersData : []);
+        } catch (sellersError) {
+          console.error('Error loading sellers:', sellersError);
+          setSellers([]);
+        }
       }
       
       setLastUpdated(new Date());
@@ -99,7 +127,7 @@ const AdminPanel = () => {
 
   // Handle image file selection
   const handleImageChange = (e) => {
-    const file = e.target.files[0];
+    const file = e.target.files?.[0];
     if (file) {
       // Validate file type
       if (!file.type.startsWith('image/')) {
@@ -154,7 +182,7 @@ const AdminPanel = () => {
     }
     
     // Validation
-    if (!newProduct.id || !newProduct.cost || !newProduct.img || !newProduct.category || !newProduct.description) {
+    if (!newProduct.id?.trim() || !newProduct.cost || !newProduct.img || !newProduct.category?.trim() || !newProduct.description?.trim()) {
       Swal.fire({
         icon: 'error',
         title: 'Validation Error',
@@ -163,7 +191,8 @@ const AdminPanel = () => {
       return;
     }
 
-    if (isNaN(newProduct.cost) || newProduct.cost <= 0) {
+    const cost = parseFloat(newProduct.cost);
+    if (isNaN(cost) || cost <= 0) {
       Swal.fire({
         icon: 'error',
         title: 'Invalid Price',
@@ -176,7 +205,7 @@ const AdminPanel = () => {
       setProductLoading(true);
       const productData = {
         ...newProduct,
-        cost: parseFloat(newProduct.cost),
+        cost: cost,
         year: parseInt(newProduct.year),
         sellerEmail: currentSeller.email
       };
@@ -215,6 +244,8 @@ const AdminPanel = () => {
   };
 
   const handleDeleteProduct = async (productId) => {
+    if (!productId || !currentSeller) return;
+
     const result = await Swal.fire({
       title: 'Delete Product?',
       text: `Are you sure you want to delete "${productId}"? This action cannot be undone.`,
@@ -253,6 +284,8 @@ const AdminPanel = () => {
   };
 
   const handleApproveSeller = async (email) => {
+    if (!email) return;
+
     const result = await Swal.fire({
       title: 'Approve Seller?',
       text: `Approve ${email} to start selling on the platform?`,
@@ -286,12 +319,16 @@ const AdminPanel = () => {
   };
 
   const getRecentOrders = () => {
-    return orders.slice(0, 10);
+    return Array.isArray(orders) ? orders.slice(0, 10) : [];
   };
 
   const formatLastUpdated = () => {
     if (!lastUpdated) return '';
-    return lastUpdated.toLocaleTimeString();
+    try {
+      return lastUpdated.toLocaleTimeString();
+    } catch {
+      return 'Unknown';
+    }
   };
 
   if (loading && orders.length === 0) {
@@ -332,8 +369,8 @@ const AdminPanel = () => {
             <h4>⏳ Seller Account Pending Approval</h4>
             <p>Your seller account is under review. You'll be able to add products once approved by the admin.</p>
             <div className="mt-3">
-              <p><strong>Business Name:</strong> {currentSeller.businessName}</p>
-              <p><strong>Email:</strong> {currentSeller.email}</p>
+              <p><strong>Business Name:</strong> {currentSeller.businessName || 'N/A'}</p>
+              <p><strong>Email:</strong> {currentSeller.email || 'N/A'}</p>
             </div>
           </div>
         </div>
@@ -359,7 +396,7 @@ const AdminPanel = () => {
             </div>
           )}
           <div className="mt-2">
-            <span className="badge bg-primary">{currentSeller.businessName}</span>
+            <span className="badge bg-primary">{currentSeller.businessName || 'Seller'}</span>
             {currentSeller.isSuperAdmin && <span className="badge bg-warning ms-2">👑 Super Admin</span>}
           </div>
         </div>
@@ -409,41 +446,41 @@ const AdminPanel = () => {
             {currentSeller.isSuperAdmin ? (
               <>
                 <div className="stat-card">
-                  <div className="stat-icon" style={{background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)'}}>
+                  <div className="stat-icon" style={{background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)'}}>{
                     <i className="bi bi-eye-fill"></i>
                   </div>
                   <div className="stat-details">
-                    <h3>{stats.totalViews}</h3>
+                    <h3>{stats.totalViews || 0}</h3>
                     <p>Total Views</p>
                   </div>
                 </div>
 
                 <div className="stat-card">
-                  <div className="stat-icon" style={{background: 'linear-gradient(135deg, #f093fb 0%, #f5576c 100%)'}}>
+                  <div className="stat-icon" style={{background: 'linear-gradient(135deg, #f093fb 0%, #f5576c 100%)'}}>{
                     <i className="bi bi-cart-fill"></i>
                   </div>
                   <div className="stat-details">
-                    <h3>{stats.totalOrders}</h3>
+                    <h3>{stats.totalOrders || 0}</h3>
                     <p>Total Orders</p>
                   </div>
                 </div>
 
                 <div className="stat-card">
-                  <div className="stat-icon" style={{background: 'linear-gradient(135deg, #4facfe 0%, #00f2fe 100%)'}}>
+                  <div className="stat-icon" style={{background: 'linear-gradient(135deg, #4facfe 0%, #00f2fe 100%)'}}>{
                     <i className="bi bi-calendar-day"></i>
                   </div>
                   <div className="stat-details">
-                    <h3>{stats.todayViews}</h3>
+                    <h3>{stats.todayViews || 0}</h3>
                     <p>Today's Views</p>
                   </div>
                 </div>
 
                 <div className="stat-card">
-                  <div className="stat-icon" style={{background: 'linear-gradient(135deg, #43e97b 0%, #38f9d7 100%)'}}>
+                  <div className="stat-icon" style={{background: 'linear-gradient(135deg, #43e97b 0%, #38f9d7 100%)'}}>{
                     <i className="bi bi-bag-check-fill"></i>
                   </div>
                   <div className="stat-details">
-                    <h3>{stats.todayOrders}</h3>
+                    <h3>{stats.todayOrders || 0}</h3>
                     <p>Today's Orders</p>
                   </div>
                 </div>
@@ -451,17 +488,17 @@ const AdminPanel = () => {
             ) : (
               <>
                 <div className="stat-card">
-                  <div className="stat-icon" style={{background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)'}}>
+                  <div className="stat-icon" style={{background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)'}}>{
                     <i className="bi bi-box-seam"></i>
                   </div>
                   <div className="stat-details">
-                    <h3>{stats.totalProducts || products.length}</h3>
+                    <h3>{stats.totalProducts || products.length || 0}</h3>
                     <p>Total Products</p>
                   </div>
                 </div>
 
                 <div className="stat-card">
-                  <div className="stat-icon" style={{background: 'linear-gradient(135deg, #f093fb 0%, #f5576c 100%)'}}>
+                  <div className="stat-icon" style={{background: 'linear-gradient(135deg, #f093fb 0%, #f5576c 100%)'}}>{
                     <i className="bi bi-cart-check"></i>
                   </div>
                   <div className="stat-details">
@@ -471,7 +508,7 @@ const AdminPanel = () => {
                 </div>
 
                 <div className="stat-card">
-                  <div className="stat-icon" style={{background: 'linear-gradient(135deg, #43e97b 0%, #38f9d7 100%)'}}>
+                  <div className="stat-icon" style={{background: 'linear-gradient(135deg, #43e97b 0%, #38f9d7 100%)'}}>{
                     <i className="bi bi-currency-rupee"></i>
                   </div>
                   <div className="stat-details">
@@ -481,11 +518,11 @@ const AdminPanel = () => {
                 </div>
 
                 <div className="stat-card">
-                  <div className="stat-icon" style={{background: 'linear-gradient(135deg, #4facfe 0%, #00f2fe 100%)'}}>
+                  <div className="stat-icon" style={{background: 'linear-gradient(135deg, #4facfe 0%, #00f2fe 100%)'}}>{
                     <i className="bi bi-check-circle"></i>
                   </div>
                   <div className="stat-details">
-                    <h3>{stats.activeProducts || products.filter(p => p.isActive).length}</h3>
+                    <h3>{stats.activeProducts || (products?.filter(p => p.isActive)?.length) || 0}</h3>
                     <p>Active Products</p>
                   </div>
                 </div>
@@ -495,7 +532,7 @@ const AdminPanel = () => {
 
           {/* Recent Orders */}
           <div className="recent-orders">
-            <h3>Recent Orders ({orders.length} total)</h3>
+            <h3>Recent Orders ({orders.length || 0} total)</h3>
             {getRecentOrders().length === 0 ? (
               <div className="alert alert-info">
                 No orders yet. Orders will appear here when customers complete checkout.
@@ -515,7 +552,7 @@ const AdminPanel = () => {
                   <tbody>
                     {getRecentOrders().map(order => {
                       const orderId = order._id || order.id || 'N/A';
-                      const displayId = typeof orderId === 'string' ? orderId.slice(-6) : orderId;
+                      const displayId = typeof orderId === 'string' ? orderId.slice(-6) : String(orderId).slice(-6);
                       const orderDate = order.createdAt || order.date;
                       
                       return (
@@ -524,10 +561,10 @@ const AdminPanel = () => {
                           <td>{orderDate ? new Date(orderDate).toLocaleString() : 'N/A'}</td>
                           <td>
                             <div>{order.userName || 'Unknown'}</div>
-                            <small className="text-muted">{order.user}</small>
+                            <small className="text-muted">{order.user || 'N/A'}</small>
                           </td>
-                          <td>{order.items} items</td>
-                          <td className="text-success fw-bold">₹{order.total}</td>
+                          <td>{order.items || 0} items</td>
+                          <td className="text-success fw-bold">₹{order.total || 0}</td>
                         </tr>
                       );
                     })}
@@ -703,10 +740,10 @@ const AdminPanel = () => {
               <div className="card shadow">
                 <div className="card-body">
                   <h3 className="card-title mb-4">
-                    <i className="bi bi-box-seam"></i> My Products ({products.length})
+                    <i className="bi bi-box-seam"></i> My Products ({products.length || 0})
                   </h3>
                   
-                  {products.length === 0 ? (
+                  {!products || products.length === 0 ? (
                     <div className="alert alert-info">
                       <i className="bi bi-info-circle"></i> No products available. Add your first product!
                     </div>
@@ -725,9 +762,9 @@ const AdminPanel = () => {
                               />
                             </div>
                             <div className="col-md-7">
-                              <h5 className="mb-1">{product.id}</h5>
-                              <p className="mb-1 text-success fw-bold">₹{product.cost}</p>
-                              <small className="text-muted">{product.category} • {product.year}</small>
+                              <h5 className="mb-1">{product.id || 'Unnamed'}</h5>
+                              <p className="mb-1 text-success fw-bold">₹{product.cost || 0}</p>
+                              <small className="text-muted">{product.category || 'No category'} • {product.year || 'N/A'}</small>
                               {product.sellerBusinessName && (
                                 <div>
                                   <small className="text-muted">By: {product.sellerBusinessName}</small>
@@ -761,10 +798,10 @@ const AdminPanel = () => {
           <div className="card shadow">
             <div className="card-body">
               <h3 className="card-title mb-4">
-                <i className="bi bi-people"></i> All Sellers ({sellers.length})
+                <i className="bi bi-people"></i> All Sellers ({sellers.length || 0})
               </h3>
               
-              {sellers.length === 0 ? (
+              {!sellers || sellers.length === 0 ? (
                 <div className="alert alert-info">
                   <i className="bi bi-info-circle"></i> No sellers registered yet.
                 </div>
@@ -786,10 +823,10 @@ const AdminPanel = () => {
                       {sellers.map(seller => (
                         <tr key={seller.email}>
                           <td>
-                            <strong>{seller.businessName}</strong>
+                            <strong>{seller.businessName || 'N/A'}</strong>
                             {seller.isSuperAdmin && <span className="badge bg-warning ms-2">👑</span>}
                           </td>
-                          <td>{seller.name}</td>
+                          <td>{seller.name || 'N/A'}</td>
                           <td>{seller.email}</td>
                           <td>{seller.phone || 'N/A'}</td>
                           <td>
@@ -799,7 +836,7 @@ const AdminPanel = () => {
                               <span className="badge bg-warning">⏳ Pending</span>
                             )}
                           </td>
-                          <td>{new Date(seller.createdAt).toLocaleDateString()}</td>
+                          <td>{seller.createdAt ? new Date(seller.createdAt).toLocaleDateString() : 'N/A'}</td>
                           <td>
                             {!seller.isApproved && !seller.isSuperAdmin && (
                               <button 
