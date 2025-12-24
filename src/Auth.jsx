@@ -247,34 +247,54 @@ const Auth = ({ onSignInSuccess, onSignInFailure }) => {
     sessionStorage.removeItem('authToken');
     
     window.dispatchEvent(new Event('userChanged'));
-    window.location.reload();
   };
 
+  // Load stored user and listen for changes
   useEffect(() => {
-    const storedUser = sessionStorage.getItem('authUser');
-    const storedToken = sessionStorage.getItem('authToken');
-    
-    if (storedUser && storedToken) {
-      try {
-        const userData = JSON.parse(storedUser);
-        
-        const loginTime = new Date(userData.loginTime);
-        const currentTime = new Date();
-        const timeDiff = (currentTime - loginTime) / (1000 * 60 * 60);
-        
-        if (timeDiff < 1) {
-          setUserInfo(userData);
-          setIsSignedIn(true);
-        } else {
+    const checkStoredUser = () => {
+      const storedUser = sessionStorage.getItem('authUser');
+      const storedToken = sessionStorage.getItem('authToken');
+      
+      if (storedUser && storedToken) {
+        try {
+          const userData = JSON.parse(storedUser);
+          
+          const loginTime = new Date(userData.loginTime);
+          const currentTime = new Date();
+          const timeDiff = (currentTime - loginTime) / (1000 * 60 * 60);
+          
+          if (timeDiff < 1) {
+            setUserInfo(userData);
+            setIsSignedIn(true);
+          } else {
+            sessionStorage.removeItem('authUser');
+            sessionStorage.removeItem('authToken');
+            setUserInfo(null);
+            setIsSignedIn(false);
+          }
+        } catch (error) {
+          console.error('Error loading stored user:', error);
           sessionStorage.removeItem('authUser');
           sessionStorage.removeItem('authToken');
+          setUserInfo(null);
+          setIsSignedIn(false);
         }
-      } catch (error) {
-        console.error('Error loading stored user:', error);
-        sessionStorage.removeItem('authUser');
-        sessionStorage.removeItem('authToken');
+      } else {
+        setUserInfo(null);
+        setIsSignedIn(false);
       }
-    }
+    };
+
+    // Check on mount
+    checkStoredUser();
+
+    // Listen for user changes (sign in/sign out)
+    const handleUserChange = () => {
+      checkStoredUser();
+    };
+
+    window.addEventListener('userChanged', handleUserChange);
+    return () => window.removeEventListener('userChanged', handleUserChange);
   }, []);
 
   if (isLoading && !isSignedIn) {
