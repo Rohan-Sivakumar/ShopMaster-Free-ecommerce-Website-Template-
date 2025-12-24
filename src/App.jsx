@@ -323,6 +323,23 @@ function App() {
             fontSize: '1.2rem',
             animation: 'pulse 2s ease-in-out infinite'
           }}>Loading amazing deals...</p>
+          
+          {/* Development Notice */}
+          <div style={{
+            marginTop: '40px',
+            padding: '15px 30px',
+            background: 'rgba(255, 255, 255, 0.15)',
+            borderRadius: '10px',
+            backdropFilter: 'blur(10px)',
+            border: '1px solid rgba(255, 255, 255, 0.3)'
+          }}>
+            <p style={{
+              color: 'white',
+              fontSize: '0.9rem',
+              margin: 0,
+              fontWeight: '500'
+            }}>⚠️ This is a development website</p>
+          </div>
         </div>
         
         <style>{`
