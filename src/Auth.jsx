@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import './GoogleAuth.css';
 
 // OAuth Configuration
@@ -13,7 +13,7 @@ const Auth = ({ onSignInSuccess, onSignInFailure }) => {
   const [userInfo, setUserInfo] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
   const [isGoogleLoading, setIsGoogleLoading] = useState(false);
-  const [hasProcessedCallback, setHasProcessedCallback] = useState(false);
+  const hasProcessedCallback = useRef(false);
 
   useEffect(() => {
     const loadGoogleScript = () => {
@@ -153,8 +153,10 @@ const Auth = ({ onSignInSuccess, onSignInFailure }) => {
   };
 
   useEffect(() => {
-    // Prevent processing the callback multiple times
-    if (hasProcessedCallback) return;
+    // Use ref to absolutely prevent duplicate execution
+    if (hasProcessedCallback.current) {
+      return;
+    }
 
     const handleMicrosoftCallback = async () => {
       const urlParams = new URLSearchParams(window.location.search);
@@ -162,17 +164,20 @@ const Auth = ({ onSignInSuccess, onSignInFailure }) => {
       const error = urlParams.get('error');
 
       // If no code or error, this is not a callback from Microsoft
-      if (!code && !error) return;
+      if (!code && !error) {
+        return;
+      }
 
-      setHasProcessedCallback(true);
+      // Mark as processed immediately
+      hasProcessedCallback.current = true;
 
       if (error) {
         console.error('Microsoft auth error:', error, urlParams.get('error_description'));
         setIsLoading(false);
+        window.history.replaceState({}, document.title, window.location.pathname);
         if (onSignInFailure) {
           onSignInFailure(new Error(urlParams.get('error_description')));
         }
-        window.history.replaceState({}, document.title, window.location.pathname);
         return;
       }
 
@@ -234,12 +239,14 @@ const Auth = ({ onSignInSuccess, onSignInFailure }) => {
           // Clean up URL
           window.history.replaceState({}, document.title, window.location.pathname);
           
+          // Only call onSignInSuccess after everything is set
           if (onSignInSuccess) {
             onSignInSuccess(userData);
           }
         } catch (error) {
           console.error('Error processing Microsoft sign-in:', error);
           sessionStorage.removeItem('pkce_code_verifier');
+          window.history.replaceState({}, document.title, window.location.pathname);
           if (onSignInFailure) {
             onSignInFailure(error);
           }
@@ -250,7 +257,7 @@ const Auth = ({ onSignInSuccess, onSignInFailure }) => {
     };
 
     handleMicrosoftCallback();
-  }, [hasProcessedCallback, onSignInSuccess, onSignInFailure]);
+  }, []); // Empty dependency array - only run once on mount
 
   const parseJwt = (token) => {
     try {
@@ -276,7 +283,7 @@ const Auth = ({ onSignInSuccess, onSignInFailure }) => {
     
     setIsSignedIn(false);
     setUserInfo(null);
-    setHasProcessedCallback(false);
+    hasProcessedCallback.current = false;
     
     sessionStorage.removeItem('authUser');
     sessionStorage.removeItem('authToken');
