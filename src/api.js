@@ -73,9 +73,10 @@ export const createOrder = async (orderData) => {
 };
 
 // Get statistics
-export const getStats = async () => {
+export const getStats = async (sellerEmail = null) => {
   try {
-    const response = await fetch(`${API_URL}/stats`);
+    const url = sellerEmail ? `${API_URL}/stats?sellerEmail=${encodeURIComponent(sellerEmail)}` : `${API_URL}/stats`;
+    const response = await fetch(url);
     if (!response.ok) throw new Error('Failed to get stats');
     return await response.json();
   } catch (error) {
@@ -92,9 +93,12 @@ export const getStats = async () => {
 };
 
 // Get all orders
-export const getOrders = async (limit = 50) => {
+export const getOrders = async (limit = 50, sellerEmail = null) => {
   try {
-    const response = await fetch(`${API_URL}/orders?limit=${limit}`);
+    const url = sellerEmail 
+      ? `${API_URL}/orders?limit=${limit}&sellerEmail=${encodeURIComponent(sellerEmail)}`
+      : `${API_URL}/orders?limit=${limit}`;
+    const response = await fetch(url);
     if (!response.ok) throw new Error('Failed to get orders');
     return await response.json();
   } catch (error) {
@@ -117,12 +121,78 @@ export const checkBackendHealth = async () => {
   }
 };
 
+// ========== SELLER MANAGEMENT ==========
+
+// Register as seller
+export const registerSeller = async (sellerData) => {
+  try {
+    const response = await fetch(`${API_URL}/sellers/register`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(sellerData)
+    });
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error || 'Failed to register seller');
+    }
+    return await response.json();
+  } catch (error) {
+    console.error('Error registering seller:', error);
+    throw error;
+  }
+};
+
+// Get seller by email
+export const getSeller = async (email) => {
+  try {
+    const response = await fetch(`${API_URL}/sellers/${encodeURIComponent(email)}`);
+    if (!response.ok) {
+      if (response.status === 404) return null;
+      throw new Error('Failed to get seller');
+    }
+    return await response.json();
+  } catch (error) {
+    console.error('Error getting seller:', error);
+    return null;
+  }
+};
+
+// Get all sellers (super admin only)
+export const getAllSellers = async () => {
+  try {
+    const response = await fetch(`${API_URL}/sellers`);
+    if (!response.ok) throw new Error('Failed to get sellers');
+    return await response.json();
+  } catch (error) {
+    console.error('Error getting sellers:', error);
+    return [];
+  }
+};
+
+// Approve seller (super admin only)
+export const approveSeller = async (email) => {
+  try {
+    const response = await fetch(`${API_URL}/sellers/${encodeURIComponent(email)}/approve`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' }
+    });
+    if (!response.ok) throw new Error('Failed to approve seller');
+    return await response.json();
+  } catch (error) {
+    console.error('Error approving seller:', error);
+    throw error;
+  }
+};
+
 // ========== PRODUCT MANAGEMENT ==========
 
 // Get all products
-export const getProducts = async () => {
+export const getProducts = async (sellerEmail = null) => {
   try {
-    const response = await fetch(`${API_URL}/products`);
+    const url = sellerEmail 
+      ? `${API_URL}/products?sellerEmail=${encodeURIComponent(sellerEmail)}`
+      : `${API_URL}/products`;
+    const response = await fetch(url);
     if (!response.ok) throw new Error('Failed to get products');
     return await response.json();
   } catch (error) {
@@ -130,6 +200,18 @@ export const getProducts = async () => {
     // Fallback to localStorage
     const products = JSON.parse(localStorage.getItem('products') || '[]');
     return products;
+  }
+};
+
+// Get seller's products
+export const getSellerProducts = async (email) => {
+  try {
+    const response = await fetch(`${API_URL}/sellers/${encodeURIComponent(email)}/products`);
+    if (!response.ok) throw new Error('Failed to get seller products');
+    return await response.json();
+  } catch (error) {
+    console.error('Error getting seller products:', error);
+    return [];
   }
 };
 
@@ -141,7 +223,10 @@ export const addProduct = async (productData) => {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(productData)
     });
-    if (!response.ok) throw new Error('Failed to add product');
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error || 'Failed to add product');
+    }
     return await response.json();
   } catch (error) {
     console.error('Error adding product:', error);
@@ -153,17 +238,39 @@ export const addProduct = async (productData) => {
     // Trigger storage event for App.jsx to update
     window.dispatchEvent(new CustomEvent('productsUpdated', { detail: products }));
     
-    return { product: productData };
+    throw error; // Re-throw to show error message
+  }
+};
+
+// Update product
+export const updateProduct = async (productId, productData) => {
+  try {
+    const response = await fetch(`${API_URL}/products/${encodeURIComponent(productId)}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(productData)
+    });
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error || 'Failed to update product');
+    }
+    return await response.json();
+  } catch (error) {
+    console.error('Error updating product:', error);
+    throw error;
   }
 };
 
 // Delete product
-export const deleteProduct = async (productId) => {
+export const deleteProduct = async (productId, sellerEmail) => {
   try {
-    const response = await fetch(`${API_URL}/products/${encodeURIComponent(productId)}`, {
+    const response = await fetch(`${API_URL}/products/${encodeURIComponent(productId)}?sellerEmail=${encodeURIComponent(sellerEmail)}`, {
       method: 'DELETE'
     });
-    if (!response.ok) throw new Error('Failed to delete product');
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error || 'Failed to delete product');
+    }
     return await response.json();
   } catch (error) {
     console.error('Error deleting product:', error);
@@ -175,6 +282,6 @@ export const deleteProduct = async (productId) => {
     // Trigger storage event for App.jsx to update
     window.dispatchEvent(new CustomEvent('productsUpdated', { detail: updatedProducts }));
     
-    return { message: 'Product deleted successfully' };
+    throw error; // Re-throw to show error message
   }
 };
