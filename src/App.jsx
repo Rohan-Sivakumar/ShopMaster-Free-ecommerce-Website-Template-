@@ -4,6 +4,7 @@ import Auth from "./Auth";
 import AdminPanel from "./AdminPanel";
 import "./App.css";
 import { getCart, saveCart, addToCart, removeFromCart, getCurrentUser } from "./cartService";
+import { trackPageView as firebaseTrackPageView, addOrder } from "./firebaseService";
 import Swal from 'sweetalert2';
 
 const ADMIN_EMAIL = 'rohan.sivaa@gmail.com';
@@ -122,27 +123,6 @@ function App() {
   const [isLoading, setIsLoading] = useState(true);
   const [isAdmin, setIsAdmin] = useState(false);
 
-  // Track page view
-  const trackPageView = useCallback(() => {
-    const stats = JSON.parse(localStorage.getItem('adminStats') || '{}');
-    const today = new Date().toLocaleDateString();
-    
-    if (!stats.lastViewDate || stats.lastViewDate !== today) {
-      stats.todayViews = 1;
-      stats.lastViewDate = today;
-    } else {
-      stats.todayViews = (stats.todayViews || 0) + 1;
-    }
-    
-    stats.totalViews = (stats.totalViews || 0) + 1;
-    stats.viewsHistory = stats.viewsHistory || [];
-    stats.ordersHistory = stats.ordersHistory || [];
-    stats.totalOrders = stats.totalOrders || 0;
-    stats.todayOrders = stats.todayOrders || 0;
-    
-    localStorage.setItem('adminStats', JSON.stringify(stats));
-  }, []);
-
   // Load user and cart on mount + simulate loading
   useEffect(() => {
     const user = getCurrentUser();
@@ -153,8 +133,10 @@ function App() {
       setCartItems(savedCart);
     }
     
-    // Track page view
-    trackPageView();
+    // Track page view to Firebase
+    firebaseTrackPageView().catch(err => {
+      console.log('Firebase tracking not configured yet:', err.message);
+    });
     
     // Simulate loading delay
     const loadingTimer = setTimeout(() => {
@@ -162,7 +144,7 @@ function App() {
     }, 2000);
 
     return () => clearTimeout(loadingTimer);
-  }, [trackPageView]);
+  }, []);
 
   // Listen for user changes
   useEffect(() => {
@@ -245,8 +227,8 @@ function App() {
     setCartItems(updatedCart);
   }, [currentUser, cartItems]);
 
-  // Handle checkout - Track order
-  const handleCheckout = useCallback(() => {
+  // Handle checkout - Track order to Firebase
+  const handleCheckout = useCallback(async () => {
     if (!currentUser || cartItems.length === 0) return;
 
     const groupedCart = cartItems.reduce((acc, item) => {
@@ -261,64 +243,44 @@ function App() {
 
     const totalPrice = groupedCart.reduce((sum, item) => sum + (item.cost * item.quantity), 0);
 
-    // DIRECTLY save to localStorage adminStats
-    const stats = JSON.parse(localStorage.getItem('adminStats') || '{}');
-    const today = new Date().toLocaleDateString();
-    
-    // Initialize if needed
-    stats.totalViews = stats.totalViews || 0;
-    stats.todayViews = stats.todayViews || 0;
-    stats.totalOrders = stats.totalOrders || 0;
-    stats.todayOrders = stats.todayOrders || 0;
-    stats.ordersHistory = stats.ordersHistory || [];
-    stats.viewsHistory = stats.viewsHistory || [];
-    
-    // Check if we need to reset today's count
-    if (!stats.lastOrderDate || stats.lastOrderDate !== today) {
-      stats.todayOrders = 0;
-      stats.lastOrderDate = today;
+    // Save order to Firebase Cloud Database
+    try {
+      const orderData = {
+        user: currentUser.email,
+        userName: currentUser.name,
+        items: cartItems.length,
+        total: totalPrice,
+        products: groupedCart.map(item => ({
+          name: item.id,
+          quantity: item.quantity,
+          price: item.cost
+        }))
+      };
+
+      await addOrder(orderData);
+      console.log('✅ Order saved to Firebase Cloud Database!');
+
+      // Show success message
+      Swal.fire({
+        icon: 'success',
+        title: 'Order Placed!',
+        html: `Your order of <strong>₹${totalPrice}</strong> has been placed successfully!<br><small class="text-muted">Synced across all devices ☁️</small>`,
+        confirmButtonText: 'OK'
+      }).then(() => {
+        // Clear cart
+        setCartItems([]);
+        saveCart(currentUser.email, []);
+        setActivePage('home');
+      });
+    } catch (error) {
+      console.error('Error saving order:', error);
+      Swal.fire({
+        icon: 'error',
+        title: 'Order Failed',
+        text: 'There was an error placing your order. Please make sure Firebase is configured.',
+        footer: '<a href="/FIREBASE_SETUP.md" target="_blank">View Firebase Setup Guide</a>'
+      });
     }
-    
-    // Add order
-    stats.totalOrders = stats.totalOrders + 1;
-    stats.todayOrders = stats.todayOrders + 1;
-    stats.ordersHistory = [
-      {
-        id: Date.now(),
-        date: new Date().toISOString(),
-        user: currentUser.email,
-        items: cartItems.length,
-        total: totalPrice
-      },
-      ...stats.ordersHistory
-    ].slice(0, 50); // Keep last 50 orders
-    
-    // Save to localStorage
-    localStorage.setItem('adminStats', JSON.stringify(stats));
-    console.log('Order saved to adminStats:', stats); // Debug log
-
-    // Also dispatch event for real-time updates
-    const orderEvent = new CustomEvent('newOrder', {
-      detail: {
-        user: currentUser.email,
-        items: cartItems.length,
-        total: totalPrice
-      }
-    });
-    window.dispatchEvent(orderEvent);
-
-    // Show success message
-    Swal.fire({
-      icon: 'success',
-      title: 'Order Placed!',
-      text: `Your order of ₹${totalPrice} has been placed successfully`,
-      confirmButtonText: 'OK'
-    }).then(() => {
-      // Clear cart
-      setCartItems([]);
-      saveCart(currentUser.email, []);
-      setActivePage('home');
-    });
   }, [currentUser, cartItems]);
 
   // Sign-In success handler

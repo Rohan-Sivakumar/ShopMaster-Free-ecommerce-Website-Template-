@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { getAdminStats, getRecentOrders } from './firebaseService';
 import './AdminPanel.css';
 
 const AdminPanel = () => {
@@ -6,104 +7,88 @@ const AdminPanel = () => {
     totalViews: 0,
     totalOrders: 0,
     todayViews: 0,
-    todayOrders: 0,
-    viewsHistory: [],
-    ordersHistory: []
+    todayOrders: 0
   });
+  const [orders, setOrders] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
-  // Load stats from localStorage
-  const loadStats = () => {
-    const savedStats = localStorage.getItem('adminStats');
-    if (savedStats) {
-      const parsed = JSON.parse(savedStats);
-      setStats(parsed);
+  // Load stats and orders from Firebase
+  const loadData = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      
+      const [statsData, ordersData] = await Promise.all([
+        getAdminStats(),
+        getRecentOrders(50)
+      ]);
+      
+      setStats(statsData);
+      setOrders(ordersData);
+      setLoading(false);
+    } catch (err) {
+      console.error('Error loading admin data:', err);
+      setError('Failed to load data. Please check Firebase configuration.');
+      setLoading(false);
     }
   };
 
   useEffect(() => {
-    // Load initial stats
-    loadStats();
-
-    // Listen for new orders
-    const handleNewOrder = (event) => {
-      const orderData = event.detail;
-      updateOrderStats(orderData);
-    };
-
-    // Listen for stats updates (when orders are placed)
-    const handleStatsUpdate = () => {
-      loadStats();
-    };
-
-    window.addEventListener('newOrder', handleNewOrder);
-    window.addEventListener('statsUpdated', handleStatsUpdate);
+    // Initial load
+    loadData();
     
-    // Reload stats every 2 seconds to catch any updates
-    const intervalId = setInterval(loadStats, 2000);
+    // Auto-refresh every 5 seconds
+    const intervalId = setInterval(loadData, 5000);
     
-    return () => {
-      window.removeEventListener('newOrder', handleNewOrder);
-      window.removeEventListener('statsUpdated', handleStatsUpdate);
-      clearInterval(intervalId);
-    };
+    return () => clearInterval(intervalId);
   }, []);
 
-  const updateOrderStats = (orderData) => {
-    const today = new Date().toLocaleDateString();
-    
-    setStats(prevStats => {
-      const newStats = {
-        ...prevStats,
-        totalOrders: prevStats.totalOrders + 1,
-        todayOrders: prevStats.todayOrders + 1,
-        ordersHistory: [
-          {
-            id: Date.now(),
-            date: new Date().toISOString(),
-            user: orderData.user,
-            items: orderData.items,
-            total: orderData.total
-          },
-          ...prevStats.ordersHistory
-        ].slice(0, 50) // Keep last 50 orders
-      };
-      
-      localStorage.setItem('adminStats', JSON.stringify(newStats));
-      return newStats;
-    });
+  const getRecentOrdersList = () => {
+    return orders.slice(0, 10);
   };
 
-  const resetStats = () => {
-    if (window.confirm('Are you sure you want to reset all statistics?')) {
-      const resetStats = {
-        totalViews: 0,
-        totalOrders: 0,
-        todayViews: 0,
-        todayOrders: 0,
-        viewsHistory: [],
-        ordersHistory: []
-      };
-      setStats(resetStats);
-      localStorage.setItem('adminStats', JSON.stringify(resetStats));
-    }
-  };
+  if (loading && orders.length === 0) {
+    return (
+      <div className="admin-panel">
+        <div className="text-center py-5">
+          <div className="spinner-border text-primary" role="status">
+            <span className="visually-hidden">Loading...</span>
+          </div>
+          <p className="mt-3 text-muted">Loading admin data from Firebase...</p>
+        </div>
+      </div>
+    );
+  }
 
-  const getRecentOrders = () => {
-    return stats.ordersHistory.slice(0, 10);
-  };
+  if (error) {
+    return (
+      <div className="admin-panel">
+        <div className="alert alert-danger" role="alert">
+          <h4 className="alert-heading">⚠️ Firebase Not Configured</h4>
+          <p>{error}</p>
+          <hr />
+          <p className="mb-0">
+            <strong>Setup Instructions:</strong><br />
+            1. Run: <code>npm install firebase</code><br />
+            2. Follow the guide in <a href="https://github.com/Rohan-Sivakumar/Shop/blob/main/FIREBASE_SETUP.md" target="_blank" className="alert-link">FIREBASE_SETUP.md</a><br />
+            3. Update your Firebase config in <code>src/firebase.js</code>
+          </p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="admin-panel">
       <div className="admin-header">
-        <h2>Admin Dashboard</h2>
         <div>
-          <button className="btn btn-info btn-sm me-2" onClick={loadStats}>
-            <i className="bi bi-arrow-clockwise"></i> Refresh
-          </button>
-          <button className="btn btn-danger btn-sm" onClick={resetStats}>
-            Reset Stats
-          </button>
+          <h2>Admin Dashboard</h2>
+          <small className="text-muted">☁️ Synced across all browsers & devices</small>
         </div>
+        <button className="btn btn-info btn-sm" onClick={loadData}>
+          <i className="bi bi-arrow-clockwise"></i> Refresh Now
+        </button>
       </div>
 
       {/* Stats Cards */}
@@ -151,8 +136,8 @@ const AdminPanel = () => {
 
       {/* Recent Orders */}
       <div className="recent-orders">
-        <h3>Recent Orders ({stats.ordersHistory.length} total)</h3>
-        {getRecentOrders().length === 0 ? (
+        <h3>Recent Orders ({orders.length} total)</h3>
+        {getRecentOrdersList().length === 0 ? (
           <div className="alert alert-info">
             No orders yet. Orders will appear here when customers complete checkout.
           </div>
@@ -169,11 +154,14 @@ const AdminPanel = () => {
                 </tr>
               </thead>
               <tbody>
-                {getRecentOrders().map(order => (
+                {getRecentOrdersList().map(order => (
                   <tr key={order.id}>
-                    <td>#{order.id.toString().slice(-6)}</td>
-                    <td>{new Date(order.date).toLocaleString()}</td>
-                    <td>{order.user}</td>
+                    <td>#{order.id.slice(-6)}</td>
+                    <td>{order.createdAt ? new Date(order.createdAt).toLocaleString() : 'N/A'}</td>
+                    <td>
+                      <div>{order.userName || 'Unknown'}</div>
+                      <small className="text-muted">{order.user}</small>
+                    </td>
                     <td>{order.items} items</td>
                     <td className="text-success fw-bold">₹{order.total}</td>
                   </tr>
@@ -186,16 +174,16 @@ const AdminPanel = () => {
 
       {/* Quick Actions */}
       <div className="quick-actions">
-        <h3>Quick Actions</h3>
+        <h3>Firebase Features</h3>
         <div className="action-buttons">
-          <button className="btn btn-primary">
-            <i className="bi bi-download"></i> Export Data
+          <button className="btn btn-success" disabled>
+            <i className="bi bi-check-circle"></i> Real-time Sync
           </button>
-          <button className="btn btn-secondary">
-            <i className="bi bi-graph-up"></i> View Analytics
+          <button className="btn btn-success" disabled>
+            <i className="bi bi-globe"></i> Cross-Browser
           </button>
-          <button className="btn btn-info">
-            <i className="bi bi-people"></i> Manage Users
+          <button className="btn btn-success" disabled>
+            <i className="bi bi-cloud"></i> Cloud Storage
           </button>
         </div>
       </div>
