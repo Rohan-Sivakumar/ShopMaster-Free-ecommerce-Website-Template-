@@ -4,10 +4,77 @@ import Auth from "./Auth";
 import AdminPanel from "./AdminPanel";
 import "./App.css";
 import { getCart, saveCart, addToCart, removeFromCart, getCurrentUser } from "./cartService";
-import { trackView, createOrder, getProducts } from "./api";
+import { trackView, createOrder } from "./api";
 import Swal from 'sweetalert2';
 
 const ADMIN_EMAIL = 'rohan.sivaa@gmail.com';
+
+const initialProducts = [
+    {
+        id: "Wireless headphone",
+        year: 2025,
+        cost: 9999,
+        img: "/images/headphone.webp",
+        category: "Electronics",
+        description: "High-quality wireless headphones with noise cancellation."
+    },
+    {
+        id: "Smart Watch",
+        year: 2024,
+        cost: 4999,
+        img: "/images/watch.webp",
+        category: "Wearables",
+        description: "Feature-rich smart watch with health tracking."
+    },
+    {
+        id: "Bluetooth Speaker",
+        year: 2025,
+        cost: 2999,
+        img: "/images/speaker.webp",
+        category: "Electronics",
+        description: "Portable Bluetooth speaker with premium sound quality and 12-hour battery life."
+    },
+    {
+        id: "Wireless Mouse",
+        year: 2024,
+        cost: 799,
+        img: "/images/mouse.webp",
+        category: "Electronics",
+        description: "Ergonomic wireless mouse with precision tracking and long battery life."
+    },
+    {
+        id: "USB-C Cable",
+        year: 2025,
+        cost: 299,
+        img: "/images/cable.webp",
+        category: "Accessories",
+        description: "Fast charging USB-C cable with durable braided design."
+    },
+    {
+        id: "Fitness Band",
+        year: 2024,
+        cost: 1999,
+        img: "/images/band.webp",
+        category: "Wearables",
+        description: "Track your fitness goals with heart rate monitoring and sleep tracking."
+    },
+    {
+        id: "Phone Case",
+        year: 2025,
+        cost: 499,
+        img: "/images/case.webp",
+        category: "Accessories",
+        description: "Shockproof phone case with premium finish and raised edges."
+    },
+    {
+        id: "Power Bank",
+        year: 2024,
+        cost: 1499,
+        img: "/images/powerbank.webp",
+        category: "Electronics",
+        description: "20000mAh power bank with fast charging support for multiple devices."
+    },
+];
 
 // Memoized Product Card Component
 const ProductCard = React.memo(({ product, quantity, onShowDetails, onAddCart, onRemoveCart }) => {
@@ -46,8 +113,7 @@ const ProductCard = React.memo(({ product, quantity, onShowDetails, onAddCart, o
 ProductCard.displayName = 'ProductCard';
 
 function App() {
-  const [products, setProducts] = useState([]);
-  const [productsLoading, setProductsLoading] = useState(true);
+  const [products] = useState(initialProducts);
   const [activePage, setActivePage] = useState('home');
   const [currentUser, setCurrentUser] = useState(null);
   const [cartItems, setCartItems] = useState([]);
@@ -56,19 +122,6 @@ function App() {
   const [selectedProduct, setSelectedProduct] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isAdmin, setIsAdmin] = useState(false);
-
-  // Load products from MongoDB
-  const loadProducts = useCallback(async () => {
-    try {
-      setProductsLoading(true);
-      const productsData = await getProducts();
-      setProducts(productsData);
-      setProductsLoading(false);
-    } catch (error) {
-      console.error('Error loading products:', error);
-      setProductsLoading(false);
-    }
-  }, []);
 
   // Load user and cart on mount + simulate loading
   useEffect(() => {
@@ -80,9 +133,6 @@ function App() {
       setCartItems(savedCart);
     }
     
-    // Load products from MongoDB
-    loadProducts();
-    
     // Track page view to MongoDB (with localStorage fallback)
     trackView();
     
@@ -92,7 +142,7 @@ function App() {
     }, 2000);
 
     return () => clearTimeout(loadingTimer);
-  }, [loadProducts]);
+  }, []);
 
   // Listen for user changes
   useEffect(() => {
@@ -111,20 +161,6 @@ function App() {
     window.addEventListener('userChanged', handleUserChange);
     return () => window.removeEventListener('userChanged', handleUserChange);
   }, []);
-
-  // Listen for product updates (when added/deleted from admin panel)
-  useEffect(() => {
-    const handleProductsUpdate = (event) => {
-      if (event.detail) {
-        setProducts(event.detail);
-      } else {
-        loadProducts();
-      }
-    };
-
-    window.addEventListener('productsUpdated', handleProductsUpdate);
-    return () => window.removeEventListener('productsUpdated', handleProductsUpdate);
-  }, [loadProducts]);
 
   // Memoize categories
   const categories = useMemo(() => 
@@ -442,19 +478,9 @@ function App() {
             </select>
           </div>
           
-          {productsLoading ? (
-            <div className="text-center py-5">
-              <div className="spinner-border text-primary" role="status">
-                <span className="visually-hidden">Loading products...</span>
-              </div>
-              <p className="mt-3 text-muted">Loading products from database...</p>
-            </div>
-          ) : filteredProducts.length === 0 ? (
+          {filteredProducts.length === 0 ? (
             <div className="alert alert-info text-center" role="alert">
-              {products.length === 0 ? 
-                '📦 No products available. Admin can add products from the admin panel.' : 
-                'No products found matching your search.'
-              }
+              No products found.
             </div>
           ) : (
             <div className="row row-cols-1 row-cols-md-2 row-cols-lg-3 row-cols-xl-4 g-4">
