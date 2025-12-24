@@ -18,7 +18,8 @@ app.use(cors({
   ],
   credentials: true
 }));
-app.use(express.json());
+app.use(express.json({ limit: '50mb' }));
+app.use(express.urlencoded({ limit: '50mb', extended: true }));
 
 // MongoDB Connection
 const MONGODB_URI = process.env.MONGODB_URI || 'mongodb://localhost:27017/shopmaster';
@@ -27,21 +28,44 @@ mongoose.connect(MONGODB_URI)
   .then(() => console.log('✅ Connected to MongoDB'))
   .catch(err => console.error('❌ MongoDB connection error:', err));
 
-// Product Schema
+// Seller Schema
+const sellerSchema = new mongoose.Schema({
+  email: { type: String, required: true, unique: true },
+  name: { type: String, required: true },
+  businessName: { type: String, required: true },
+  phone: { type: String },
+  address: { type: String },
+  isApproved: { type: Boolean, default: false },
+  isSuperAdmin: { type: Boolean, default: false },
+  createdAt: { type: Date, default: Date.now },
+  updatedAt: { type: Date, default: Date.now }
+});
+
+const Seller = mongoose.model('Seller', sellerSchema);
+
+// Product Schema (updated with seller info)
 const productSchema = new mongoose.Schema({
-  id: { type: String, required: true, unique: true },
+  id: { type: String, required: true },
   year: { type: Number, required: true },
   cost: { type: Number, required: true },
   img: { type: String, required: true },
   category: { type: String, required: true },
   description: { type: String, required: true },
+  sellerEmail: { type: String, required: true },
+  sellerName: { type: String, required: true },
+  sellerBusinessName: { type: String, required: true },
+  stock: { type: Number, default: 100 },
+  isActive: { type: Boolean, default: true },
   createdAt: { type: Date, default: Date.now },
   updatedAt: { type: Date, default: Date.now }
 });
 
+// Create compound index for unique products per seller
+productSchema.index({ id: 1, sellerEmail: 1 }, { unique: true });
+
 const Product = mongoose.model('Product', productSchema);
 
-// Order Schema
+// Order Schema (updated with seller info)
 const orderSchema = new mongoose.Schema({
   user: { type: String, required: true },
   userName: { type: String, required: true },
@@ -50,7 +74,9 @@ const orderSchema = new mongoose.Schema({
   products: [{
     name: String,
     quantity: Number,
-    price: Number
+    price: Number,
+    sellerEmail: String,
+    sellerName: String
   }],
   createdAt: { type: Date, default: Date.now }
 });
@@ -83,6 +109,25 @@ const initializeStats = async () => {
   }
 };
 
+// Initialize super admin seller
+const initializeSuperAdmin = async () => {
+  try {
+    const superAdmin = await Seller.findOne({ email: 'rohan.sivaa@gmail.com' });
+    if (!superAdmin) {
+      await Seller.create({
+        email: 'rohan.sivaa@gmail.com',
+        name: 'Rohan',
+        businessName: 'ShopMaster',
+        isApproved: true,
+        isSuperAdmin: true
+      });
+      console.log('👑 Super admin seller initialized');
+    }
+  } catch (error) {
+    console.log('Super admin initialization pending...');
+  }
+};
+
 // Initialize with default products if empty
 const initializeProducts = async () => {
   try {
@@ -95,7 +140,10 @@ const initializeProducts = async () => {
           cost: 9999,
           img: "/images/headphone.webp",
           category: "Electronics",
-          description: "High-quality wireless headphones with noise cancellation."
+          description: "High-quality wireless headphones with noise cancellation.",
+          sellerEmail: 'rohan.sivaa@gmail.com',
+          sellerName: 'Rohan',
+          sellerBusinessName: 'ShopMaster'
         },
         {
           id: "Smart Watch",
@@ -103,7 +151,10 @@ const initializeProducts = async () => {
           cost: 4999,
           img: "/images/watch.webp",
           category: "Wearables",
-          description: "Feature-rich smart watch with health tracking."
+          description: "Feature-rich smart watch with health tracking.",
+          sellerEmail: 'rohan.sivaa@gmail.com',
+          sellerName: 'Rohan',
+          sellerBusinessName: 'ShopMaster'
         },
         {
           id: "Bluetooth Speaker",
@@ -111,7 +162,10 @@ const initializeProducts = async () => {
           cost: 2999,
           img: "/images/speaker.webp",
           category: "Electronics",
-          description: "Portable Bluetooth speaker with premium sound quality and 12-hour battery life."
+          description: "Portable Bluetooth speaker with premium sound quality and 12-hour battery life.",
+          sellerEmail: 'rohan.sivaa@gmail.com',
+          sellerName: 'Rohan',
+          sellerBusinessName: 'ShopMaster'
         },
         {
           id: "Wireless Mouse",
@@ -119,7 +173,10 @@ const initializeProducts = async () => {
           cost: 799,
           img: "/images/mouse.webp",
           category: "Electronics",
-          description: "Ergonomic wireless mouse with precision tracking and long battery life."
+          description: "Ergonomic wireless mouse with precision tracking and long battery life.",
+          sellerEmail: 'rohan.sivaa@gmail.com',
+          sellerName: 'Rohan',
+          sellerBusinessName: 'ShopMaster'
         },
         {
           id: "USB-C Cable",
@@ -127,7 +184,10 @@ const initializeProducts = async () => {
           cost: 299,
           img: "/images/cable.webp",
           category: "Accessories",
-          description: "Fast charging USB-C cable with durable braided design."
+          description: "Fast charging USB-C cable with durable braided design.",
+          sellerEmail: 'rohan.sivaa@gmail.com',
+          sellerName: 'Rohan',
+          sellerBusinessName: 'ShopMaster'
         },
         {
           id: "Fitness Band",
@@ -135,7 +195,10 @@ const initializeProducts = async () => {
           cost: 1999,
           img: "/images/band.webp",
           category: "Wearables",
-          description: "Track your fitness goals with heart rate monitoring and sleep tracking."
+          description: "Track your fitness goals with heart rate monitoring and sleep tracking.",
+          sellerEmail: 'rohan.sivaa@gmail.com',
+          sellerName: 'Rohan',
+          sellerBusinessName: 'ShopMaster'
         },
         {
           id: "Phone Case",
@@ -143,7 +206,10 @@ const initializeProducts = async () => {
           cost: 499,
           img: "/images/case.webp",
           category: "Accessories",
-          description: "Shockproof phone case with premium finish and raised edges."
+          description: "Shockproof phone case with premium finish and raised edges.",
+          sellerEmail: 'rohan.sivaa@gmail.com',
+          sellerName: 'Rohan',
+          sellerBusinessName: 'ShopMaster'
         },
         {
           id: "Power Bank",
@@ -151,7 +217,10 @@ const initializeProducts = async () => {
           cost: 1499,
           img: "/images/powerbank.webp",
           category: "Electronics",
-          description: "20000mAh power bank with fast charging support for multiple devices."
+          description: "20000mAh power bank with fast charging support for multiple devices.",
+          sellerEmail: 'rohan.sivaa@gmail.com',
+          sellerName: 'Rohan',
+          sellerBusinessName: 'ShopMaster'
         }
       ];
       
@@ -164,6 +233,7 @@ const initializeProducts = async () => {
 };
 
 initializeStats();
+initializeSuperAdmin();
 initializeProducts();
 
 // Routes
@@ -173,12 +243,99 @@ app.get('/api/health', (req, res) => {
   res.json({ status: 'ok', message: 'Server is running' });
 });
 
+// ========== SELLER ROUTES ==========
+
+// Register as seller
+app.post('/api/sellers/register', async (req, res) => {
+  try {
+    const { email, name, businessName, phone, address } = req.body;
+    
+    // Check if seller already exists
+    const existing = await Seller.findOne({ email });
+    if (existing) {
+      return res.status(400).json({ error: 'Seller already registered with this email' });
+    }
+    
+    const seller = await Seller.create({
+      email,
+      name,
+      businessName,
+      phone,
+      address,
+      isApproved: email === 'rohan.sivaa@gmail.com' // Auto-approve super admin
+    });
+    
+    res.status(201).json(seller);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Get seller by email
+app.get('/api/sellers/:email', async (req, res) => {
+  try {
+    const seller = await Seller.findOne({ email: req.params.email });
+    if (!seller) {
+      return res.status(404).json({ error: 'Seller not found' });
+    }
+    res.json(seller);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Get all sellers (super admin only)
+app.get('/api/sellers', async (req, res) => {
+  try {
+    const sellers = await Seller.find().sort({ createdAt: -1 });
+    res.json(sellers);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Approve seller (super admin only)
+app.put('/api/sellers/:email/approve', async (req, res) => {
+  try {
+    const seller = await Seller.findOneAndUpdate(
+      { email: req.params.email },
+      { isApproved: true, updatedAt: new Date() },
+      { new: true }
+    );
+    
+    if (!seller) {
+      return res.status(404).json({ error: 'Seller not found' });
+    }
+    
+    res.json(seller);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
 // ========== PRODUCT ROUTES ==========
 
-// Get all products
+// Get all products (active only for customers)
 app.get('/api/products', async (req, res) => {
   try {
-    const products = await Product.find().sort({ createdAt: -1 });
+    const { sellerEmail } = req.query;
+    const filter = { isActive: true };
+    
+    if (sellerEmail) {
+      filter.sellerEmail = sellerEmail;
+    }
+    
+    const products = await Product.find(filter).sort({ createdAt: -1 });
+    res.json(products);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Get products by seller
+app.get('/api/sellers/:email/products', async (req, res) => {
+  try {
+    const products = await Product.find({ sellerEmail: req.params.email }).sort({ createdAt: -1 });
     res.json(products);
   } catch (error) {
     res.status(500).json({ error: error.message });
@@ -198,15 +355,24 @@ app.get('/api/products/:id', async (req, res) => {
   }
 });
 
-// Add new product
+// Add new product (seller must be approved)
 app.post('/api/products', async (req, res) => {
   try {
-    const { id, year, cost, img, category, description } = req.body;
+    const { id, year, cost, img, category, description, sellerEmail } = req.body;
     
-    // Check if product with same ID already exists
-    const existing = await Product.findOne({ id });
+    // Check if seller exists and is approved
+    const seller = await Seller.findOne({ email: sellerEmail });
+    if (!seller) {
+      return res.status(403).json({ error: 'Seller not registered' });
+    }
+    if (!seller.isApproved) {
+      return res.status(403).json({ error: 'Seller account pending approval' });
+    }
+    
+    // Check if product with same ID already exists for this seller
+    const existing = await Product.findOne({ id, sellerEmail });
     if (existing) {
-      return res.status(400).json({ error: 'Product with this name already exists' });
+      return res.status(400).json({ error: 'You already have a product with this name' });
     }
     
     const product = await Product.create({
@@ -215,7 +381,10 @@ app.post('/api/products', async (req, res) => {
       cost,
       img,
       category,
-      description
+      description,
+      sellerEmail,
+      sellerName: seller.name,
+      sellerBusinessName: seller.businessName
     });
     
     res.status(201).json(product);
@@ -224,20 +393,28 @@ app.post('/api/products', async (req, res) => {
   }
 });
 
-// Update product
+// Update product (only by owner seller)
 app.put('/api/products/:id', async (req, res) => {
   try {
-    const { year, cost, img, category, description } = req.body;
+    const { year, cost, img, category, description, sellerEmail, stock, isActive } = req.body;
     
-    const product = await Product.findOneAndUpdate(
-      { id: req.params.id },
-      { year, cost, img, category, description, updatedAt: new Date() },
-      { new: true }
-    );
-    
+    // Find product and verify ownership
+    const product = await Product.findOne({ id: req.params.id, sellerEmail });
     if (!product) {
-      return res.status(404).json({ error: 'Product not found' });
+      return res.status(404).json({ error: 'Product not found or you do not have permission to edit it' });
     }
+    
+    // Update product
+    product.year = year || product.year;
+    product.cost = cost !== undefined ? cost : product.cost;
+    product.img = img || product.img;
+    product.category = category || product.category;
+    product.description = description || product.description;
+    product.stock = stock !== undefined ? stock : product.stock;
+    product.isActive = isActive !== undefined ? isActive : product.isActive;
+    product.updatedAt = new Date();
+    
+    await product.save();
     
     res.json(product);
   } catch (error) {
@@ -245,13 +422,15 @@ app.put('/api/products/:id', async (req, res) => {
   }
 });
 
-// Delete product
+// Delete product (only by owner seller)
 app.delete('/api/products/:id', async (req, res) => {
   try {
-    const product = await Product.findOneAndDelete({ id: req.params.id });
+    const { sellerEmail } = req.query;
+    
+    const product = await Product.findOneAndDelete({ id: req.params.id, sellerEmail });
     
     if (!product) {
-      return res.status(404).json({ error: 'Product not found' });
+      return res.status(404).json({ error: 'Product not found or you do not have permission to delete it' });
     }
     
     res.json({ message: 'Product deleted successfully', product });
@@ -265,11 +444,33 @@ app.delete('/api/products/:id', async (req, res) => {
 // Get stats
 app.get('/api/stats', async (req, res) => {
   try {
-    let stats = await Stats.findOne();
-    if (!stats) {
-      stats = await Stats.create({});
+    const { sellerEmail } = req.query;
+    
+    if (sellerEmail) {
+      // Get seller-specific stats
+      const products = await Product.find({ sellerEmail });
+      const orders = await Order.find({ 'products.sellerEmail': sellerEmail });
+      
+      const totalOrders = orders.length;
+      const totalRevenue = orders.reduce((sum, order) => {
+        const sellerItems = order.products.filter(p => p.sellerEmail === sellerEmail);
+        return sum + sellerItems.reduce((s, item) => s + (item.price * item.quantity), 0);
+      }, 0);
+      
+      res.json({
+        totalProducts: products.length,
+        totalOrders,
+        totalRevenue,
+        activeProducts: products.filter(p => p.isActive).length
+      });
+    } else {
+      // Get global stats
+      let stats = await Stats.findOne();
+      if (!stats) {
+        stats = await Stats.create({});
+      }
+      res.json(stats);
     }
-    res.json(stats);
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
@@ -349,10 +550,21 @@ app.post('/api/orders', async (req, res) => {
 // Get recent orders
 app.get('/api/orders', async (req, res) => {
   try {
-    const limit = parseInt(req.query.limit) || 50;
-    const orders = await Order.find()
-      .sort({ createdAt: -1 })
-      .limit(limit);
+    const { sellerEmail, limit } = req.query;
+    const orderLimit = parseInt(limit) || 50;
+    
+    let orders;
+    if (sellerEmail) {
+      // Get orders containing this seller's products
+      orders = await Order.find({ 'products.sellerEmail': sellerEmail })
+        .sort({ createdAt: -1 })
+        .limit(orderLimit);
+    } else {
+      orders = await Order.find()
+        .sort({ createdAt: -1 })
+        .limit(orderLimit);
+    }
+    
     res.json(orders);
   } catch (error) {
     res.status(500).json({ error: error.message });
