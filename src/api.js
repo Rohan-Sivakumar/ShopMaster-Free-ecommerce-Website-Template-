@@ -16,6 +16,17 @@ const fetchWithRetry = async (url, options = {}, retries = 2) => {
   }
 };
 
+// Health check (used by AdminPanel)
+export const checkBackendHealth = async () => {
+  try {
+    const response = await fetchWithRetry(`${API_URL}/health`);
+    return response.ok;
+  } catch (error) {
+    console.warn('Backend health check failed:', error?.message || error);
+    return false;
+  }
+};
+
 // Track page view
 export const trackView = async () => {
   try {
@@ -30,14 +41,14 @@ export const trackView = async () => {
     // Fallback to localStorage if API fails
     const stats = JSON.parse(localStorage.getItem('adminStats') || '{}');
     const today = new Date().toLocaleDateString();
-    
+
     if (!stats.lastViewDate || stats.lastViewDate !== today) {
       stats.todayViews = 1;
       stats.lastViewDate = today;
     } else {
       stats.todayViews = (stats.todayViews || 0) + 1;
     }
-    
+
     stats.totalViews = (stats.totalViews || 0) + 1;
     localStorage.setItem('adminStats', JSON.stringify(stats));
     return stats;
@@ -63,17 +74,17 @@ export const createOrder = async (orderData) => {
     // Fallback to localStorage if API fails
     const stats = JSON.parse(localStorage.getItem('adminStats') || '{}');
     const today = new Date().toLocaleDateString();
-    
+
     stats.totalOrders = (stats.totalOrders || 0) + 1;
     stats.ordersHistory = stats.ordersHistory || [];
-    
+
     if (!stats.lastOrderDate || stats.lastOrderDate !== today) {
       stats.todayOrders = 1;
       stats.lastOrderDate = today;
     } else {
       stats.todayOrders = (stats.todayOrders || 0) + 1;
     }
-    
+
     stats.ordersHistory = [
       {
         id: Date.now(),
@@ -85,7 +96,7 @@ export const createOrder = async (orderData) => {
       },
       ...stats.ordersHistory
     ].slice(0, 50);
-    
+
     localStorage.setItem('adminStats', JSON.stringify(stats));
     return { order: orderData, stats };
   }
@@ -166,10 +177,10 @@ export const addProduct = async (productData) => {
     const products = JSON.parse(localStorage.getItem('products') || '[]');
     products.push(productData);
     localStorage.setItem('products', JSON.stringify(products));
-    
+
     // Trigger storage event for App.jsx to update
     window.dispatchEvent(new CustomEvent('productsUpdated', { detail: products }));
-    
+
     throw error; // Re-throw to show error message
   }
 };
@@ -215,10 +226,10 @@ export const deleteProduct = async (productId) => {
     const products = JSON.parse(localStorage.getItem('products') || '[]');
     const updatedProducts = products.filter(p => p.id !== productId);
     localStorage.setItem('products', JSON.stringify(updatedProducts));
-    
+
     // Trigger storage event for App.jsx to update
     window.dispatchEvent(new CustomEvent('productsUpdated', { detail: updatedProducts }));
-    
+
     throw error; // Re-throw to show error message
   }
 };
