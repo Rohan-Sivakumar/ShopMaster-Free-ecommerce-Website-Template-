@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo, useCallback } from "react";
+import React, { useState, useEffect, useMemo, useCallback, useRef } from "react";
 import Navigation from "./Navigation";
 import Auth from "./Auth";
 import AdminPanel from "./AdminPanel";
@@ -10,10 +10,15 @@ import Swal from 'sweetalert2';
 const ADMIN_EMAIL = 'rohan.sivaa@gmail.com';
 
 // Memoized Product Card Component
-const ProductCard = React.memo(({ product, quantity, onShowDetails, onAddCart, onRemoveCart }) => {
+const ProductCard = React.memo(({ product, quantity, onShowDetails, onAddCart, onRemoveCart, variant = 'grid' }) => {
+  const brandText = (product.brand || product.sellerBusinessName || product.sellerName || "").trim();
+  const shippingText = product.shippingEtaText || product.shippingText || product.shipping || '';
+  const mrp = product.mrp;
+  const showMrp = typeof mrp === 'number' && mrp > product.cost;
+
   return (
-    <div className="col">
-      <div className="card h-100 shadow-sm" style={{cursor:'pointer'}} onClick={() => onShowDetails(product)}>
+    <div className={variant === 'slider' ? "product-slide" : "col"}>
+      <div className={`card h-100 shadow-sm ${variant === 'slider' ? 'product-card-slider' : ''}`} style={{cursor:'pointer'}} onClick={() => onShowDetails(product)}>
         <img 
           src={product.img} 
           className="card-img-top" 
@@ -22,8 +27,23 @@ const ProductCard = React.memo(({ product, quantity, onShowDetails, onAddCart, o
           loading="lazy"
         />
         <div className="card-body d-flex flex-column">
+          {brandText ? (
+            <div className="product-brand">{brandText}</div>
+          ) : null}
+
           <h5 className="card-title">{product.id}</h5>
-          <p className="card-text fw-bold text-success">₹{product.cost}</p>
+
+          <div className="product-price-row">
+            <span className="product-price">₹{product.cost}</span>
+            {showMrp ? (
+              <span className="product-mrp">₹{mrp}</span>
+            ) : null}
+          </div>
+
+          {shippingText ? (
+            <div className="product-shipping">{shippingText}</div>
+          ) : null}
+
           <div className="mt-auto" onClick={e => e.stopPropagation()}>
             {quantity === 0 ? (
               <button className="btn btn-primary w-100" onClick={() => onAddCart(product)}>
@@ -44,6 +64,57 @@ const ProductCard = React.memo(({ product, quantity, onShowDetails, onAddCart, o
 });
 
 ProductCard.displayName = 'ProductCard';
+
+const ProductSlider = React.memo(({ title, products, cartItems, onShowDetails, onAddCart, onRemoveCart, onViewAll }) => {
+  const trackRef = useRef(null);
+
+  const scrollByAmount = (dir) => {
+    const el = trackRef.current;
+    if (!el) return;
+
+    // Scroll by ~2 cards on desktop, ~1 card on mobile
+    const amount = Math.max(260, Math.floor(el.clientWidth * 0.75));
+    el.scrollBy({ left: dir * amount, behavior: 'smooth' });
+  };
+
+  return (
+    <section className="category-section">
+      <div className="category-header">
+        <h3 className="category-title">{title}</h3>
+        <button className="btn btn-link category-viewall" onClick={onViewAll} type="button">View all</button>
+      </div>
+
+      <div className="slider-wrap">
+        <button className="slider-btn slider-btn-left" type="button" aria-label="Previous" onClick={() => scrollByAmount(-1)}>
+          ‹
+        </button>
+
+        <div className="slider-track" ref={trackRef}>
+          {products.map((product) => {
+            const quantity = cartItems.filter(item => item.id === product.id).length;
+            return (
+              <ProductCard
+                key={`${title}-${product.id}`}
+                product={product}
+                quantity={quantity}
+                onShowDetails={onShowDetails}
+                onAddCart={onAddCart}
+                onRemoveCart={onRemoveCart}
+                variant="slider"
+              />
+            );
+          })}
+        </div>
+
+        <button className="slider-btn slider-btn-right" type="button" aria-label="Next" onClick={() => scrollByAmount(1)}>
+          ›
+        </button>
+      </div>
+    </section>
+  );
+});
+
+ProductSlider.displayName = 'ProductSlider';
 
 function App() {
   const [products, setProducts] = useState([]);
@@ -82,13 +153,13 @@ function App() {
       const savedCart = getCart(user.email);
       setCartItems(savedCart);
     }
-    
+
     // Load products from MongoDB
     loadProducts();
-    
+
     // Track page view to MongoDB (with localStorage fallback)
     trackView();
-    
+
     // Simulate loading delay
     const loadingTimer = setTimeout(() => {
       setIsLoading(false);
@@ -131,13 +202,13 @@ function App() {
   }, [loadProducts]);
 
   // Memoize categories
-  const categories = useMemo(() => 
+  const categories = useMemo(() =>
     ["All", ...Array.from(new Set(products.map(p => p.category)))],
     [products]
   );
 
   // Memoize brands
-  const brands = useMemo(() => 
+  const brands = useMemo(() =>
     ["All", ...Array.from(new Set(products.map(p => p.brand || "No Brand").filter(b => b)))],
     [products]
   );
@@ -187,7 +258,7 @@ function App() {
 
     const updatedCart = addToCart(currentUser.email, product, cartItems);
     setCartItems(updatedCart);
-    
+
     Swal.fire({
       icon: 'success',
       title: 'Added to Cart!',
@@ -271,11 +342,11 @@ function App() {
   const handleSignInSuccess = useCallback((userData) => {
     setCurrentUser(userData);
     setIsAdmin(userData.email === ADMIN_EMAIL);
-    
+
     // Load user's cart
     const savedCart = getCart(userData.email);
     setCartItems(savedCart);
-    
+
     Swal.fire({
       icon: 'success',
       title: 'Welcome!',
@@ -307,13 +378,13 @@ function App() {
       if (result.isConfirmed) {
         sessionStorage.removeItem('authUser');
         sessionStorage.removeItem('authToken');
-        
+
         setCurrentUser(null);
         setCartItems([]);
         setIsAdmin(false);
-        
+
         window.dispatchEvent(new Event('userChanged'));
-        
+
         Swal.fire({
           icon: 'success',
           title: 'Signed Out',
@@ -321,7 +392,7 @@ function App() {
           timer: 1500,
           showConfirmButton: false
         });
-        
+
         setTimeout(() => {
           setActivePage('home');
         }, 1500);
@@ -356,7 +427,7 @@ function App() {
             marginBottom: '30px',
             animation: 'pulse 2s ease-in-out infinite'
           }}>ShopMaster</h1>
-          
+
           <div style={{
             width: '60px',
             height: '60px',
@@ -366,14 +437,14 @@ function App() {
             margin: '0 auto',
             animation: 'spin 1s linear infinite'
           }}></div>
-          
+
           <p style={{
             color: 'rgba(255, 255, 255, 0.9)',
             marginTop: '30px',
             fontSize: '1.2rem',
             animation: 'pulse 2s ease-in-out infinite'
           }}>Loading amazing deals...</p>
-          
+
           <div style={{
             marginTop: '40px',
             padding: '15px 30px',
@@ -390,18 +461,18 @@ function App() {
             }}>⚠️ This is a development website</p>
           </div>
         </div>
-        
+
         <style>{`
           @keyframes spin {
             0% { transform: rotate(0deg); }
             100% { transform: rotate(360deg); }
           }
-          
+
           @keyframes pulse {
             0%, 100% { opacity: 1; }
             50% { opacity: 0.7; }
           }
-          
+
           @keyframes fadeInScale {
             0% {
               opacity: 0;
@@ -417,6 +488,23 @@ function App() {
     );
   }
 
+  // Build “shop by category” sections using existing product categories
+  const sectionCategories = useMemo(() => {
+    // Prefer up to 6 categories excluding empty
+    const cats = Array.from(new Set(products.map(p => (p.category || '').trim()).filter(Boolean)));
+    return cats.slice(0, 6);
+  }, [products]);
+
+  const getProductsForCategory = useCallback((category) => {
+    // Show most recent items first; limit to 12 for slider
+    const items = products
+      .filter(p => p.category === category)
+      .slice(0)
+      .reverse()
+      .slice(0, 12);
+    return items;
+  }, [products]);
+
   return (
     <>
       <Navigation activePage={activePage} onPageChange={handlePageChange} cartCount={cartItems.length} isAdmin={isAdmin} />
@@ -430,7 +518,7 @@ function App() {
       <div id="p" className={`page ${activePage === 'p' ? 'active' : ''}`}>
         <div className="container my-4">
           <h2 className="text-center mb-4">Products</h2>
-          
+
           {/* Search Bar */}
           <div className="d-flex justify-content-center gap-3 mb-4 flex-wrap">
             <input
@@ -489,7 +577,7 @@ function App() {
               </div>
             </div>
           </div>
-          
+
           {/* Active Filters Display */}
           {(search || filter !== "All" || brandFilter !== "All" || priceRange[1] < maxPrice) && (
             <div className="mb-3">
@@ -507,7 +595,7 @@ function App() {
               <span className="ms-2 text-muted">Showing {filteredProducts.length} of {products.length} products</span>
             </div>
           )}
-          
+
           {productsLoading ? (
             <div className="text-center py-5">
               <div className="spinner-border text-primary" role="status">
@@ -567,7 +655,13 @@ function App() {
                           <p className="card-text"><small className="text-muted">Brand: {selectedProduct.brand}</small></p>
                         )}
                         <p className="card-text"><small className="text-muted">Year: {selectedProduct.year}</small></p>
-                        <h4 className="text-success mb-3">₹{selectedProduct.cost}</h4>
+                        <h4 className="text-success mb-2">₹{selectedProduct.cost}</h4>
+                        {typeof selectedProduct.mrp === 'number' && selectedProduct.mrp > selectedProduct.cost ? (
+                          <p className="mb-3"><small className="text-muted">MRP: <span style={{textDecoration:'line-through'}}>₹{selectedProduct.mrp}</span></small></p>
+                        ) : null}
+                        {(selectedProduct.shippingEtaText || selectedProduct.shippingText || selectedProduct.shipping) ? (
+                          <p className="mb-3"><small className="text-muted">{selectedProduct.shippingEtaText || selectedProduct.shippingText || selectedProduct.shipping}</small></p>
+                        ) : null}
                         <button className="btn btn-primary btn-lg w-100" onClick={() => handleAddToCart(selectedProduct)}>
                           Add to Cart
                         </button>
@@ -597,6 +691,43 @@ function App() {
                 </button>
               </div>
             </div>
+
+            {/* Category sliders */}
+            {productsLoading ? (
+              <div className="text-center pb-5">
+                <div className="spinner-border text-primary" role="status">
+                  <span className="visually-hidden">Loading...</span>
+                </div>
+                <p className="mt-3 text-muted">Loading categories...</p>
+              </div>
+            ) : products.length === 0 ? (
+              <div className="alert alert-info text-center" role="alert">
+                No products to show yet.
+              </div>
+            ) : (
+              <div className="pb-5">
+                {sectionCategories.map((cat) => {
+                  const catProducts = getProductsForCategory(cat);
+                  if (catProducts.length === 0) return null;
+
+                  return (
+                    <ProductSlider
+                      key={cat}
+                      title={`Shop By ${cat}`}
+                      products={catProducts}
+                      cartItems={cartItems}
+                      onShowDetails={showProductDetails}
+                      onAddCart={handleAddToCart}
+                      onRemoveCart={handleRemoveFromCart}
+                      onViewAll={() => {
+                        setFilter(cat);
+                        setActivePage('p');
+                      }}
+                    />
+                  );
+                })}
+              </div>
+            )}
           </div>
         </div>
       </div>
@@ -610,14 +741,14 @@ function App() {
                 <div className="card-body p-5 text-center">
                   <h2 className="card-title mb-3">Sign In to ShopMaster</h2>
                   <p className="text-muted mb-4">Choose your preferred sign-in method</p>
-                  
+
                   <div className="d-flex justify-content-center mb-4">
-                    <Auth 
+                    <Auth
                       onSignInSuccess={handleSignInSuccess}
                       onSignInFailure={handleSignInFailure}
                     />
                   </div>
-                  
+
                   <div className="mt-4">
                     <p className="small text-muted">
                       <i className="bi bi-shield-check"></i> Secure sign-in with Google or Microsoft
@@ -718,7 +849,7 @@ function App() {
               <>
                 <p className="lead">Please sign in to view your dashboard</p>
                 <div className="mt-4">
-                  <Auth 
+                  <Auth
                     onSignInSuccess={handleSignInSuccess}
                     onSignInFailure={handleSignInFailure}
                   />
