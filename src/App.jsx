@@ -5,6 +5,7 @@ import AdminPanel from "./AdminPanel";
 import "./App.css";
 import { getCart, saveCart, addToCart, removeFromCart, getCurrentUser } from "./cartService";
 import { trackView, createOrder, getProducts } from "./api";
+import { getAddresses, addAddress, deleteAddress, getLocationAddress } from "./addressService";
 import Swal from 'sweetalert2';
 
 const ADMIN_EMAIL = 'rohan.sivaa@gmail.com';
@@ -72,7 +73,6 @@ const ProductSlider = React.memo(({ title, products, cartItems, onShowDetails, o
     const el = trackRef.current;
     if (!el) return;
 
-    // Scroll by ~2 cards on desktop, ~1 card on mobile
     const amount = Math.max(260, Math.floor(el.clientWidth * 0.75));
     el.scrollBy({ left: dir * amount, behavior: 'smooth' });
   };
@@ -85,10 +85,7 @@ const ProductSlider = React.memo(({ title, products, cartItems, onShowDetails, o
       </div>
 
       <div className="slider-wrap">
-        <button className="slider-btn slider-btn-left" type="button" aria-label="Previous" onClick={() => scrollByAmount(-1)}>
-          ‹
-        </button>
-
+        <button className="slider-btn slider-btn-left" type="button" aria-label="Previous" onClick={() => scrollByAmount(-1)}>‹</button>
         <div className="slider-track" ref={trackRef}>
           {products.map((product) => {
             const quantity = cartItems.filter(item => item.id === product.id).length;
@@ -105,10 +102,7 @@ const ProductSlider = React.memo(({ title, products, cartItems, onShowDetails, o
             );
           })}
         </div>
-
-        <button className="slider-btn slider-btn-right" type="button" aria-label="Next" onClick={() => scrollByAmount(1)}>
-          ›
-        </button>
+        <button className="slider-btn slider-btn-right" type="button" aria-label="Next" onClick={() => scrollByAmount(1)}>›</button>
       </div>
     </section>
   );
@@ -130,7 +124,6 @@ function App() {
   const [isLoading, setIsLoading] = useState(true);
   const [isAdmin, setIsAdmin] = useState(false);
 
-  // Load products from MongoDB
   const loadProducts = useCallback(async () => {
     try {
       setProductsLoading(true);
@@ -144,7 +137,6 @@ function App() {
     }
   }, []);
 
-  // Load user and cart on mount + simulate loading
   useEffect(() => {
     const user = getCurrentUser();
     if (user) {
@@ -154,13 +146,9 @@ function App() {
       setCartItems(savedCart);
     }
 
-    // Load products from MongoDB
     loadProducts();
-
-    // Track page view to MongoDB (with localStorage fallback)
     trackView();
 
-    // Simulate loading delay
     const loadingTimer = setTimeout(() => {
       setIsLoading(false);
     }, 2000);
@@ -168,7 +156,6 @@ function App() {
     return () => clearTimeout(loadingTimer);
   }, [loadProducts]);
 
-  // Listen for user changes
   useEffect(() => {
     const handleUserChange = () => {
       const user = getCurrentUser();
@@ -186,7 +173,6 @@ function App() {
     return () => window.removeEventListener('userChanged', handleUserChange);
   }, []);
 
-  // Listen for product updates from admin panel
   useEffect(() => {
     const handleProductsUpdate = (event) => {
       console.log('🔄 Products updated event received');
@@ -201,19 +187,16 @@ function App() {
     return () => window.removeEventListener('productsUpdated', handleProductsUpdate);
   }, [loadProducts]);
 
-  // Memoize categories
   const categories = useMemo(() =>
     ["All", ...Array.from(new Set(products.map(p => p.category)))],
     [products]
   );
 
-  // Memoize brands
   const brands = useMemo(() =>
     ["All", ...Array.from(new Set(products.map(p => p.brand || "No Brand").filter(b => b)))],
     [products]
   );
 
-  // Memoize price range
   const maxPrice = useMemo(() => {
     if (products.length === 0) return 100000;
     return Math.max(...products.map(p => p.cost));
@@ -224,7 +207,6 @@ function App() {
     setSelectedProduct(null);
   }, []);
 
-  // Memoize filtered products
   const filteredProducts = useMemo(() => {
     return products.filter(product => {
       const matchesSearch = product.id.toLowerCase().includes(search.toLowerCase());
@@ -240,7 +222,6 @@ function App() {
     setActivePage("pdetails");
   }, []);
 
-  // Handle add to cart
   const handleAddToCart = useCallback((product) => {
     if (!currentUser) {
       Swal.fire({
@@ -270,7 +251,6 @@ function App() {
     });
   }, [currentUser, cartItems]);
 
-  // Handle remove from cart
   const handleRemoveFromCart = useCallback((product) => {
     if (!currentUser) return;
 
@@ -278,7 +258,6 @@ function App() {
     setCartItems(updatedCart);
   }, [currentUser, cartItems]);
 
-  // Memoize grouped cart and total price
   const { groupedCart, totalPrice } = useMemo(() => {
     const grouped = cartItems.reduce((acc, item) => {
       const existingItem = acc.find(i => i.id === item.id);
@@ -295,11 +274,166 @@ function App() {
     return { groupedCart: grouped, totalPrice: total };
   }, [cartItems]);
 
-  // Handle checkout - Track order to MongoDB
+  // Handle checkout with address collection
   const handleCheckout = useCallback(async () => {
     if (!currentUser || cartItems.length === 0) return;
 
-    // Save order to MongoDB (with localStorage fallback)
+    // Get saved addresses
+    const savedAddresses = getAddresses(currentUser.email);
+
+    // Show address selection/input modal
+    const { value: formValues } = await Swal.fire({
+      title: 'Delivery Address',
+      html: `
+        <div style="text-align: left;">
+          ${savedAddresses.length > 0 ? `
+            <div class="mb-3">
+              <label class="form-label fw-bold">Select Saved Address</label>
+              <select id="swal-address-select" class="form-select">
+                <option value="">-- Or Enter New Address --</option>
+                ${savedAddresses.map(addr => `
+                  <option value="${addr.id}">${addr.name || 'Address'} - ${addr.street}, ${addr.city}</option>
+                `).join('')}
+              </select>
+            </div>
+            <div class="text-center my-2">OR</div>
+          ` : ''}
+          
+          <button id="use-location-btn" class="btn btn-info w-100 mb-3">
+            <i class="bi bi-geo-alt-fill"></i> Use My Current Location
+          </button>
+          
+          <div class="mb-3">
+            <label class="form-label fw-bold">Full Name *</label>
+            <input id="swal-name" class="form-control" placeholder="Your Name" required>
+          </div>
+          
+          <div class="mb-3">
+            <label class="form-label fw-bold">Phone Number *</label>
+            <input id="swal-phone" class="form-control" type="tel" placeholder="10-digit number" maxlength="10" required>
+          </div>
+          
+          <div class="mb-3">
+            <label class="form-label fw-bold">Street/House No *</label>
+            <input id="swal-street" class="form-control" placeholder="Street address" required>
+          </div>
+          
+          <div class="row">
+            <div class="col-md-6 mb-3">
+              <label class="form-label fw-bold">City *</label>
+              <input id="swal-city" class="form-control" placeholder="City" required>
+            </div>
+            <div class="col-md-6 mb-3">
+              <label class="form-label fw-bold">State *</label>
+              <input id="swal-state" class="form-control" placeholder="State" required>
+            </div>
+          </div>
+          
+          <div class="row">
+            <div class="col-md-6 mb-3">
+              <label class="form-label fw-bold">PIN Code *</label>
+              <input id="swal-pincode" class="form-control" placeholder="6-digit PIN" maxlength="6" required>
+            </div>
+            <div class="col-md-6 mb-3">
+              <label class="form-label fw-bold">Country</label>
+              <input id="swal-country" class="form-control" value="India" required>
+            </div>
+          </div>
+          
+          <div class="form-check mb-3">
+            <input class="form-check-input" type="checkbox" id="swal-save-address">
+            <label class="form-check-label" for="swal-save-address">
+              Save this address for future orders
+            </label>
+          </div>
+        </div>
+      `,
+      width: '600px',
+      showCancelButton: true,
+      confirmButtonText: 'Place Order',
+      cancelButtonText: 'Cancel',
+      focusConfirm: false,
+      didOpen: () => {
+        // Handle saved address selection
+        const addressSelect = document.getElementById('swal-address-select');
+        if (addressSelect) {
+          addressSelect.addEventListener('change', (e) => {
+            const selectedId = parseInt(e.target.value);
+            const selected = savedAddresses.find(a => a.id === selectedId);
+            if (selected) {
+              document.getElementById('swal-name').value = selected.name || '';
+              document.getElementById('swal-phone').value = selected.phone || '';
+              document.getElementById('swal-street').value = selected.street || '';
+              document.getElementById('swal-city').value = selected.city || '';
+              document.getElementById('swal-state').value = selected.state || '';
+              document.getElementById('swal-pincode').value = selected.pincode || '';
+              document.getElementById('swal-country').value = selected.country || 'India';
+            }
+          });
+        }
+
+        // Handle location button
+        const locationBtn = document.getElementById('use-location-btn');
+        locationBtn.addEventListener('click', async (e) => {
+          e.preventDefault();
+          locationBtn.disabled = true;
+          locationBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Getting location...';
+
+          try {
+            const locationAddress = await getLocationAddress();
+            document.getElementById('swal-street').value = locationAddress.street || '';
+            document.getElementById('swal-city').value = locationAddress.city || '';
+            document.getElementById('swal-state').value = locationAddress.state || '';
+            document.getElementById('swal-pincode').value = locationAddress.pincode || '';
+            document.getElementById('swal-country').value = locationAddress.country || 'India';
+            
+            locationBtn.innerHTML = '<i class="bi bi-check-circle"></i> Location Loaded!';
+            locationBtn.classList.remove('btn-info');
+            locationBtn.classList.add('btn-success');
+          } catch (error) {
+            Swal.showValidationMessage(error.message);
+            locationBtn.disabled = false;
+            locationBtn.innerHTML = '<i class="bi bi-geo-alt-fill"></i> Use My Current Location';
+          }
+        });
+      },
+      preConfirm: () => {
+        const name = document.getElementById('swal-name').value;
+        const phone = document.getElementById('swal-phone').value;
+        const street = document.getElementById('swal-street').value;
+        const city = document.getElementById('swal-city').value;
+        const state = document.getElementById('swal-state').value;
+        const pincode = document.getElementById('swal-pincode').value;
+        const country = document.getElementById('swal-country').value;
+        const saveAddress = document.getElementById('swal-save-address').checked;
+
+        if (!name || !phone || !street || !city || !state || !pincode) {
+          Swal.showValidationMessage('Please fill all required fields');
+          return false;
+        }
+
+        if (phone.length !== 10 || !/^\d+$/.test(phone)) {
+          Swal.showValidationMessage('Please enter a valid 10-digit phone number');
+          return false;
+        }
+
+        if (pincode.length !== 6 || !/^\d+$/.test(pincode)) {
+          Swal.showValidationMessage('Please enter a valid 6-digit PIN code');
+          return false;
+        }
+
+        return { name, phone, street, city, state, pincode, country, saveAddress };
+      }
+    });
+
+    if (!formValues) return; // User cancelled
+
+    // Save address if requested
+    if (formValues.saveAddress) {
+      addAddress(currentUser.email, formValues);
+    }
+
+    // Place order with address
     try {
       const orderData = {
         user: currentUser.email,
@@ -310,20 +444,37 @@ function App() {
           name: item.id,
           quantity: item.quantity,
           price: item.cost
-        }))
+        })),
+        shippingAddress: {
+          name: formValues.name,
+          phone: formValues.phone,
+          street: formValues.street,
+          city: formValues.city,
+          state: formValues.state,
+          pincode: formValues.pincode,
+          country: formValues.country
+        }
       };
 
       await createOrder(orderData);
       console.log('✅ Order saved to MongoDB!');
 
-      // Show success message
       Swal.fire({
         icon: 'success',
         title: 'Order Placed!',
-        html: `Your order of <strong>₹${totalPrice}</strong> has been placed successfully!<br><small class="text-muted">Synced across all devices ☁️</small>`,
+        html: `
+          <p>Your order of <strong>₹${totalPrice}</strong> has been placed successfully!</p>
+          <div class="text-start mt-3 p-3" style="background: #f8f9fa; border-radius: 8px;">
+            <small class="text-muted d-block mb-2"><strong>Delivery Address:</strong></small>
+            <small>${formValues.name}</small><br>
+            <small>${formValues.phone}</small><br>
+            <small>${formValues.street}, ${formValues.city}</small><br>
+            <small>${formValues.state} - ${formValues.pincode}</small>
+          </div>
+          <small class="text-muted d-block mt-3">☁️ Synced across all devices</small>
+        `,
         confirmButtonText: 'OK'
       }).then(() => {
-        // Clear cart
         setCartItems([]);
         saveCart(currentUser.email, []);
         setActivePage('home');
@@ -343,15 +494,11 @@ function App() {
     }
   }, [currentUser, cartItems, totalPrice, groupedCart]);
 
-  // Sign-In success handler
   const handleSignInSuccess = useCallback((userData) => {
     setCurrentUser(userData);
     setIsAdmin(userData.email === ADMIN_EMAIL);
-
-    // Load user's cart
     const savedCart = getCart(userData.email);
     setCartItems(savedCart);
-
     Swal.fire({
       icon: 'success',
       title: 'Welcome!',
@@ -361,7 +508,6 @@ function App() {
     });
   }, []);
 
-  // Sign-In failure handler
   const handleSignInFailure = useCallback((error) => {
     Swal.fire({
       icon: 'error',
@@ -370,7 +516,6 @@ function App() {
     });
   }, []);
 
-  // Handle sign out
   const handleSignOut = useCallback(() => {
     Swal.fire({
       title: 'Sign Out?',
@@ -383,13 +528,10 @@ function App() {
       if (result.isConfirmed) {
         sessionStorage.removeItem('authUser');
         sessionStorage.removeItem('authToken');
-
         setCurrentUser(null);
         setCartItems([]);
         setIsAdmin(false);
-
         window.dispatchEvent(new Event('userChanged'));
-
         Swal.fire({
           icon: 'success',
           title: 'Signed Out',
@@ -397,7 +539,6 @@ function App() {
           timer: 1500,
           showConfirmButton: false
         });
-
         setTimeout(() => {
           setActivePage('home');
         }, 1500);
@@ -405,7 +546,6 @@ function App() {
     });
   }, []);
 
-  // MOVED BEFORE EARLY RETURN: Build "shop by category" sections
   const sectionCategories = useMemo(() => {
     const cats = Array.from(new Set(products.map(p => (p.category || '').trim()).filter(Boolean)));
     return cats.slice(0, 6);
@@ -420,7 +560,6 @@ function App() {
     return items;
   }, [products]);
 
-  // Loading Screen - EARLY RETURN AFTER ALL HOOKS
   if (isLoading) {
     return (
       <div style={{
@@ -436,73 +575,18 @@ function App() {
         justifyContent: 'center',
         zIndex: 9999
       }}>
-        <div style={{
-          animation: 'fadeInScale 0.8s ease-out',
-          textAlign: 'center'
-        }}>
-          <h1 style={{
-            color: 'white',
-            fontSize: '3.5rem',
-            fontWeight: 'bold',
-            marginBottom: '30px',
-            animation: 'pulse 2s ease-in-out infinite'
-          }}>ShopMaster</h1>
-
-          <div style={{
-            width: '60px',
-            height: '60px',
-            border: '6px solid rgba(255, 255, 255, 0.3)',
-            borderTop: '6px solid white',
-            borderRadius: '50%',
-            margin: '0 auto',
-            animation: 'spin 1s linear infinite'
-          }}></div>
-
-          <p style={{
-            color: 'rgba(255, 255, 255, 0.9)',
-            marginTop: '30px',
-            fontSize: '1.2rem',
-            animation: 'pulse 2s ease-in-out infinite'
-          }}>Loading amazing deals...</p>
-
-          <div style={{
-            marginTop: '40px',
-            padding: '15px 30px',
-            background: 'rgba(255, 255, 255, 0.15)',
-            borderRadius: '10px',
-            backdropFilter: 'blur(10px)',
-            border: '1px solid rgba(255, 255, 255, 0.3)'
-          }}>
-            <p style={{
-              color: 'white',
-              fontSize: '0.9rem',
-              margin: 0,
-              fontWeight: '500'
-            }}>⚠️ This is a development website</p>
+        <div style={{animation: 'fadeInScale 0.8s ease-out', textAlign: 'center'}}>
+          <h1 style={{color: 'white', fontSize: '3.5rem', fontWeight: 'bold', marginBottom: '30px', animation: 'pulse 2s ease-in-out infinite'}}>ShopMaster</h1>
+          <div style={{width: '60px', height: '60px', border: '6px solid rgba(255, 255, 255, 0.3)', borderTop: '6px solid white', borderRadius: '50%', margin: '0 auto', animation: 'spin 1s linear infinite'}}></div>
+          <p style={{color: 'rgba(255, 255, 255, 0.9)', marginTop: '30px', fontSize: '1.2rem', animation: 'pulse 2s ease-in-out infinite'}}>Loading amazing deals...</p>
+          <div style={{marginTop: '40px', padding: '15px 30px', background: 'rgba(255, 255, 255, 0.15)', borderRadius: '10px', backdropFilter: 'blur(10px)', border: '1px solid rgba(255, 255, 255, 0.3)'}}>
+            <p style={{color: 'white', fontSize: '0.9rem', margin: 0, fontWeight: '500'}}>⚠️ This is a development website</p>
           </div>
         </div>
-
         <style>{`
-          @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
-          }
-
-          @keyframes pulse {
-            0%, 100% { opacity: 1; }
-            50% { opacity: 0.7; }
-          }
-
-          @keyframes fadeInScale {
-            0% {
-              opacity: 0;
-              transform: scale(0.8);
-            }
-            100% {
-              opacity: 1;
-              transform: scale(1);
-            }
-          }
+          @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+          @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.7; } }
+          @keyframes fadeInScale { 0% { opacity: 0; transform: scale(0.8); } 100% { opacity: 1; transform: scale(1); } }
         `}</style>
       </div>
     );
@@ -512,133 +596,63 @@ function App() {
     <>
       <Navigation activePage={activePage} onPageChange={handlePageChange} cartCount={cartItems.length} isAdmin={isAdmin} />
 
-      {/* Admin Panel */}
       <div id="admin" className={`page ${activePage === 'admin' ? 'active' : ''}`}>
         <AdminPanel />
       </div>
 
-      {/* Product Page */}
       <div id="p" className={`page ${activePage === 'p' ? 'active' : ''}`}>
         <div className="container my-4">
           <h2 className="text-center mb-4">Products</h2>
-
-          {/* Search Bar */}
           <div className="d-flex justify-content-center gap-3 mb-4 flex-wrap">
-            <input
-              type="text"
-              className="form-control"
-              placeholder="Search products..."
-              value={search}
-              onChange={e => setSearch(e.target.value)}
-              style={{maxWidth: '300px'}}
-            />
+            <input type="text" className="form-control" placeholder="Search products..." value={search} onChange={e => setSearch(e.target.value)} style={{maxWidth: '300px'}} />
           </div>
-
-          {/* Filters Row */}
           <div className="row mb-4">
             <div className="col-md-3">
               <label className="form-label fw-bold">Category</label>
-              <select
-                className="form-select"
-                value={filter}
-                onChange={e => setFilter(e.target.value)}
-              >
-                {categories.map(cat => (
-                  <option key={cat} value={cat}>{cat}</option>
-                ))}
+              <select className="form-select" value={filter} onChange={e => setFilter(e.target.value)}>
+                {categories.map(cat => (<option key={cat} value={cat}>{cat}</option>))}
               </select>
             </div>
-
             <div className="col-md-3">
               <label className="form-label fw-bold">Brand</label>
-              <select
-                className="form-select"
-                value={brandFilter}
-                onChange={e => setBrandFilter(e.target.value)}
-              >
-                {brands.map(brand => (
-                  <option key={brand} value={brand}>{brand}</option>
-                ))}
+              <select className="form-select" value={brandFilter} onChange={e => setBrandFilter(e.target.value)}>
+                {brands.map(brand => (<option key={brand} value={brand}>{brand}</option>))}
               </select>
             </div>
-
             <div className="col-md-6">
               <label className="form-label fw-bold">Price Range</label>
               <div className="d-flex align-items-center gap-3">
-                <input
-                  type="range"
-                  className="form-range flex-grow-1"
-                  min="0"
-                  max={maxPrice}
-                  step="1000"
-                  value={priceRange[1]}
-                  onChange={e => setPriceRange([priceRange[0], parseInt(e.target.value)])}
-                />
-                <div className="text-nowrap">
-                  <small className="text-muted">₹0 - ₹{priceRange[1].toLocaleString()}</small>
-                </div>
+                <input type="range" className="form-range flex-grow-1" min="0" max={maxPrice} step="1000" value={priceRange[1]} onChange={e => setPriceRange([priceRange[0], parseInt(e.target.value)])} />
+                <div className="text-nowrap"><small className="text-muted">₹0 - ₹{priceRange[1].toLocaleString()}</small></div>
               </div>
             </div>
           </div>
-
-          {/* Active Filters Display */}
           {(search || filter !== "All" || brandFilter !== "All" || priceRange[1] < maxPrice) && (
             <div className="mb-3">
-              <button
-                className="btn btn-sm btn-outline-secondary"
-                onClick={() => {
-                  setSearch("");
-                  setFilter("All");
-                  setBrandFilter("All");
-                  setPriceRange([0, maxPrice]);
-                }}
-              >
-                Clear All Filters
-              </button>
+              <button className="btn btn-sm btn-outline-secondary" onClick={() => { setSearch(""); setFilter("All"); setBrandFilter("All"); setPriceRange([0, maxPrice]); }}>Clear All Filters</button>
               <span className="ms-2 text-muted">Showing {filteredProducts.length} of {products.length} products</span>
             </div>
           )}
-
           {productsLoading ? (
             <div className="text-center py-5">
-              <div className="spinner-border text-primary" role="status">
-                <span className="visually-hidden">Loading products...</span>
-              </div>
+              <div className="spinner-border text-primary" role="status"><span className="visually-hidden">Loading products...</span></div>
               <p className="mt-3 text-muted">Loading products from MongoDB...</p>
             </div>
           ) : filteredProducts.length === 0 ? (
             <div className="alert alert-info text-center" role="alert">
-              {products.length === 0 ? (
-                <>
-                  <i className="bi bi-box-seam" style={{fontSize: '3rem', display: 'block', marginBottom: '1rem'}}></i>
-                  <h5>No products available</h5>
-                  <p className="mb-0">{isAdmin ? 'Go to Admin Panel to add products.' : 'Please check back later.'}</p>
-                </>
-              ) : (
-                'No products found matching your filters.'
-              )}
+              {products.length === 0 ? (<><i className="bi bi-box-seam" style={{fontSize: '3rem', display: 'block', marginBottom: '1rem'}}></i><h5>No products available</h5><p className="mb-0">{isAdmin ? 'Go to Admin Panel to add products.' : 'Please check back later.'}</p></>) : ('No products found matching your filters.')}
             </div>
           ) : (
             <div className="row row-cols-1 row-cols-md-2 row-cols-lg-3 row-cols-xl-4 g-4">
               {filteredProducts.map((product) => {
                 const quantity = cartItems.filter(item => item.id === product.id).length;
-                return (
-                  <ProductCard
-                    key={product.id}
-                    product={product}
-                    quantity={quantity}
-                    onShowDetails={showProductDetails}
-                    onAddCart={handleAddToCart}
-                    onRemoveCart={handleRemoveFromCart}
-                  />
-                );
+                return (<ProductCard key={product.id} product={product} quantity={quantity} onShowDetails={showProductDetails} onAddCart={handleAddToCart} onRemoveCart={handleRemoveFromCart} />);
               })}
             </div>
           )}
         </div>
       </div>
 
-      {/* Product Details Page */}
       <div className={`page ${activePage === 'pdetails' ? 'active' : ''}`} id="pdetails">
         {selectedProduct && (
           <div className="container my-5">
@@ -646,31 +660,19 @@ function App() {
               <div className="col-md-8">
                 <div className="card shadow">
                   <div className="row g-0">
-                    <div className="col-md-6">
-                      <img src={selectedProduct.img} className="img-fluid rounded-start p-3" alt={selectedProduct.id} loading="lazy" />
-                    </div>
+                    <div className="col-md-6"><img src={selectedProduct.img} className="img-fluid rounded-start p-3" alt={selectedProduct.id} loading="lazy" /></div>
                     <div className="col-md-6">
                       <div className="card-body">
                         <h3 className="card-title">{selectedProduct.id}</h3>
                         <p className="card-text">{selectedProduct.description}</p>
                         <p className="card-text"><small className="text-muted">Category: {selectedProduct.category}</small></p>
-                        {selectedProduct.brand && (
-                          <p className="card-text"><small className="text-muted">Brand: {selectedProduct.brand}</small></p>
-                        )}
+                        {selectedProduct.brand && (<p className="card-text"><small className="text-muted">Brand: {selectedProduct.brand}</small></p>)}
                         <p className="card-text"><small className="text-muted">Year: {selectedProduct.year}</small></p>
                         <h4 className="text-success mb-2">₹{selectedProduct.cost}</h4>
-                        {typeof selectedProduct.mrp === 'number' && selectedProduct.mrp > selectedProduct.cost ? (
-                          <p className="mb-3"><small className="text-muted">MRP: <span style={{textDecoration:'line-through'}}>₹{selectedProduct.mrp}</span></small></p>
-                        ) : null}
-                        {(selectedProduct.shippingEtaText || selectedProduct.shippingText || selectedProduct.shipping) ? (
-                          <p className="mb-3"><small className="text-muted">{selectedProduct.shippingEtaText || selectedProduct.shippingText || selectedProduct.shipping}</small></p>
-                        ) : null}
-                        <button className="btn btn-primary btn-lg w-100" onClick={() => handleAddToCart(selectedProduct)}>
-                          Add to Cart
-                        </button>
-                        <button className="btn btn-secondary w-100 mt-2" onClick={() => setActivePage('p')}>
-                          Back to Products
-                        </button>
+                        {typeof selectedProduct.mrp === 'number' && selectedProduct.mrp > selectedProduct.cost ? (<p className="mb-3"><small className="text-muted">MRP: <span style={{textDecoration:'line-through'}}>₹{selectedProduct.mrp}</span></small></p>) : null}
+                        {(selectedProduct.shippingEtaText || selectedProduct.shippingText || selectedProduct.shipping) ? (<p className="mb-3"><small className="text-muted">{selectedProduct.shippingEtaText || selectedProduct.shippingText || selectedProduct.shipping}</small></p>) : null}
+                        <button className="btn btn-primary btn-lg w-100" onClick={() => handleAddToCart(selectedProduct)}>Add to Cart</button>
+                        <button className="btn btn-secondary w-100 mt-2" onClick={() => setActivePage('p')}>Back to Products</button>
                       </div>
                     </div>
                   </div>
@@ -681,53 +683,24 @@ function App() {
         )}
       </div>
 
-      {/* Home Page */}
       <div id="home" className={`page ${activePage === 'home' ? 'active' : ''}`}>
         <div className="body">
           <div className="container">
             <div className="text-center py-5">
               <h1 className="display-3 fw-bold mb-3">Welcome To ShopMaster</h1>
               <p className="lead mb-4">Your Single-Seller Marketplace</p>
-              <div className="d-flex justify-content-center gap-3 flex-wrap">
-                <button className="btn btn-primary btn-lg px-5" onClick={() => setActivePage('p')}>
-                  Shop Now
-                </button>
-              </div>
+              <div className="d-flex justify-content-center gap-3 flex-wrap"><button className="btn btn-primary btn-lg px-5" onClick={() => setActivePage('p')}>Shop Now</button></div>
             </div>
-
-            {/* Category sliders */}
             {productsLoading ? (
-              <div className="text-center pb-5">
-                <div className="spinner-border text-primary" role="status">
-                  <span className="visually-hidden">Loading...</span>
-                </div>
-                <p className="mt-3 text-muted">Loading categories...</p>
-              </div>
+              <div className="text-center pb-5"><div className="spinner-border text-primary" role="status"><span className="visually-hidden">Loading...</span></div><p className="mt-3 text-muted">Loading categories...</p></div>
             ) : products.length === 0 ? (
-              <div className="alert alert-info text-center" role="alert">
-                No products to show yet.
-              </div>
+              <div className="alert alert-info text-center" role="alert">No products to show yet.</div>
             ) : (
               <div className="pb-5">
                 {sectionCategories.map((cat) => {
                   const catProducts = getProductsForCategory(cat);
                   if (catProducts.length === 0) return null;
-
-                  return (
-                    <ProductSlider
-                      key={cat}
-                      title={`Shop By ${cat}`}
-                      products={catProducts}
-                      cartItems={cartItems}
-                      onShowDetails={showProductDetails}
-                      onAddCart={handleAddToCart}
-                      onRemoveCart={handleRemoveFromCart}
-                      onViewAll={() => {
-                        setFilter(cat);
-                        setActivePage('p');
-                      }}
-                    />
-                  );
+                  return (<ProductSlider key={cat} title={`Shop By ${cat}`} products={catProducts} cartItems={cartItems} onShowDetails={showProductDetails} onAddCart={handleAddToCart} onRemoveCart={handleRemoveFromCart} onViewAll={() => { setFilter(cat); setActivePage('p'); }} />);
                 })}
               </div>
             )}
@@ -735,7 +708,6 @@ function App() {
         </div>
       </div>
 
-      {/* Login Page */}
       <div id="login" className={`page ${activePage === 'login' ? 'active' : ''}`}>
         <div className="container my-5">
           <div className="row justify-content-center">
@@ -744,21 +716,10 @@ function App() {
                 <div className="card-body p-5 text-center">
                   <h2 className="card-title mb-3">Sign In to ShopMaster</h2>
                   <p className="text-muted mb-4">Choose your preferred sign-in method</p>
-
-                  <div className="d-flex justify-content-center mb-4">
-                    <Auth
-                      onSignInSuccess={handleSignInSuccess}
-                      onSignInFailure={handleSignInFailure}
-                    />
-                  </div>
-
+                  <div className="d-flex justify-content-center mb-4"><Auth onSignInSuccess={handleSignInSuccess} onSignInFailure={handleSignInFailure} /></div>
                   <div className="mt-4">
-                    <p className="small text-muted">
-                      <i className="bi bi-shield-check"></i> Secure sign-in with Google or Microsoft
-                    </p>
-                    <p className="small text-muted">
-                      Your cart and preferences are saved automatically
-                    </p>
+                    <p className="small text-muted"><i className="bi bi-shield-check"></i> Secure sign-in with Google or Microsoft</p>
+                    <p className="small text-muted">Your cart and preferences are saved automatically</p>
                   </div>
                 </div>
               </div>
@@ -767,7 +728,6 @@ function App() {
         </div>
       </div>
 
-      {/* Cart Page */}
       <div id="Cart" className={`page ${activePage === 'Cart' ? 'active' : ''}`}>
         <div className="container my-4">
           <div className="row justify-content-center">
@@ -776,21 +736,15 @@ function App() {
                 <div className="card-body">
                   <h2 className="card-title mb-4">Your Cart</h2>
                   {!currentUser ? (
-                    <div className="alert alert-info text-center" role="alert">
-                      Please <a href="#" onClick={() => setActivePage('login')} className="alert-link">sign in</a> to view your cart.
-                    </div>
+                    <div className="alert alert-info text-center" role="alert">Please <a href="#" onClick={() => setActivePage('login')} className="alert-link">sign in</a> to view your cart.</div>
                   ) : cartItems.length === 0 ? (
-                    <div className="alert alert-warning" role="alert">
-                      Your cart is empty.
-                    </div>
+                    <div className="alert alert-warning" role="alert">Your cart is empty.</div>
                   ) : (
                     <>
                       <ul className="list-group mb-3">
                         {groupedCart.map(item => (
                           <li key={item.id} className="list-group-item d-flex justify-content-between align-items-center">
-                            <div>
-                              <span>{item.id}{item.quantity > 1 ? ` × ${item.quantity}` : ''}</span>
-                            </div>
+                            <div><span>{item.id}{item.quantity > 1 ? ` × ${item.quantity}` : ''}</span></div>
                             <span className="badge bg-success rounded-pill fs-6">₹{item.cost * item.quantity}</span>
                           </li>
                         ))}
@@ -799,9 +753,7 @@ function App() {
                         <h4 className="mb-0">Total:</h4>
                         <h4 className="text-success mb-0">₹{totalPrice}</h4>
                       </div>
-                      <button className="btn btn-primary w-100 mt-3 btn-lg" onClick={handleCheckout}>
-                        Proceed to Checkout
-                      </button>
+                      <button className="btn btn-primary w-100 mt-3 btn-lg" onClick={handleCheckout}>Proceed to Checkout</button>
                     </>
                   )}
                 </div>
@@ -811,7 +763,6 @@ function App() {
         </div>
       </div>
 
-      {/* Dashboard Page */}
       <div id="dashboard" className={`page ${activePage === 'dashboard' ? 'active' : ''}`}>
         <div className="container my-5">
           <div className="text-center">
@@ -824,23 +775,14 @@ function App() {
                   <p>Cart Items: <strong>{cartItems.length}</strong></p>
                   <button className="btn btn-primary me-2" onClick={() => setActivePage('p')}>Shop Now</button>
                   <button className="btn btn-secondary me-2" onClick={() => setActivePage('Cart')}>View Cart</button>
-                  {isAdmin && (
-                    <button className="btn btn-warning me-2" onClick={() => setActivePage('admin')}>
-                      🔑 Admin Panel
-                    </button>
-                  )}
+                  {isAdmin && (<button className="btn btn-warning me-2" onClick={() => setActivePage('admin')}>🔑 Admin Panel</button>)}
                   <button className="btn btn-danger" onClick={handleSignOut}>Sign Out</button>
                 </div>
               </>
             ) : (
               <>
                 <p className="lead">Please sign in to view your dashboard</p>
-                <div className="mt-4">
-                  <Auth
-                    onSignInSuccess={handleSignInSuccess}
-                    onSignInFailure={handleSignInFailure}
-                  />
-                </div>
+                <div className="mt-4"><Auth onSignInSuccess={handleSignInSuccess} onSignInFailure={handleSignInFailure} /></div>
               </>
             )}
           </div>
