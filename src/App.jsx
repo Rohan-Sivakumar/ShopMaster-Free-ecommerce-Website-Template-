@@ -1,4 +1,3 @@
-// Force rebuild v2
 import React, { useState, useEffect, useMemo, useCallback, useRef } from "react";
 import Navigation from "./Navigation";
 import Auth from "./Auth";
@@ -279,7 +278,7 @@ function App() {
     setCartItems(updatedCart);
   }, [currentUser, cartItems]);
 
-  // Memoize grouped cart and total price (MOVED OUTSIDE JSX)
+  // Memoize grouped cart and total price
   const { groupedCart, totalPrice } = useMemo(() => {
     const grouped = cartItems.reduce((acc, item) => {
       const existingItem = acc.find(i => i.id === item.id);
@@ -406,7 +405,22 @@ function App() {
     });
   }, []);
 
-  // Loading Screen
+  // MOVED BEFORE EARLY RETURN: Build "shop by category" sections
+  const sectionCategories = useMemo(() => {
+    const cats = Array.from(new Set(products.map(p => (p.category || '').trim()).filter(Boolean)));
+    return cats.slice(0, 6);
+  }, [products]);
+
+  const getProductsForCategory = useCallback((category) => {
+    const items = products
+      .filter(p => p.category === category)
+      .slice(0)
+      .reverse()
+      .slice(0, 12);
+    return items;
+  }, [products]);
+
+  // Loading Screen - EARLY RETURN AFTER ALL HOOKS
   if (isLoading) {
     return (
       <div style={{
@@ -493,23 +507,6 @@ function App() {
       </div>
     );
   }
-
-  // Build "shop by category" sections using existing product categories
-  const sectionCategories = useMemo(() => {
-    // Prefer up to 6 categories excluding empty
-    const cats = Array.from(new Set(products.map(p => (p.category || '').trim()).filter(Boolean)));
-    return cats.slice(0, 6);
-  }, [products]);
-
-  const getProductsForCategory = useCallback((category) => {
-    // Show most recent items first; limit to 12 for slider
-    const items = products
-      .filter(p => p.category === category)
-      .slice(0)
-      .reverse()
-      .slice(0, 12);
-    return items;
-  }, [products]);
 
   return (
     <>
