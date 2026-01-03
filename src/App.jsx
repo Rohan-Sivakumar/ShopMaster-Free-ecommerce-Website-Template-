@@ -278,11 +278,9 @@ function App() {
     setCartItems(updatedCart);
   }, [currentUser, cartItems]);
 
-  // Handle checkout - Track order to MongoDB
-  const handleCheckout = useCallback(async () => {
-    if (!currentUser || cartItems.length === 0) return;
-
-    const groupedCart = cartItems.reduce((acc, item) => {
+  // Memoize grouped cart and total price (MOVED OUTSIDE JSX)
+  const { groupedCart, totalPrice } = useMemo(() => {
+    const grouped = cartItems.reduce((acc, item) => {
       const existingItem = acc.find(i => i.id === item.id);
       if (existingItem) {
         existingItem.quantity++;
@@ -292,7 +290,14 @@ function App() {
       return acc;
     }, []);
 
-    const totalPrice = groupedCart.reduce((sum, item) => sum + (item.cost * item.quantity), 0);
+    const total = grouped.reduce((sum, item) => sum + (item.cost * item.quantity), 0);
+
+    return { groupedCart: grouped, totalPrice: total };
+  }, [cartItems]);
+
+  // Handle checkout - Track order to MongoDB
+  const handleCheckout = useCallback(async () => {
+    if (!currentUser || cartItems.length === 0) return;
 
     // Save order to MongoDB (with localStorage fallback)
     try {
@@ -336,7 +341,7 @@ function App() {
         setActivePage('home');
       });
     }
-  }, [currentUser, cartItems]);
+  }, [currentUser, cartItems, totalPrice, groupedCart]);
 
   // Sign-In success handler
   const handleSignInSuccess = useCallback((userData) => {
@@ -488,7 +493,7 @@ function App() {
     );
   }
 
-  // Build “shop by category” sections using existing product categories
+  // Build "shop by category" sections using existing product categories
   const sectionCategories = useMemo(() => {
     // Prefer up to 6 categories excluding empty
     const cats = Array.from(new Set(products.map(p => (p.category || '').trim()).filter(Boolean)));
@@ -781,41 +786,25 @@ function App() {
                       Your cart is empty.
                     </div>
                   ) : (
-                    (() => {
-                      const groupedCart = cartItems.reduce((acc, item) => {
-                        const existingItem = acc.find(i => i.id === item.id);
-                        if (existingItem) {
-                          existingItem.quantity++;
-                        } else {
-                          acc.push({ ...item, quantity: 1 });
-                        }
-                        return acc;
-                      }, []);
-
-                      const totalPrice = groupedCart.reduce((sum, item) => sum + (item.cost * item.quantity), 0);
-
-                      return (
-                        <>
-                          <ul className="list-group mb-3">
-                            {groupedCart.map(item => (
-                              <li key={item.id} className="list-group-item d-flex justify-content-between align-items-center">
-                                <div>
-                                  <span>{item.id}{item.quantity > 1 ? ` × ${item.quantity}` : ''}</span>
-                                </div>
-                                <span className="badge bg-success rounded-pill fs-6">₹{item.cost * item.quantity}</span>
-                              </li>
-                            ))}
-                          </ul>
-                          <div className="d-flex justify-content-between align-items-center border-top pt-3">
-                            <h4 className="mb-0">Total:</h4>
-                            <h4 className="text-success mb-0">₹{totalPrice}</h4>
-                          </div>
-                          <button className="btn btn-primary w-100 mt-3 btn-lg" onClick={handleCheckout}>
-                            Proceed to Checkout
-                          </button>
-                        </>
-                      );
-                    })()
+                    <>
+                      <ul className="list-group mb-3">
+                        {groupedCart.map(item => (
+                          <li key={item.id} className="list-group-item d-flex justify-content-between align-items-center">
+                            <div>
+                              <span>{item.id}{item.quantity > 1 ? ` × ${item.quantity}` : ''}</span>
+                            </div>
+                            <span className="badge bg-success rounded-pill fs-6">₹{item.cost * item.quantity}</span>
+                          </li>
+                        ))}
+                      </ul>
+                      <div className="d-flex justify-content-between align-items-center border-top pt-3">
+                        <h4 className="mb-0">Total:</h4>
+                        <h4 className="text-success mb-0">₹{totalPrice}</h4>
+                      </div>
+                      <button className="btn btn-primary w-100 mt-3 btn-lg" onClick={handleCheckout}>
+                        Proceed to Checkout
+                      </button>
+                    </>
                   )}
                 </div>
               </div>
