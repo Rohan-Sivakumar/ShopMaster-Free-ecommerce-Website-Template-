@@ -31,7 +31,7 @@ mongoose.set('bufferTimeoutMS', 30000); // Increase buffer timeout to 30 seconds
 // Connection flag
 let isConnected = false;
 
-// Connect to MongoDB with retry logic
+// Connect to MongoDB with retry logic (non-blocking)
 const connectDB = async () => {
   if (isConnected) {
     console.log('✅ MongoDB already connected');
@@ -40,7 +40,7 @@ const connectDB = async () => {
 
   try {
     await mongoose.connect(MONGODB_URI, {
-      serverSelectionTimeoutMS: 10000, // Timeout after 10s instead of 30s
+      serverSelectionTimeoutMS: 10000, // Timeout after 10s
       socketTimeoutMS: 45000, // Close sockets after 45s of inactivity
       family: 4 // Use IPv4, skip trying IPv6
     });
@@ -83,7 +83,7 @@ process.on('SIGINT', async () => {
   process.exit(0);
 });
 
-// Start connection
+// Start connection (non-blocking - happens in background)
 connectDB();
 
 // Seller Schema
@@ -276,20 +276,8 @@ const initializeData = async () => {
     }
 
     console.log('✅ All data initialized successfully');
-  } catch (error) {
-    console.error('❌ Error initializing data:', error.message);
+  } catch (error) {    console.error('❌ Error initializing data:', error.message);
   }
-};
-
-// Middleware to check database connection
-const checkDbConnection = (req, res, next) => {
-  if (!isConnected) {
-    return res.status(503).json({ 
-      error: 'Database connection not available',
-      message: 'Please try again in a few moments'
-    });
-  }
-  next();
 };
 
 // Routes
@@ -299,12 +287,12 @@ app.get('/api/health', (req, res) => {
   res.json({ 
     status: 'ok', 
     message: 'Server is running',
-    database: isConnected ? 'connected' : 'disconnected'
+    database: isConnected ? 'connected' : 'connecting...'
   });
 });
 
-// Apply DB check middleware to all API routes
-app.use('/api', checkDbConnection);
+// NOTE: Removed blocking checkDbConnection middleware
+// MongoDB will connect in background, routes will work immediately
 
 // ========== SELLER ROUTES ==========
 
