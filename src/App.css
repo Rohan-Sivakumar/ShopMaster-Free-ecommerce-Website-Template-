@@ -47,28 +47,28 @@
   outline: none;
 }
 
-/* ====== Amazon-style Filter Sidebar ====== */
+/* ====== Amazon-style Filter Sidebar (Compact) ====== */
 .products-container {
   display: flex;
-  gap: 2rem;
+  gap: 1.5rem;
   margin: 2rem 0;
 }
 
 .filter-sidebar {
-  flex: 0 0 280px;
+  flex: 0 0 240px;
   background: #fff;
   border: 1px solid #ddd;
-  border-radius: 12px;
-  padding: 1.25rem;
+  border-radius: 8px;
+  padding: 1rem;
   height: fit-content;
   position: sticky;
   top: 90px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.05);
 }
 
 .filter-section {
-  margin-bottom: 1.75rem;
-  padding-bottom: 1.75rem;
+  margin-bottom: 1.25rem;
+  padding-bottom: 1rem;
   border-bottom: 1px solid #e7e7e7;
 }
 
@@ -79,16 +79,16 @@
 }
 
 .filter-section-title {
-  font-size: 1.05rem;
+  font-size: 0.95rem;
   font-weight: 700;
-  margin-bottom: 1rem;
+  margin-bottom: 0.65rem;
   color: #0f1111;
 }
 
 .filter-option {
   display: flex;
   align-items: center;
-  margin-bottom: 0.65rem;
+  margin-bottom: 0.5rem;
   cursor: pointer;
   transition: all 0.15s ease;
 }
@@ -99,20 +99,20 @@
 
 .filter-option input[type="checkbox"],
 .filter-option input[type="radio"] {
-  width: 17px;
-  height: 17px;
-  margin-right: 0.65rem;
+  width: 15px;
+  height: 15px;
+  margin-right: 0.5rem;
   cursor: pointer;
   accent-color: #ff9900;
 }
 
 .filter-option label {
   cursor: pointer;
-  font-size: 0.9rem;
+  font-size: 0.85rem;
   color: #565959;
   margin: 0;
   user-select: none;
-  line-height: 1.4;
+  line-height: 1.3;
 }
 
 .filter-option:hover label {
@@ -122,35 +122,40 @@
 .price-input-group {
   display: flex;
   align-items: center;
-  gap: 0.5rem;
-  margin-bottom: 0.75rem;
+  gap: 0.4rem;
+  margin-bottom: 0.6rem;
+}
+
+.price-input-group span {
+  font-size: 0.8rem;
+  color: #565959;
 }
 
 .price-input {
   flex: 1;
-  padding: 0.5rem 0.65rem;
+  padding: 0.4rem 0.5rem;
   border: 1px solid #888c8c;
-  border-radius: 8px;
-  font-size: 0.9rem;
+  border-radius: 6px;
+  font-size: 0.85rem;
   text-align: center;
 }
 
 .price-input:focus {
   outline: none;
   border-color: #e77600;
-  box-shadow: 0 0 0 3px rgba(231, 118, 0, 0.08);
+  box-shadow: 0 0 0 2px rgba(231, 118, 0, 0.08);
 }
 
 .price-go-btn {
-  padding: 0.5rem 1rem;
+  padding: 0.4rem 0.85rem;
   background: #ffd814;
   border: 1px solid #fcd200;
-  border-radius: 8px;
-  font-size: 0.9rem;
+  border-radius: 6px;
+  font-size: 0.85rem;
   font-weight: 600;
   cursor: pointer;
   width: 100%;
-  margin-top: 0.5rem;
+  margin-top: 0.4rem;
   transition: all 0.2s ease;
 }
 
@@ -161,15 +166,15 @@
 }
 
 .clear-filters-btn {
-  padding: 0.65rem 1rem;
+  padding: 0.5rem 0.85rem;
   background: #fff;
   border: 1px solid #d5d9d9;
-  border-radius: 8px;
-  font-size: 0.9rem;
+  border-radius: 6px;
+  font-size: 0.85rem;
   font-weight: 500;
   cursor: pointer;
   width: 100%;
-  margin-bottom: 1.25rem;
+  margin-bottom: 1rem;
   transition: all 0.2s ease;
   color: #c7511f;
 }
@@ -377,9 +382,9 @@
   .filter-sidebar {
     position: fixed;
     top: 0;
-    left: -300px;
+    left: -280px;
     bottom: 0;
-    width: 300px;
+    width: 280px;
     z-index: 1050;
     transition: left 0.3s ease;
     border-radius: 0;
@@ -501,7 +506,7 @@
 
   .filter-sidebar {
     width: 85vw;
-    max-width: 320px;
+    max-width: 300px;
     left: -85vw;
   }
 
@@ -565,7 +570,7 @@
 /* Large tablets and small desktops (768px - 992px) */
 @media (min-width: 768px) and (max-width: 992px) {
   .filter-sidebar {
-    flex: 0 0 240px;
+    flex: 0 0 220px;
   }
 
   .row-cols-lg-3 > * {
@@ -585,7 +590,7 @@
   }
 
   .filter-sidebar {
-    flex: 0 0 300px;
+    flex: 0 0 250px;
   }
 
   .row-cols-xl-4 > * {
