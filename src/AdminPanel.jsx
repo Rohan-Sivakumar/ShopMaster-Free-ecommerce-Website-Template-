@@ -29,6 +29,7 @@ const AdminPanel = () => {
     cost: '',
     img: '',
     category: '',
+    brand: '',
     description: ''
   });
 
@@ -119,7 +120,7 @@ const AdminPanel = () => {
       Swal.fire({
         icon: 'error',
         title: 'Validation Error',
-        text: 'Please fill in all fields and upload an image'
+        text: 'Please fill in all required fields and upload an image'
       });
       return;
     }
@@ -139,7 +140,8 @@ const AdminPanel = () => {
       const productData = {
         ...newProduct,
         cost: cost,
-        year: parseInt(newProduct.year)
+        year: parseInt(newProduct.year),
+        brand: newProduct.brand?.trim() || undefined
       };
 
       await addProduct(productData);
@@ -158,6 +160,7 @@ const AdminPanel = () => {
         cost: '',
         img: '',
         category: '',
+        brand: '',
         description: ''
       });
       setImagePreview(null);
@@ -435,6 +438,18 @@ const AdminPanel = () => {
                     </div>
 
                     <div className="mb-3">
+                      <label className="form-label">Brand</label>
+                      <input
+                        type="text"
+                        className="form-control"
+                        value={newProduct.brand}
+                        onChange={(e) => setNewProduct({...newProduct, brand: e.target.value})}
+                        placeholder="e.g., CNCMART, ULTRA"
+                      />
+                      <small className="text-muted">Optional - Enter brand name like CNCMART or ULTRA</small>
+                    </div>
+
+                    <div className="mb-3">
                       <label className="form-label">Price (₹) *</label>
                       <input
                         type="number"
@@ -568,6 +583,11 @@ const AdminPanel = () => {
                             </div>
                             <div className="col-md-7">
                               <h5 className="mb-1">{product.id || 'Unnamed'}</h5>
+                              {product.brand && (
+                                <div className="mb-1">
+                                  <span className="badge bg-info">{product.brand}</span>
+                                </div>
+                              )}
                               <p className="mb-1 text-success fw-bold">₹{product.cost || 0}</p>
                               <small className="text-muted">{product.category || 'No category'} • {product.year || 'N/A'}</small>
                             </div>
