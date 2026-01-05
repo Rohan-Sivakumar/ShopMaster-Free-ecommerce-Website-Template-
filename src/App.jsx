@@ -202,6 +202,11 @@ function App() {
     return Math.max(...products.map(p => p.cost));
   }, [products]);
 
+  // Update price range when maxPrice changes (when products load)
+  useEffect(() => {
+    setPriceRange(prev => [prev[0], maxPrice]);
+  }, [maxPrice]);
+
   const handlePageChange = useCallback((pageId) => {
     setActivePage(pageId);
     setSelectedProduct(null);
@@ -629,7 +634,7 @@ function App() {
                     className="form-range flex-grow-1" 
                     min="0" 
                     max={maxPrice} 
-                    step="1000" 
+                    step="100" 
                     value={priceRange[0]} 
                     onChange={e => {
                       const newMin = parseInt(e.target.value);
@@ -647,7 +652,7 @@ function App() {
                     className="form-range flex-grow-1" 
                     min="0" 
                     max={maxPrice} 
-                    step="1000" 
+                    step="100" 
                     value={priceRange[1]} 
                     onChange={e => {
                       const newMax = parseInt(e.target.value);
@@ -661,7 +666,7 @@ function App() {
               </div>
             </div>
           </div>
-          {(search || filter !== "All" || brandFilter !== "All" || priceRange[1] < maxPrice) && (
+          {(search || filter !== "All" || brandFilter !== "All" || priceRange[1] < maxPrice || priceRange[0] > 0) && (
             <div className="mb-3">
               <button className="btn btn-sm btn-outline-secondary" onClick={() => { setSearch(""); setFilter("All"); setBrandFilter("All"); setPriceRange([0, maxPrice]); }}>Clear All Filters</button>
               <span className="ms-2 text-muted">Showing {filteredProducts.length} of {products.length} products</span>
