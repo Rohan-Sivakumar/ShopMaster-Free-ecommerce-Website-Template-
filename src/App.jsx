@@ -202,6 +202,14 @@ function App() {
     return Math.max(...products.map(p => p.cost));
   }, [products]);
 
+  // Calculate appropriate step size based on max price
+  const priceStep = useMemo(() => {
+    if (maxPrice <= 1000) return 10;
+    if (maxPrice <= 10000) return 50;
+    if (maxPrice <= 50000) return 100;
+    return 500;
+  }, [maxPrice]);
+
   // Update price range when maxPrice changes (when products load)
   useEffect(() => {
     setPriceRange(prev => [prev[0], maxPrice]);
@@ -634,7 +642,7 @@ function App() {
                     className="form-range flex-grow-1" 
                     min="0" 
                     max={maxPrice} 
-                    step="100" 
+                    step={priceStep} 
                     value={priceRange[0]} 
                     onChange={e => {
                       const newMin = parseInt(e.target.value);
@@ -652,7 +660,7 @@ function App() {
                     className="form-range flex-grow-1" 
                     min="0" 
                     max={maxPrice} 
-                    step="100" 
+                    step={priceStep} 
                     value={priceRange[1]} 
                     onChange={e => {
                       const newMax = parseInt(e.target.value);
