@@ -621,9 +621,43 @@ function App() {
             </div>
             <div className="col-md-6">
               <label className="form-label fw-bold">Price Range</label>
-              <div className="d-flex align-items-center gap-3">
-                <input type="range" className="form-range flex-grow-1" min="0" max={maxPrice} step="1000" value={priceRange[1]} onChange={e => setPriceRange([priceRange[0], parseInt(e.target.value)])} />
-                <div className="text-nowrap"><small className="text-muted">₹0 - ₹{priceRange[1].toLocaleString()}</small></div>
+              <div className="d-flex flex-column gap-2">
+                <div className="d-flex align-items-center gap-2">
+                  <label className="small text-muted" style={{minWidth: '40px'}}>Min:</label>
+                  <input 
+                    type="range" 
+                    className="form-range flex-grow-1" 
+                    min="0" 
+                    max={maxPrice} 
+                    step="1000" 
+                    value={priceRange[0]} 
+                    onChange={e => {
+                      const newMin = parseInt(e.target.value);
+                      if (newMin <= priceRange[1]) {
+                        setPriceRange([newMin, priceRange[1]]);
+                      }
+                    }} 
+                  />
+                  <span className="text-nowrap" style={{minWidth: '80px'}}>₹{priceRange[0].toLocaleString()}</span>
+                </div>
+                <div className="d-flex align-items-center gap-2">
+                  <label className="small text-muted" style={{minWidth: '40px'}}>Max:</label>
+                  <input 
+                    type="range" 
+                    className="form-range flex-grow-1" 
+                    min="0" 
+                    max={maxPrice} 
+                    step="1000" 
+                    value={priceRange[1]} 
+                    onChange={e => {
+                      const newMax = parseInt(e.target.value);
+                      if (newMax >= priceRange[0]) {
+                        setPriceRange([priceRange[0], newMax]);
+                      }
+                    }} 
+                  />
+                  <span className="text-nowrap" style={{minWidth: '80px'}}>₹{priceRange[1].toLocaleString()}</span>
+                </div>
               </div>
             </div>
           </div>
