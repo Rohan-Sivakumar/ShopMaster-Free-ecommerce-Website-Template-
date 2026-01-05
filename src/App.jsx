@@ -16,6 +16,7 @@ const ProductCard = React.memo(({ product, quantity, onShowDetails, onAddCart, o
   const shippingText = product.shippingEtaText || product.shippingText || product.shipping || '';
   const mrp = product.mrp;
   const showMrp = typeof mrp === 'number' && mrp > product.cost;
+  const rating = product.rating || 0;
 
   return (
     <div className={variant === 'slider' ? "product-slide" : "col"}>
@@ -33,6 +34,16 @@ const ProductCard = React.memo(({ product, quantity, onShowDetails, onAddCart, o
           ) : null}
 
           <h5 className="card-title">{product.id}</h5>
+
+          {rating > 0 && (
+            <div className="product-rating mb-2">
+              <span className="text-warning">
+                {'★'.repeat(Math.floor(rating))}
+                {'☆'.repeat(5 - Math.floor(rating))}
+              </span>
+              <small className="text-muted ms-1">({rating})</small>
+            </div>
+          )}
 
           <div className="product-price-row">
             <span className="product-price">₹{product.cost}</span>
@@ -117,12 +128,18 @@ function App() {
   const [currentUser, setCurrentUser] = useState(null);
   const [cartItems, setCartItems] = useState([]);
   const [search, setSearch] = useState("");
-  const [filter, setFilter] = useState("All");
-  const [brandFilter, setBrandFilter] = useState("All");
-  const [priceRange, setPriceRange] = useState([0, 100000]);
+  const [selectedCategories, setSelectedCategories] = useState([]);
+  const [selectedBrands, setSelectedBrands] = useState([]);
+  const [minRating, setMinRating] = useState(0);
+  const [minPrice, setMinPrice] = useState('');
+  const [maxPrice, setMaxPrice] = useState('');
+  const [tempMinPrice, setTempMinPrice] = useState('');
+  const [tempMaxPrice, setTempMaxPrice] = useState('');
+  const [sortBy, setSortBy] = useState('featured');
   const [selectedProduct, setSelectedProduct] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isAdmin, setIsAdmin] = useState(false);
+  const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false);
 
   const loadProducts = useCallback(async () => {
     try {
@@ -188,16 +205,16 @@ function App() {
   }, [loadProducts]);
 
   const categories = useMemo(() =>
-    ["All", ...Array.from(new Set(products.map(p => p.category)))],
+    Array.from(new Set(products.map(p => p.category).filter(Boolean))),
     [products]
   );
 
   const brands = useMemo(() =>
-    ["All", ...Array.from(new Set(products.map(p => p.brand || "No Brand").filter(b => b)))],
+    Array.from(new Set(products.map(p => p.brand).filter(Boolean))),
     [products]
   );
 
-  const maxPrice = useMemo(() => {
+  const productMaxPrice = useMemo(() => {
     if (products.length === 0) return 100000;
     return Math.max(...products.map(p => p.cost));
   }, [products]);
@@ -207,15 +224,76 @@ function App() {
     setSelectedProduct(null);
   }, []);
 
+  const toggleCategory = useCallback((category) => {
+    setSelectedCategories(prev => 
+      prev.includes(category) 
+        ? prev.filter(c => c !== category)
+        : [...prev, category]
+    );
+  }, []);
+
+  const toggleBrand = useCallback((brand) => {
+    setSelectedBrands(prev => 
+      prev.includes(brand) 
+        ? prev.filter(b => b !== brand)
+        : [...prev, brand]
+    );
+  }, []);
+
+  const applyPriceFilter = useCallback(() => {
+    setMinPrice(tempMinPrice);
+    setMaxPrice(tempMaxPrice);
+  }, [tempMinPrice, tempMaxPrice]);
+
+  const clearAllFilters = useCallback(() => {
+    setSelectedCategories([]);
+    setSelectedBrands([]);
+    setMinRating(0);
+    setMinPrice('');
+    setMaxPrice('');
+    setTempMinPrice('');
+    setTempMaxPrice('');
+    setSearch('');
+    setSortBy('featured');
+  }, []);
+
   const filteredProducts = useMemo(() => {
-    return products.filter(product => {
+    let filtered = products.filter(product => {
       const matchesSearch = product.id.toLowerCase().includes(search.toLowerCase());
-      const matchesCategory = filter === "All" || product.category === filter;
-      const matchesBrand = brandFilter === "All" || (product.brand || "No Brand") === brandFilter;
-      const matchesPrice = product.cost >= priceRange[0] && product.cost <= priceRange[1];
-      return matchesSearch && matchesCategory && matchesBrand && matchesPrice;
+      const matchesCategory = selectedCategories.length === 0 || selectedCategories.includes(product.category);
+      const matchesBrand = selectedBrands.length === 0 || selectedBrands.includes(product.brand);
+      const matchesRating = (product.rating || 0) >= minRating;
+      
+      const min = minPrice === '' ? 0 : parseFloat(minPrice);
+      const max = maxPrice === '' ? Infinity : parseFloat(maxPrice);
+      const matchesPrice = product.cost >= min && product.cost <= max;
+      
+      return matchesSearch && matchesCategory && matchesBrand && matchesPrice && matchesRating;
     });
-  }, [products, search, filter, brandFilter, priceRange]);
+
+    // Apply sorting
+    switch (sortBy) {
+      case 'price-asc':
+        filtered.sort((a, b) => a.cost - b.cost);
+        break;
+      case 'price-desc':
+        filtered.sort((a, b) => b.cost - a.cost);
+        break;
+      case 'newest':
+        filtered.sort((a, b) => (b.year || 0) - (a.year || 0));
+        break;
+      case 'rating':
+        filtered.sort((a, b) => (b.rating || 0) - (a.rating || 0));
+        break;
+      default:
+        // featured - keep original order
+        break;
+    }
+
+    return filtered;
+  }, [products, search, selectedCategories, selectedBrands, minRating, minPrice, maxPrice, sortBy]);
+
+  const hasActiveFilters = selectedCategories.length > 0 || selectedBrands.length > 0 || minRating > 0 || minPrice !== '' || maxPrice !== '' || search !== '';
 
   const showProductDetails = useCallback((product) => {
     setSelectedProduct(product);
@@ -579,8 +657,7 @@ function App() {
           <h1 style={{color: 'white', fontSize: '3.5rem', fontWeight: 'bold', marginBottom: '30px', animation: 'pulse 2s ease-in-out infinite'}}>ShopMaster</h1>
           <div style={{width: '60px', height: '60px', border: '6px solid rgba(255, 255, 255, 0.3)', borderTop: '6px solid white', borderRadius: '50%', margin: '0 auto', animation: 'spin 1s linear infinite'}}></div>
           <p style={{color: 'rgba(255, 255, 255, 0.9)', marginTop: '30px', fontSize: '1.2rem', animation: 'pulse 2s ease-in-out infinite'}}>Loading amazing deals...</p>
-          <div style={{marginTop: '40px', padding: '15px 30px', background: 'rgba(255, 255, 255, 0.15)', borderRadius: '10px', backdropFilter: 'blur(10px)', border: '1px solid rgba(255, 255, 255, 0.3)'}}>
-            <p style={{color: 'white', fontSize: '0.9rem', margin: 0, fontWeight: '500'}}>⚠️ This is a development website</p>
+          <div style={{marginTop: '40px', padding: '15px 30px', background: 'rgba(255, 255, 255, 0.15)', borderRadius: '10px', backdropFilter: 'blur(10px)', border: '1px solid rgba(255, 255, 255, 0.3)'}}>            <p style={{color: 'white', fontSize: '0.9rem', margin: 0, fontWeight: '500'}}>⚠️ This is a development website</p>
           </div>
         </div>
         <style>{`
@@ -603,53 +680,201 @@ function App() {
       <div id="p" className={`page ${activePage === 'p' ? 'active' : ''}`}>
         <div className="container my-4">
           <h2 className="text-center mb-4">Products</h2>
-          <div className="d-flex justify-content-center gap-3 mb-4 flex-wrap">
-            <input type="text" className="form-control" placeholder="Search products..." value={search} onChange={e => setSearch(e.target.value)} style={{maxWidth: '300px'}} />
+          
+          {/* Search Bar */}
+          <div className="d-flex justify-content-center mb-4">
+            <input 
+              type="text" 
+              className="form-control" 
+              placeholder="Search products..." 
+              value={search} 
+              onChange={e => setSearch(e.target.value)} 
+              style={{maxWidth: '600px'}} 
+            />
           </div>
-          <div className="row mb-4">
-            <div className="col-md-3">
-              <label className="form-label fw-bold">Category</label>
-              <select className="form-select" value={filter} onChange={e => setFilter(e.target.value)}>
-                {categories.map(cat => (<option key={cat} value={cat}>{cat}</option>))}
-              </select>
-            </div>
-            <div className="col-md-3">
-              <label className="form-label fw-bold">Brand</label>
-              <select className="form-select" value={brandFilter} onChange={e => setBrandFilter(e.target.value)}>
-                {brands.map(brand => (<option key={brand} value={brand}>{brand}</option>))}
-              </select>
-            </div>
-            <div className="col-md-6">
-              <label className="form-label fw-bold">Price Range</label>
-              <div className="d-flex align-items-center gap-3">
-                <input type="range" className="form-range flex-grow-1" min="0" max={maxPrice} step="1000" value={priceRange[1]} onChange={e => setPriceRange([priceRange[0], parseInt(e.target.value)])} />
-                <div className="text-nowrap"><small className="text-muted">₹0 - ₹{priceRange[1].toLocaleString()}</small></div>
+
+          {/* Mobile Filter Toggle */}
+          <button 
+            className="mobile-filter-toggle"
+            onClick={() => setMobileFiltersOpen(!mobileFiltersOpen)}
+          >
+            <i className="bi bi-funnel"></i> Filters {hasActiveFilters && `(${selectedCategories.length + selectedBrands.length + (minRating > 0 ? 1 : 0) + (minPrice || maxPrice ? 1 : 0)})`}
+          </button>
+
+          {/* Filter Overlay for Mobile */}
+          <div 
+            className={`filter-overlay ${mobileFiltersOpen ? 'active' : ''}`}
+            onClick={() => setMobileFiltersOpen(false)}
+          ></div>
+
+          {/* Products Container with Sidebar */}
+          <div className="products-container">
+            {/* Amazon-style Filter Sidebar */}
+            <aside className={`filter-sidebar ${mobileFiltersOpen ? 'mobile-open' : ''}`}>
+              {hasActiveFilters && (
+                <button className="clear-filters-btn" onClick={clearAllFilters}>
+                  <i className="bi bi-x-circle"></i> Clear All Filters
+                </button>
+              )}
+
+              {/* Category Filter */}
+              {categories.length > 0 && (
+                <div className="filter-section">
+                  <h3 className="filter-section-title">Category</h3>
+                  {categories.map(category => (
+                    <div key={category} className="filter-option">
+                      <input 
+                        type="checkbox" 
+                        id={`cat-${category}`}
+                        checked={selectedCategories.includes(category)}
+                        onChange={() => toggleCategory(category)}
+                      />
+                      <label htmlFor={`cat-${category}`}>{category}</label>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {/* Brand Filter */}
+              {brands.length > 0 && (
+                <div className="filter-section">
+                  <h3 className="filter-section-title">Brand</h3>
+                  {brands.map(brand => (
+                    <div key={brand} className="filter-option">
+                      <input 
+                        type="checkbox" 
+                        id={`brand-${brand}`}
+                        checked={selectedBrands.includes(brand)}
+                        onChange={() => toggleBrand(brand)}
+                      />
+                      <label htmlFor={`brand-${brand}`}>{brand}</label>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {/* Rating Filter */}
+              <div className="filter-section">
+                <h3 className="filter-section-title">Customer Rating</h3>
+                {[4, 3, 2, 1].map(rating => (
+                  <div key={rating} className="filter-option">
+                    <input 
+                      type="radio" 
+                      name="rating"
+                      id={`rating-${rating}`}
+                      checked={minRating === rating}
+                      onChange={() => setMinRating(rating)}
+                    />
+                    <label htmlFor={`rating-${rating}`}>
+                      <span className="text-warning">
+                        {'★'.repeat(rating)}{'☆'.repeat(5 - rating)}
+                      </span>
+                      <span className="ms-1">& Up</span>
+                    </label>
+                  </div>
+                ))}
+                {minRating > 0 && (
+                  <div className="filter-option">
+                    <input 
+                      type="radio" 
+                      name="rating"
+                      id="rating-all"
+                      checked={minRating === 0}
+                      onChange={() => setMinRating(0)}
+                    />
+                    <label htmlFor="rating-all">All Ratings</label>
+                  </div>
+                )}
               </div>
+
+              {/* Price Filter */}
+              <div className="filter-section">
+                <h3 className="filter-section-title">Price</h3>
+                <div className="price-input-group">
+                  <input 
+                    type="number" 
+                    className="price-input" 
+                    placeholder="Min"
+                    value={tempMinPrice}
+                    onChange={(e) => setTempMinPrice(e.target.value)}
+                  />
+                  <span>to</span>
+                  <input 
+                    type="number" 
+                    className="price-input" 
+                    placeholder="Max"
+                    value={tempMaxPrice}
+                    onChange={(e) => setTempMaxPrice(e.target.value)}
+                  />
+                </div>
+                <button className="price-go-btn" onClick={applyPriceFilter}>
+                  Go
+                </button>
+                {(minPrice || maxPrice) && (
+                  <div className="mt-2" style={{fontSize: '0.875rem', color: '#565959'}}>
+                    ₹{minPrice || 0} - ₹{maxPrice || productMaxPrice.toLocaleString()}
+                  </div>
+                )}
+              </div>
+            </aside>
+
+            {/* Products Main Area */}
+            <div className="products-main">
+              <div className="products-header">
+                <span className="results-count">
+                  {filteredProducts.length} result{filteredProducts.length !== 1 ? 's' : ''}
+                </span>
+                <select 
+                  className="sort-dropdown" 
+                  value={sortBy} 
+                  onChange={(e) => setSortBy(e.target.value)}
+                >
+                  <option value="featured">Featured</option>
+                  <option value="price-asc">Price: Low to High</option>
+                  <option value="price-desc">Price: High to Low</option>
+                  <option value="rating">Customer Rating</option>
+                  <option value="newest">Newest Arrivals</option>
+                </select>
+              </div>
+
+              {productsLoading ? (
+                <div className="text-center py-5">
+                  <div className="spinner-border text-primary" role="status">
+                    <span className="visually-hidden">Loading products...</span>
+                  </div>
+                  <p className="mt-3 text-muted">Loading products from MongoDB...</p>
+                </div>
+              ) : filteredProducts.length === 0 ? (
+                <div className="alert alert-info text-center" role="alert">
+                  {products.length === 0 ? (
+                    <>
+                      <i className="bi bi-box-seam" style={{fontSize: '3rem', display: 'block', marginBottom: '1rem'}}></i>
+                      <h5>No products available</h5>
+                      <p className="mb-0">{isAdmin ? 'Go to Admin Panel to add products.' : 'Please check back later.'}</p>
+                    </>
+                  ) : (
+                    'No products found matching your filters.'
+                  )}
+                </div>
+              ) : (
+                <div className="row row-cols-1 row-cols-md-2 row-cols-lg-3 g-4">
+                  {filteredProducts.map((product) => {
+                    const quantity = cartItems.filter(item => item.id === product.id).length;
+                    return (
+                      <ProductCard 
+                        key={product.id} 
+                        product={product} 
+                        quantity={quantity} 
+                        onShowDetails={showProductDetails} 
+                        onAddCart={handleAddToCart} 
+                        onRemoveCart={handleRemoveFromCart} 
+                      />
+                    );
+                  })}
+                </div>
+              )}
             </div>
           </div>
-          {(search || filter !== "All" || brandFilter !== "All" || priceRange[1] < maxPrice) && (
-            <div className="mb-3">
-              <button className="btn btn-sm btn-outline-secondary" onClick={() => { setSearch(""); setFilter("All"); setBrandFilter("All"); setPriceRange([0, maxPrice]); }}>Clear All Filters</button>
-              <span className="ms-2 text-muted">Showing {filteredProducts.length} of {products.length} products</span>
-            </div>
-          )}
-          {productsLoading ? (
-            <div className="text-center py-5">
-              <div className="spinner-border text-primary" role="status"><span className="visually-hidden">Loading products...</span></div>
-              <p className="mt-3 text-muted">Loading products from MongoDB...</p>
-            </div>
-          ) : filteredProducts.length === 0 ? (
-            <div className="alert alert-info text-center" role="alert">
-              {products.length === 0 ? (<><i className="bi bi-box-seam" style={{fontSize: '3rem', display: 'block', marginBottom: '1rem'}}></i><h5>No products available</h5><p className="mb-0">{isAdmin ? 'Go to Admin Panel to add products.' : 'Please check back later.'}</p></>) : ('No products found matching your filters.')}
-            </div>
-          ) : (
-            <div className="row row-cols-1 row-cols-md-2 row-cols-lg-3 row-cols-xl-4 g-4">
-              {filteredProducts.map((product) => {
-                const quantity = cartItems.filter(item => item.id === product.id).length;
-                return (<ProductCard key={product.id} product={product} quantity={quantity} onShowDetails={showProductDetails} onAddCart={handleAddToCart} onRemoveCart={handleRemoveFromCart} />);
-              })}
-            </div>
-          )}
         </div>
       </div>
 
@@ -664,6 +889,15 @@ function App() {
                     <div className="col-md-6">
                       <div className="card-body">
                         <h3 className="card-title">{selectedProduct.id}</h3>
+                        {selectedProduct.rating > 0 && (
+                          <div className="mb-2">
+                            <span className="text-warning" style={{fontSize: '1.2rem'}}>
+                              {'★'.repeat(Math.floor(selectedProduct.rating))}
+                              {'☆'.repeat(5 - Math.floor(selectedProduct.rating))}
+                            </span>
+                            <span className="ms-2 text-muted">({selectedProduct.rating} out of 5)</span>
+                          </div>
+                        )}
                         <p className="card-text">{selectedProduct.description}</p>
                         <p className="card-text"><small className="text-muted">Category: {selectedProduct.category}</small></p>
                         {selectedProduct.brand && (<p className="card-text"><small className="text-muted">Brand: {selectedProduct.brand}</small></p>)}
@@ -700,7 +934,7 @@ function App() {
                 {sectionCategories.map((cat) => {
                   const catProducts = getProductsForCategory(cat);
                   if (catProducts.length === 0) return null;
-                  return (<ProductSlider key={cat} title={`Shop By ${cat}`} products={catProducts} cartItems={cartItems} onShowDetails={showProductDetails} onAddCart={handleAddToCart} onRemoveCart={handleRemoveFromCart} onViewAll={() => { setFilter(cat); setActivePage('p'); }} />);
+                  return (<ProductSlider key={cat} title={`Shop By ${cat}`} products={catProducts} cartItems={cartItems} onShowDetails={showProductDetails} onAddCart={handleAddToCart} onRemoveCart={handleRemoveFromCart} onViewAll={() => { setSelectedCategories([cat]); setActivePage('p'); }} />);
                 })}
               </div>
             )}
