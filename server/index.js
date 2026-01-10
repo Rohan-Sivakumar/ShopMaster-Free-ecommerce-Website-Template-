@@ -2,6 +2,7 @@ import express from 'express';
 import cors from 'cors';
 import mongoose from 'mongoose';
 import dotenv from 'dotenv';
+import nodemailer from 'nodemailer';
 
 dotenv.config();
 
@@ -21,12 +22,30 @@ app.use(cors({
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ limit: '50mb', extended: true }));
 
+// Configure Nodemailer
+const transporter = nodemailer.createTransport({
+  service: 'gmail',
+  auth: {
+    user: process.env.EMAIL_USER || 'rohan.sivaa@gmail.com',
+    pass: process.env.EMAIL_APP_PASSWORD // Gmail App Password (16 characters)
+  }
+});
+
+// Verify email configuration
+transporter.verify((error, success) => {
+  if (error) {
+    console.log('❌ Email configuration error:', error.message);
+  } else {
+    console.log('✅ Email server ready to send messages');
+  }
+});
+
 // MongoDB Connection with proper error handling
 const MONGODB_URI = process.env.MONGODB_URI || 'mongodb://localhost:27017/shopmaster';
 
 // Configure mongoose settings
 mongoose.set('strictQuery', false);
-mongoose.set('bufferTimeoutMS', 30000); // Increase buffer timeout to 30 seconds
+mongoose.set('bufferTimeoutMS', 30000);
 
 // Connection flag
 let isConnected = false;
@@ -40,21 +59,19 @@ const connectDB = async () => {
 
   try {
     await mongoose.connect(MONGODB_URI, {
-      serverSelectionTimeoutMS: 10000, // Timeout after 10s
-      socketTimeoutMS: 45000, // Close sockets after 45s of inactivity
-      family: 4 // Use IPv4, skip trying IPv6
+      serverSelectionTimeoutMS: 10000,
+      socketTimeoutMS: 45000,
+      family: 4
     });
     
     isConnected = true;
     console.log('✅ Connected to MongoDB');
     
-    // Initialize data after successful connection
     await initializeData();
   } catch (err) {
     console.error('❌ MongoDB connection error:', err.message);
     isConnected = false;
     
-    // Retry connection after 5 seconds
     console.log('⏳ Retrying MongoDB connection in 5 seconds...');
     setTimeout(connectDB, 5000);
   }
@@ -83,7 +100,7 @@ process.on('SIGINT', async () => {
   process.exit(0);
 });
 
-// Start connection (non-blocking - happens in background)
+// Start connection (non-blocking)
 connectDB();
 
 // Seller Schema
@@ -101,7 +118,7 @@ const sellerSchema = new mongoose.Schema({
 
 const Seller = mongoose.model('Seller', sellerSchema);
 
-// Product Schema (updated with seller info)
+// Product Schema
 const productSchema = new mongoose.Schema({
   id: { type: String, required: true },
   year: { type: Number, required: true },
@@ -118,14 +135,13 @@ const productSchema = new mongoose.Schema({
   updatedAt: { type: Date, default: Date.now }
 });
 
-// Create compound index for unique products per seller
 productSchema.index({ id: 1, sellerEmail: 1 }, { unique: true });
 
 const Product = mongoose.model('Product', productSchema);
 
-// Order Schema (updated with seller info)
+// Order Schema (updated with address and user email)
 const orderSchema = new mongoose.Schema({
-  user: { type: String, required: true },
+  user: { type: String, required: true }, // User email
   userName: { type: String, required: true },
   items: { type: Number, required: true },
   total: { type: Number, required: true },
@@ -136,6 +152,14 @@ const orderSchema = new mongoose.Schema({
     sellerEmail: String,
     sellerName: String
   }],
+  address: {
+    name: { type: String, required: true },
+    street: { type: String, required: true },
+    city: { type: String, required: true },
+    state: { type: String, required: true },
+    pincode: { type: String, required: true },
+    phone: { type: String, required: true }
+  },
   createdAt: { type: Date, default: Date.now }
 });
 
@@ -154,17 +178,118 @@ const statsSchema = new mongoose.Schema({
 
 const Stats = mongoose.model('Stats', statsSchema);
 
-// Initialize all data - called after MongoDB connection
+// Email template function
+const createOrderEmailHTML = (orderData) => {
+  const productRows = orderData.products.map(p => `
+    <tr>
+      <td style="padding: 10px; border: 1px solid #ddd;">${p.name}</td>
+      <td style="padding: 10px; border: 1px solid #ddd; text-align: center;">${p.quantity}</td>
+      <td style="padding: 10px; border: 1px solid #ddd; text-align: right;">₹${p.price.toFixed(2)}</td>
+      <td style="padding: 10px; border: 1px solid #ddd; text-align: right;">₹${(p.price * p.quantity).toFixed(2)}</td>
+    </tr>
+  `).join('');
+
+  return `
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <style>
+        body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+        .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+        .header { background: #ff9900; color: white; padding: 20px; text-align: center; border-radius: 5px 5px 0 0; }
+        .content { background: #f9f9f9; padding: 20px; border: 1px solid #ddd; }
+        .section { margin-bottom: 20px; }
+        .section-title { font-size: 18px; font-weight: bold; color: #ff9900; margin-bottom: 10px; }
+        table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+        th { background: #232f3e; color: white; padding: 10px; text-align: left; }
+        .total { font-size: 20px; font-weight: bold; color: #b12704; text-align: right; margin-top: 15px; }
+        .footer { text-align: center; margin-top: 20px; padding: 15px; background: #f0f0f0; border-radius: 0 0 5px 5px; }
+      </style>
+    </head>
+    <body>
+      <div class="container">
+        <div class="header">
+          <h1>🎉 New Order Received!</h1>
+        </div>
+        <div class="content">
+          <div class="section">
+            <div class="section-title">📦 Order Details</div>
+            <p><strong>Order Date:</strong> ${new Date(orderData.createdAt).toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' })}</p>
+            <p><strong>Total Items:</strong> ${orderData.items}</p>
+          </div>
+
+          <div class="section">
+            <div class="section-title">👤 Customer Information</div>
+            <p><strong>Name:</strong> ${orderData.userName}</p>
+            <p><strong>Email:</strong> ${orderData.user}</p>
+          </div>
+
+          <div class="section">
+            <div class="section-title">📍 Delivery Address</div>
+            <p><strong>Name:</strong> ${orderData.address.name}</p>
+            <p><strong>Address:</strong> ${orderData.address.street}</p>
+            <p><strong>City:</strong> ${orderData.address.city}</p>
+            <p><strong>State:</strong> ${orderData.address.state}</p>
+            <p><strong>Pincode:</strong> ${orderData.address.pincode}</p>
+            <p><strong>Phone:</strong> ${orderData.address.phone}</p>
+          </div>
+
+          <div class="section">
+            <div class="section-title">🛒 Products Ordered</div>
+            <table>
+              <thead>
+                <tr>
+                  <th>Product</th>
+                  <th style="text-align: center;">Quantity</th>
+                  <th style="text-align: right;">Price</th>
+                  <th style="text-align: right;">Subtotal</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${productRows}
+              </tbody>
+            </table>
+            <div class="total">Total: ₹${orderData.total.toFixed(2)}</div>
+          </div>
+        </div>
+        <div class="footer">
+          <p>This is an automated notification from ShopMaster</p>
+          <p style="color: #666; font-size: 12px;">Do not reply to this email</p>
+        </div>
+      </div>
+    </body>
+    </html>
+  `;
+};
+
+// Send order notification email
+const sendOrderEmail = async (orderData) => {
+  try {
+    const mailOptions = {
+      from: `ShopMaster <${process.env.EMAIL_USER || 'rohan.sivaa@gmail.com'}>`,
+      to: 'rohan.sivaa@gmail.com',
+      subject: `🛒 New Order Received - ₹${orderData.total.toFixed(2)} from ${orderData.userName}`,
+      html: createOrderEmailHTML(orderData)
+    };
+
+    const info = await transporter.sendMail(mailOptions);
+    console.log('✅ Order notification email sent:', info.messageId);
+    return info;
+  } catch (error) {
+    console.error('❌ Error sending order email:', error.message);
+    throw error;
+  }
+};
+
+// Initialize all data
 const initializeData = async () => {
   try {
-    // Initialize stats if not exists
     const stats = await Stats.findOne();
     if (!stats) {
       await Stats.create({});
       console.log('📊 Stats initialized');
     }
 
-    // Initialize super admin seller
     const superAdmin = await Seller.findOne({ email: 'rohan.sivaa@gmail.com' });
     if (!superAdmin) {
       await Seller.create({
@@ -177,7 +302,6 @@ const initializeData = async () => {
       console.log('👑 Super admin seller initialized');
     }
 
-    // Initialize with default products if empty
     const count = await Product.countDocuments();
     if (count === 0) {
       const defaultProducts = [
@@ -276,32 +400,29 @@ const initializeData = async () => {
     }
 
     console.log('✅ All data initialized successfully');
-  } catch (error) {    console.error('❌ Error initializing data:', error.message);
+  } catch (error) {
+    console.error('❌ Error initializing data:', error.message);
   }
 };
 
 // Routes
 
-// Health check (doesn't require DB)
+// Health check
 app.get('/api/health', (req, res) => {
   res.json({ 
     status: 'ok', 
     message: 'Server is running',
-    database: isConnected ? 'connected' : 'connecting...'
+    database: isConnected ? 'connected' : 'connecting...',
+    email: transporter ? 'configured' : 'not configured'
   });
 });
 
-// NOTE: Removed blocking checkDbConnection middleware
-// MongoDB will connect in background, routes will work immediately
-
 // ========== SELLER ROUTES ==========
 
-// Register as seller
 app.post('/api/sellers/register', async (req, res) => {
   try {
     const { email, name, businessName, phone, address } = req.body;
     
-    // Check if seller already exists
     const existing = await Seller.findOne({ email }).maxTimeMS(5000);
     if (existing) {
       return res.status(400).json({ error: 'Seller already registered with this email' });
@@ -313,7 +434,7 @@ app.post('/api/sellers/register', async (req, res) => {
       businessName,
       phone,
       address,
-      isApproved: email === 'rohan.sivaa@gmail.com' // Auto-approve super admin
+      isApproved: email === 'rohan.sivaa@gmail.com'
     });
     
     res.status(201).json(seller);
@@ -323,7 +444,6 @@ app.post('/api/sellers/register', async (req, res) => {
   }
 });
 
-// Get seller by email
 app.get('/api/sellers/:email', async (req, res) => {
   try {
     const seller = await Seller.findOne({ email: req.params.email }).maxTimeMS(5000);
@@ -337,7 +457,6 @@ app.get('/api/sellers/:email', async (req, res) => {
   }
 });
 
-// Get all sellers (super admin only)
 app.get('/api/sellers', async (req, res) => {
   try {
     const sellers = await Seller.find().sort({ createdAt: -1 }).maxTimeMS(5000);
@@ -348,7 +467,6 @@ app.get('/api/sellers', async (req, res) => {
   }
 });
 
-// Approve seller (super admin only)
 app.put('/api/sellers/:email/approve', async (req, res) => {
   try {
     const seller = await Seller.findOneAndUpdate(
@@ -370,7 +488,6 @@ app.put('/api/sellers/:email/approve', async (req, res) => {
 
 // ========== PRODUCT ROUTES ==========
 
-// Get all products (active only for customers)
 app.get('/api/products', async (req, res) => {
   try {
     const { sellerEmail } = req.query;
@@ -388,7 +505,6 @@ app.get('/api/products', async (req, res) => {
   }
 });
 
-// Get products by seller
 app.get('/api/sellers/:email/products', async (req, res) => {
   try {
     const products = await Product.find({ sellerEmail: req.params.email }).sort({ createdAt: -1 }).maxTimeMS(5000);
@@ -399,7 +515,6 @@ app.get('/api/sellers/:email/products', async (req, res) => {
   }
 });
 
-// Get product by ID
 app.get('/api/products/:id', async (req, res) => {
   try {
     const product = await Product.findOne({ id: req.params.id }).maxTimeMS(5000);
@@ -413,12 +528,10 @@ app.get('/api/products/:id', async (req, res) => {
   }
 });
 
-// Add new product (seller must be approved)
 app.post('/api/products', async (req, res) => {
   try {
     const { id, year, cost, img, category, description, sellerEmail } = req.body;
     
-    // Check if seller exists and is approved
     const seller = await Seller.findOne({ email: sellerEmail }).maxTimeMS(5000);
     if (!seller) {
       return res.status(403).json({ error: 'Seller not registered' });
@@ -427,7 +540,6 @@ app.post('/api/products', async (req, res) => {
       return res.status(403).json({ error: 'Seller account pending approval' });
     }
     
-    // Check if product with same ID already exists for this seller
     const existing = await Product.findOne({ id, sellerEmail }).maxTimeMS(5000);
     if (existing) {
       return res.status(400).json({ error: 'You already have a product with this name' });
@@ -452,18 +564,15 @@ app.post('/api/products', async (req, res) => {
   }
 });
 
-// Update product (only by owner seller)
 app.put('/api/products/:id', async (req, res) => {
   try {
     const { year, cost, img, category, description, sellerEmail, stock, isActive } = req.body;
     
-    // Find product and verify ownership
     const product = await Product.findOne({ id: req.params.id, sellerEmail }).maxTimeMS(5000);
     if (!product) {
       return res.status(404).json({ error: 'Product not found or you do not have permission to edit it' });
     }
     
-    // Update product
     product.year = year || product.year;
     product.cost = cost !== undefined ? cost : product.cost;
     product.img = img || product.img;
@@ -482,7 +591,6 @@ app.put('/api/products/:id', async (req, res) => {
   }
 });
 
-// Delete product (only by owner seller)
 app.delete('/api/products/:id', async (req, res) => {
   try {
     const { sellerEmail } = req.query;
@@ -502,13 +610,11 @@ app.delete('/api/products/:id', async (req, res) => {
 
 // ========== STATS ROUTES ==========
 
-// Get stats
 app.get('/api/stats', async (req, res) => {
   try {
     const { sellerEmail } = req.query;
     
     if (sellerEmail) {
-      // Get seller-specific stats
       const products = await Product.find({ sellerEmail }).maxTimeMS(5000);
       const orders = await Order.find({ 'products.sellerEmail': sellerEmail }).maxTimeMS(5000);
       
@@ -525,7 +631,6 @@ app.get('/api/stats', async (req, res) => {
         activeProducts: products.filter(p => p.isActive).length
       });
     } else {
-      // Get global stats
       let stats = await Stats.findOne().maxTimeMS(5000);
       if (!stats) {
         stats = await Stats.create({});
@@ -538,7 +643,6 @@ app.get('/api/stats', async (req, res) => {
   }
 });
 
-// Track page view
 app.post('/api/stats/view', async (req, res) => {
   try {
     let stats = await Stats.findOne().maxTimeMS(5000);
@@ -548,7 +652,6 @@ app.post('/api/stats/view', async (req, res) => {
 
     const today = new Date().toLocaleDateString();
     
-    // Reset today's views if it's a new day
     if (stats.lastViewDate !== today) {
       stats.todayViews = 1;
       stats.lastViewDate = today;
@@ -569,10 +672,15 @@ app.post('/api/stats/view', async (req, res) => {
 
 // ========== ORDER ROUTES ==========
 
-// Create order
+// Create order with email notification
 app.post('/api/orders', async (req, res) => {
   try {
-    const { user, userName, items, total, products } = req.body;
+    const { user, userName, items, total, products, address } = req.body;
+    
+    // Validate address
+    if (!address || !address.name || !address.street || !address.city || !address.state || !address.pincode || !address.phone) {
+      return res.status(400).json({ error: 'Complete address information is required' });
+    }
     
     // Create order
     const order = await Order.create({
@@ -580,7 +688,8 @@ app.post('/api/orders', async (req, res) => {
       userName,
       items,
       total,
-      products
+      products,
+      address
     });
 
     // Update stats
@@ -591,7 +700,6 @@ app.post('/api/orders', async (req, res) => {
 
     const today = new Date().toLocaleDateString();
     
-    // Reset today's orders if it's a new day
     if (stats.lastOrderDate !== today) {
       stats.todayOrders = 1;
       stats.lastOrderDate = today;
@@ -604,14 +712,18 @@ app.post('/api/orders', async (req, res) => {
     
     await stats.save();
 
-    res.status(201).json({ order, stats });
+    // Send email notification (don't wait for it to complete)
+    sendOrderEmail(order).catch(err => {
+      console.error('Email sending failed (non-blocking):', err.message);
+    });
+
+    res.status(201).json({ order, stats, message: 'Order created successfully, notification email will be sent' });
   } catch (error) {
     console.error('Create order error:', error);
     res.status(500).json({ error: error.message });
   }
 });
 
-// Get recent orders
 app.get('/api/orders', async (req, res) => {
   try {
     const { sellerEmail, limit } = req.query;
@@ -619,7 +731,6 @@ app.get('/api/orders', async (req, res) => {
     
     let orders;
     if (sellerEmail) {
-      // Get orders containing this seller's products
       orders = await Order.find({ 'products.sellerEmail': sellerEmail })
         .sort({ createdAt: -1 })
         .limit(orderLimit)
@@ -638,7 +749,6 @@ app.get('/api/orders', async (req, res) => {
   }
 });
 
-// Get order by ID
 app.get('/api/orders/:id', async (req, res) => {
   try {
     const order = await Order.findById(req.params.id).maxTimeMS(5000);
@@ -652,7 +762,7 @@ app.get('/api/orders/:id', async (req, res) => {
   }
 });
 
-// Start server (for local development)
+// Start server
 if (process.env.NODE_ENV !== 'production') {
   app.listen(PORT, () => {
     console.log(`🚀 Server running on http://localhost:${PORT}`);
