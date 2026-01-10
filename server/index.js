@@ -3,7 +3,6 @@ import cors from 'cors';
 import mongoose from 'mongoose';
 import dotenv from 'dotenv';
 import nodemailer from 'nodemailer';
-import * as OneSignal from '@onesignal/node-onesignal';
 
 dotenv.config();
 
@@ -40,22 +39,6 @@ transporter.verify((error, success) => {
     console.log('✅ Email server ready to send messages');
   }
 });
-
-// Configure OneSignal
-const ONESIGNAL_APP_ID = process.env.ONESIGNAL_APP_ID;
-const ONESIGNAL_REST_API_KEY = process.env.ONESIGNAL_REST_API_KEY;
-
-let oneSignalClient = null;
-
-if (ONESIGNAL_APP_ID && ONESIGNAL_REST_API_KEY) {
-  const configuration = OneSignal.createConfiguration({
-    restApiKey: ONESIGNAL_REST_API_KEY,
-  });
-  oneSignalClient = new OneSignal.DefaultApi(configuration);
-  console.log('✅ OneSignal configured');
-} else {
-  console.log('⚠️ OneSignal not configured (missing credentials)');
-}
 
 // MongoDB Connection with proper error handling
 const MONGODB_URI = process.env.MONGODB_URI || 'mongodb://localhost:27017/shopmaster';
@@ -298,47 +281,6 @@ const sendOrderEmail = async (orderData) => {
   }
 };
 
-// Send OneSignal push notification
-const sendOrderPushNotification = async (orderData) => {
-  if (!oneSignalClient || !ONESIGNAL_APP_ID) {
-    console.log('⚠️ OneSignal not configured, skipping push notification');
-    return null;
-  }
-
-  try {
-    const productList = orderData.products.map(p => `${p.name} (x${p.quantity})`).join(', ');
-    
-    const notification = new OneSignal.Notification();
-    notification.app_id = ONESIGNAL_APP_ID;
-    notification.included_segments = ['Subscribed Users']; // Send to all subscribed users
-    notification.headings = { en: '🎉 New Order Received!' };
-    notification.contents = {
-      en: `${orderData.userName} ordered ${orderData.items} item(s) for ₹${orderData.total.toFixed(2)}`
-    };
-    notification.subtitle = { en: productList.substring(0, 100) };
-    notification.data = {
-      orderId: orderData._id.toString(),
-      total: orderData.total,
-      items: orderData.items
-    };
-    notification.url = `https://scs577738.vercel.app/admin/orders`; // Optional: URL to open when notification is clicked
-    
-    // Use chrome_web_icon for better appearance
-    notification.chrome_web_icon = 'https://scs577738.vercel.app/logo.png'; // Add your logo URL
-    notification.chrome_web_badge = 'https://scs577738.vercel.app/badge.png'; // Add badge URL
-
-    const response = await oneSignalClient.createNotification(notification);
-    console.log('✅ OneSignal push notification sent:', response.id);
-    return response;
-  } catch (error) {
-    console.error('❌ Error sending push notification:', error.message);
-    if (error.body) {
-      console.error('OneSignal error details:', error.body);
-    }
-    throw error;
-  }
-};
-
 // Initialize all data
 const initializeData = async () => {
   try {
@@ -471,8 +413,7 @@ app.get('/api/health', (req, res) => {
     status: 'ok', 
     message: 'Server is running',
     database: isConnected ? 'connected' : 'connecting...',
-    email: transporter ? 'configured' : 'not configured',
-    oneSignal: oneSignalClient ? 'configured' : 'not configured'
+    email: transporter ? 'configured' : 'not configured'
   });
 });
 
@@ -731,7 +672,7 @@ app.post('/api/stats/view', async (req, res) => {
 
 // ========== ORDER ROUTES ==========
 
-// Create order with email and push notification
+// Create order with email notification
 app.post('/api/orders', async (req, res) => {
   try {
     const { user, userName, items, total, products, address } = req.body;
@@ -776,15 +717,10 @@ app.post('/api/orders', async (req, res) => {
       console.error('Email sending failed (non-blocking):', err.message);
     });
 
-    // Send push notification (non-blocking)
-    sendOrderPushNotification(order).catch(err => {
-      console.error('Push notification failed (non-blocking):', err.message);
-    });
-
     res.status(201).json({ 
       order, 
       stats, 
-      message: 'Order created successfully, notifications will be sent' 
+      message: 'Order created successfully, email notification will be sent' 
     });
   } catch (error) {
     console.error('Create order error:', error);
