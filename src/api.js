@@ -138,6 +138,31 @@ export const getOrders = async (limit = 50) => {
   }
 };
 
+// Delete order
+export const deleteOrder = async (orderId) => {
+  try {
+    if (!orderId) throw new Error('Order ID is required');
+
+    const response = await fetchWithRetry(
+      `${API_URL}/orders/${encodeURIComponent(orderId)}`,
+      { method: 'DELETE' }
+    );
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error || 'Failed to delete order');
+    }
+    return await response.json();
+  } catch (error) {
+    console.error('Error deleting order:', error.message);
+    // Fallback to localStorage
+    const stats = JSON.parse(localStorage.getItem('adminStats') || '{}');
+    stats.ordersHistory = (stats.ordersHistory || []).filter(o => (o._id || o.id) !== orderId);
+    localStorage.setItem('adminStats', JSON.stringify(stats));
+    
+    throw error; // Re-throw to show error message
+  }
+};
+
 // ========== PRODUCT MANAGEMENT ==========
 
 // Get all products
