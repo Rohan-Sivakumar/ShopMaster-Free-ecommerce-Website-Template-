@@ -146,8 +146,7 @@ const OrderTracking = () => {
         <div className="row mb-4">
           <div className="col-md-8 mx-auto">
             <div className="card shadow-lg border-0 rounded-lg overflow-hidden">
-              <div className="card-header bg-gradient" style={{background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)'}}
-              >
+              <div className="card-header bg-gradient" style={{background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)'}}>
                 <h5 className="mb-0 text-white">
                   <i className="bi bi-search"></i> Find Your Order
                 </h5>
@@ -256,7 +255,7 @@ const OrderTracking = () => {
                       <div className="customer-info">
                         <p className="mb-2">
                           <strong>Name:</strong>
-                          <div className="text-muted">{orderDetails.userName || 'N/A'}</div>
+                          <div className="text-muted">{orderDetails.userName || orderDetails.address?.name || 'N/A'}</div>
                         </p>
                         <p className="mb-2">
                           <strong>Email:</strong>
@@ -264,7 +263,7 @@ const OrderTracking = () => {
                         </p>
                         <p className="mb-0">
                           <strong>Phone:</strong>
-                          <div className="text-muted">{orderDetails.phone || 'N/A'}</div>
+                          <div className="text-muted">{orderDetails.address?.phone || orderDetails.phone || 'N/A'}</div>
                         </p>
                       </div>
                     </div>
@@ -280,6 +279,11 @@ const OrderTracking = () => {
                       </h5>
                       {orderDetails.address ? (
                         <div className="address-info text-muted">
+                          {orderDetails.address.name && (
+                            <p className="mb-2 fw-bold">
+                              {orderDetails.address.name}
+                            </p>
+                          )}
                           <p className="mb-2">
                             {orderDetails.address.street || 'Street address not provided'}
                           </p>
