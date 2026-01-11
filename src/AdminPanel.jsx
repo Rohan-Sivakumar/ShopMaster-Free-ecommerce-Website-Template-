@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { getStats, getOrders, checkBackendHealth, getProducts, addProduct, deleteProduct } from './api';
+import { getStats, getOrders, checkBackendHealth, getProducts, addProduct, updateProduct, deleteProduct, deleteOrder } from './api';
 import './AdminPanel.css';
 import Swal from 'sweetalert2';
 
@@ -22,6 +22,7 @@ const AdminPanel = () => {
   const [productLoading, setProductLoading] = useState(false);
   const [imagePreview, setImagePreview] = useState(null);
   const [expandedOrder, setExpandedOrder] = useState(null);
+  const [editingProduct, setEditingProduct] = useState(null);
 
   // New product form state
   const [newProduct, setNewProduct] = useState({
@@ -145,14 +146,25 @@ const AdminPanel = () => {
         brand: newProduct.brand?.trim() || undefined
       };
 
-      await addProduct(productData);
-      
-      Swal.fire({
-        icon: 'success',
-        title: 'Product Added!',
-        text: `${newProduct.id} has been added successfully`,
-        timer: 2000
-      });
+      // Check if editing or adding
+      if (editingProduct) {
+        await updateProduct(editingProduct, productData);
+        Swal.fire({
+          icon: 'success',
+          title: 'Product Updated!',
+          text: `${newProduct.id} has been updated successfully`,
+          timer: 2000
+        });
+        setEditingProduct(null);
+      } else {
+        await addProduct(productData);
+        Swal.fire({
+          icon: 'success',
+          title: 'Product Added!',
+          text: `${newProduct.id} has been added successfully`,
+          timer: 2000
+        });
+      }
 
       // Reset form
       setNewProduct({
@@ -174,9 +186,38 @@ const AdminPanel = () => {
       Swal.fire({
         icon: 'error',
         title: 'Error',
-        text: error.message || 'Failed to add product. Please try again.'
+        text: error.message || 'Failed to save product. Please try again.'
       });
     }
+  };
+
+  const handleEditProduct = (product) => {
+    setEditingProduct(product.id || product._id);
+    setNewProduct({
+      id: product.id || '',
+      year: product.year || new Date().getFullYear(),
+      cost: product.cost || '',
+      img: product.img || '',
+      category: product.category || '',
+      brand: product.brand || '',
+      description: product.description || ''
+    });
+    setImagePreview(product.img || null);
+    setActiveTab('products');
+  };
+
+  const handleCancelEdit = () => {
+    setEditingProduct(null);
+    setNewProduct({
+      id: '',
+      year: new Date().getFullYear(),
+      cost: '',
+      img: '',
+      category: '',
+      brand: '',
+      description: ''
+    });
+    setImagePreview(null);
   };
 
   const handleDeleteProduct = async (productId) => {
@@ -214,6 +255,46 @@ const AdminPanel = () => {
           icon: 'error',
           title: 'Error',
           text: error.message || 'Failed to delete product. Please try again.'
+        });
+      }
+    }
+  };
+
+  const handleDeleteOrder = async (orderId) => {
+    if (!orderId) return;
+
+    const result = await Swal.fire({
+      title: 'Delete Order?',
+      text: 'Are you sure you want to delete this order? This action cannot be undone.',
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonColor: '#d33',
+      cancelButtonColor: '#3085d6',
+      confirmButtonText: 'Yes, delete it!',
+      cancelButtonText: 'Cancel'
+    });
+
+    if (result.isConfirmed) {
+      try {
+        setLoading(true);
+        await deleteOrder(orderId);
+        
+        Swal.fire({
+          icon: 'success',
+          title: 'Deleted!',
+          text: 'Order has been deleted successfully',
+          timer: 2000
+        });
+
+        // Reload orders
+        await loadData();
+        setLoading(false);
+      } catch (error) {
+        setLoading(false);
+        Swal.fire({
+          icon: 'error',
+          title: 'Error',
+          text: error.message || 'Failed to delete order. Please try again.'
         });
       }
     }
@@ -447,7 +528,7 @@ const AdminPanel = () => {
                   <div key={orderId} className="card mb-3 shadow-sm">
                     <div className="card-header bg-light">
                       <div className="row align-items-center">
-                        <div className="col-md-3">
+                        <div className="col-md-2">
                           <strong>Order #{displayId}</strong>
                           <div className="text-muted small">
                             {orderDate ? new Date(orderDate).toLocaleString() : 'N/A'}
@@ -463,9 +544,9 @@ const AdminPanel = () => {
                         <div className="col-md-2">
                           <strong className="text-success">₹{order.total || 0}</strong>
                         </div>
-                        <div className="col-md-2 text-end">
+                        <div className="col-md-3 text-end">
                           <button 
-                            className="btn btn-sm btn-outline-primary"
+                            className="btn btn-sm btn-outline-primary me-2"
                             onClick={() => toggleOrderDetails(orderId)}
                           >
                             {isExpanded ? (
@@ -473,6 +554,13 @@ const AdminPanel = () => {
                             ) : (
                               <><i className="bi bi-chevron-down"></i> Details</>
                             )}
+                          </button>
+                          <button 
+                            className="btn btn-sm btn-outline-danger"
+                            onClick={() => handleDeleteOrder(orderId)}
+                            disabled={loading}
+                          >
+                            <i className="bi bi-trash"></i> Delete
                           </button>
                         </div>
                       </div>
@@ -562,7 +650,7 @@ const AdminPanel = () => {
                                 </tbody>
                                 <tfoot className="table-light">
                                   <tr>
-                                    <td colspan="4" className="text-end"><strong>Total:</strong></td>
+                                    <td colSpan="4" className="text-end"><strong>Total:</strong></td>
                                     <td className="fw-bold text-success">₹{order.total || 0}</td>
                                   </tr>
                                 </tfoot>
@@ -601,12 +689,16 @@ const AdminPanel = () => {
       {activeTab === 'products' && (
         <div className="products-management">
           <div className="row">
-            {/* Add Product Form */}
+            {/* Add/Edit Product Form */}
             <div className="col-lg-5 mb-4">
               <div className="card shadow">
                 <div className="card-body">
                   <h3 className="card-title mb-4">
-                    <i className="bi bi-plus-circle"></i> Add New Product
+                    {editingProduct ? (
+                      <><i className="bi bi-pencil-square"></i> Edit Product</>
+                    ) : (
+                      <><i className="bi bi-plus-circle"></i> Add New Product</>
+                    )}
                   </h3>
                   <form onSubmit={handleAddProduct}>
                     <div className="mb-3">
@@ -718,22 +810,34 @@ const AdminPanel = () => {
                       />
                     </div>
 
-                    <button 
-                      type="submit" 
-                      className="btn btn-success w-100"
-                      disabled={productLoading}
-                    >
-                      {productLoading ? (
-                        <>
-                          <span className="spinner-border spinner-border-sm me-2"></span>
-                          Adding...
-                        </>
-                      ) : (
-                        <>
-                          <i className="bi bi-plus-lg"></i> Add Product
-                        </>
+                    <div className="d-grid gap-2">
+                      <button 
+                        type="submit" 
+                        className="btn btn-success"
+                        disabled={productLoading}
+                      >
+                        {productLoading ? (
+                          <>
+                            <span className="spinner-border spinner-border-sm me-2"></span>
+                            {editingProduct ? 'Updating...' : 'Adding...'}
+                          </>
+                        ) : (
+                          <>
+                            <i className={`bi ${editingProduct ? 'bi-check-lg' : 'bi-plus-lg'}`}></i> {editingProduct ? 'Update Product' : 'Add Product'}
+                          </>
+                        )}
+                      </button>
+                      {editingProduct && (
+                        <button 
+                          type="button" 
+                          className="btn btn-secondary"
+                          onClick={handleCancelEdit}
+                          disabled={productLoading}
+                        >
+                          <i className="bi bi-x-lg"></i> Cancel Edit
+                        </button>
                       )}
-                    </button>
+                    </div>
                   </form>
                 </div>
               </div>
@@ -776,6 +880,13 @@ const AdminPanel = () => {
                               <small className="text-muted">{product.category || 'No category'} • {product.year || 'N/A'}</small>
                             </div>
                             <div className="col-md-3 text-end">
+                              <button 
+                                className="btn btn-primary btn-sm me-1"
+                                onClick={() => handleEditProduct(product)}
+                                disabled={productLoading}
+                              >
+                                <i className="bi bi-pencil"></i> Edit
+                              </button>
                               <button 
                                 className="btn btn-danger btn-sm"
                                 onClick={() => handleDeleteProduct(product.id)}
