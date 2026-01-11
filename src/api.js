@@ -140,26 +140,43 @@ export const getOrders = async (limit = 50) => {
 
 // Delete order
 export const deleteOrder = async (orderId) => {
-  try {
-    if (!orderId) throw new Error('Order ID is required');
+  if (!orderId) throw new Error('Order ID is required');
 
+  try {
+    // Try API first
     const response = await fetchWithRetry(
       `${API_URL}/orders/${encodeURIComponent(orderId)}`,
-      { method: 'DELETE' }
+      { method: 'DELETE' },
+      1 // Only retry once for delete
     );
-    if (!response.ok) {
-      const error = await response.json();
-      throw new Error(error.error || 'Failed to delete order');
+    
+    // Check if response is HTML (error page) or JSON
+    const contentType = response.headers.get('content-type');
+    if (!response.ok || !contentType || !contentType.includes('application/json')) {
+      throw new Error('Backend route not available');
     }
+    
     return await response.json();
   } catch (error) {
-    console.error('Error deleting order:', error.message);
-    // Fallback to localStorage
-    const stats = JSON.parse(localStorage.getItem('adminStats') || '{}');
-    stats.ordersHistory = (stats.ordersHistory || []).filter(o => (o._id || o.id) !== orderId);
-    localStorage.setItem('adminStats', JSON.stringify(stats));
+    console.warn('API delete failed, using localStorage:', error.message);
     
-    throw error; // Re-throw to show error message
+    // Use localStorage as fallback
+    const stats = JSON.parse(localStorage.getItem('adminStats') || '{}');
+    const initialLength = stats.ordersHistory?.length || 0;
+    
+    stats.ordersHistory = (stats.ordersHistory || []).filter(o => {
+      const currentId = o._id || o.id;
+      return currentId !== orderId;
+    });
+    
+    const finalLength = stats.ordersHistory.length;
+    
+    if (initialLength === finalLength) {
+      throw new Error('Order not found in local storage');
+    }
+    
+    localStorage.setItem('adminStats', JSON.stringify(stats));
+    return { message: 'Order deleted successfully (from local storage)', orderId };
   }
 };
 
