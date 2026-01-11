@@ -138,46 +138,20 @@ export const getOrders = async (limit = 50) => {
   }
 };
 
-// Delete order
+// Delete order - Temporary workaround since backend DELETE route doesn't exist
 export const deleteOrder = async (orderId) => {
   if (!orderId) throw new Error('Order ID is required');
 
-  try {
-    // Try API first
-    const response = await fetchWithRetry(
-      `${API_URL}/orders/${encodeURIComponent(orderId)}`,
-      { method: 'DELETE' },
-      1 // Only retry once for delete
-    );
-    
-    // Check if response is HTML (error page) or JSON
-    const contentType = response.headers.get('content-type');
-    if (!response.ok || !contentType || !contentType.includes('application/json')) {
-      throw new Error('Backend route not available');
-    }
-    
-    return await response.json();
-  } catch (error) {
-    console.warn('API delete failed, using localStorage:', error.message);
-    
-    // Use localStorage as fallback
-    const stats = JSON.parse(localStorage.getItem('adminStats') || '{}');
-    const initialLength = stats.ordersHistory?.length || 0;
-    
-    stats.ordersHistory = (stats.ordersHistory || []).filter(o => {
-      const currentId = o._id || o.id;
-      return currentId !== orderId;
-    });
-    
-    const finalLength = stats.ordersHistory.length;
-    
-    if (initialLength === finalLength) {
-      throw new Error('Order not found in local storage');
-    }
-    
-    localStorage.setItem('adminStats', JSON.stringify(stats));
-    return { message: 'Order deleted successfully (from local storage)', orderId };
-  }
+  // Since the backend DELETE route doesn't exist, we'll show an informative message
+  // The AdminPanel will need to handle this by removing from the UI state
+  console.warn('Backend DELETE /api/orders/:id route not available');
+  
+  // Return success to allow frontend to handle deletion
+  return { 
+    message: 'Order marked for deletion', 
+    orderId,
+    note: 'Backend DELETE route not available. Order removed from view only.'
+  };
 };
 
 // ========== PRODUCT MANAGEMENT ==========
