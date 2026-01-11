@@ -139,7 +139,7 @@ productSchema.index({ id: 1, sellerEmail: 1 }, { unique: true });
 
 const Product = mongoose.model('Product', productSchema);
 
-// Order Schema (updated with address and user email)
+// Order Schema (updated with cart field for complete product details)
 const orderSchema = new mongoose.Schema({
   user: { type: String, required: true },
   userName: { type: String, required: true },
@@ -152,13 +152,22 @@ const orderSchema = new mongoose.Schema({
     sellerEmail: String,
     sellerName: String
   }],
+  cart: [{
+    id: String,
+    cost: Number,
+    img: String,
+    brand: String,
+    category: String,
+    quantity: Number
+  }],
   address: {
     name: { type: String, required: true },
     street: { type: String, required: true },
     city: { type: String, required: true },
     state: { type: String, required: true },
     pincode: { type: String, required: true },
-    phone: { type: String, required: true }
+    phone: { type: String, required: true },
+    country: { type: String }
   },
   createdAt: { type: Date, default: Date.now }
 });
@@ -675,20 +684,21 @@ app.post('/api/stats/view', async (req, res) => {
 // Create order with email notification
 app.post('/api/orders', async (req, res) => {
   try {
-    const { user, userName, items, total, products, address } = req.body;
+    const { user, userName, items, total, products, cart, address } = req.body;
     
     // Validate address
     if (!address || !address.name || !address.street || !address.city || !address.state || !address.pincode || !address.phone) {
       return res.status(400).json({ error: 'Complete address information is required' });
     }
     
-    // Create order
+    // Create order with both products (for summary) and cart (for display)
     const order = await Order.create({
       user,
       userName,
       items,
       total,
       products,
+      cart: cart || [],  // Store full cart items with images and details
       address
     });
 
