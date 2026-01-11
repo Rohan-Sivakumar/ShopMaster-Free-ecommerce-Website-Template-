@@ -276,19 +276,19 @@ const AdminPanel = () => {
           <small>Customer: ${orderToDelete?.userName || 'Unknown'}</small><br/>
           <small>Total: ₹${orderToDelete?.total || 0}</small>
         </div>
-        <p style="color: #dc3545; margin-top: 10px;"><strong>Note:</strong> Since the backend DELETE route is not available, this will only remove the order from your view. The order will reappear on page refresh.</p>
+        <p style="color: #dc3545; margin-top: 10px;"><strong>Warning:</strong> This will permanently delete the order from the database. This action cannot be undone.</p>
       `,
       icon: 'warning',
       showCancelButton: true,
       confirmButtonColor: '#d33',
       cancelButtonColor: '#3085d6',
-      confirmButtonText: 'Yes, delete it!',
+      confirmButtonText: 'Yes, delete permanently!',
       cancelButtonText: 'Cancel'
     });
 
     if (result.isConfirmed) {
       try {
-        // Call delete API (which will return success even though backend route doesn't exist)
+        // Call backend DELETE API
         await deleteOrder(orderId);
         
         // Remove from UI state immediately
@@ -303,8 +303,8 @@ const AdminPanel = () => {
         Swal.fire({
           icon: 'success',
           title: 'Deleted!',
-          html: 'Order has been removed from view.<br/><small style="color: #6c757d;">Note: Order will reappear on page refresh until backend DELETE route is added.</small>',
-          timer: 3000
+          html: 'Order has been permanently deleted from database.',
+          timer: 2000
         });
       } catch (error) {
         Swal.fire({
