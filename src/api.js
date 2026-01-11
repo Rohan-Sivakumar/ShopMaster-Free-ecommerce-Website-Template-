@@ -67,7 +67,10 @@ export const createOrder = async (orderData) => {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(orderData)
     });
-    if (!response.ok) throw new Error('Failed to create order');
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(errorData.error || 'Failed to create order');
+    }
     return await response.json();
   } catch (error) {
     console.error('Error creating order:', error.message);
@@ -92,7 +95,9 @@ export const createOrder = async (orderData) => {
         user: orderData.user,
         userName: orderData.userName,
         items: orderData.items,
-        total: orderData.total
+        total: orderData.total,
+        cart: orderData.products || orderData.cart || [],
+        address: orderData.address
       },
       ...stats.ordersHistory
     ].slice(0, 50);
@@ -103,9 +108,10 @@ export const createOrder = async (orderData) => {
 };
 
 // Get statistics
-export const getStats = async () => {
+export const getStats = async (sellerEmail = null) => {
   try {
-    const response = await fetchWithRetry(`${API_URL}/stats`);
+    const url = sellerEmail ? `${API_URL}/stats?sellerEmail=${encodeURIComponent(sellerEmail)}` : `${API_URL}/stats`;
+    const response = await fetchWithRetry(url);
     if (!response.ok) throw new Error('Failed to get stats');
     return await response.json();
   } catch (error) {
@@ -125,9 +131,13 @@ export const getStats = async () => {
 };
 
 // Get all orders
-export const getOrders = async (limit = 50) => {
+export const getOrders = async (limit = 50, sellerEmail = null) => {
   try {
-    const response = await fetchWithRetry(`${API_URL}/orders?limit=${limit}`);
+    let url = `${API_URL}/orders?limit=${limit}`;
+    if (sellerEmail) {
+      url += `&sellerEmail=${encodeURIComponent(sellerEmail)}`;
+    }
+    const response = await fetchWithRetry(url);
     if (!response.ok) throw new Error('Failed to get orders');
     return await response.json();
   } catch (error) {
@@ -138,28 +148,38 @@ export const getOrders = async (limit = 50) => {
   }
 };
 
-// Delete order - Temporary workaround since backend DELETE route doesn't exist
+// Delete order - Now properly calls backend DELETE API
 export const deleteOrder = async (orderId) => {
-  if (!orderId) throw new Error('Order ID is required');
+  try {
+    if (!orderId) throw new Error('Order ID is required');
 
-  // Since the backend DELETE route doesn't exist, we'll show an informative message
-  // The AdminPanel will need to handle this by removing from the UI state
-  console.warn('Backend DELETE /api/orders/:id route not available');
-  
-  // Return success to allow frontend to handle deletion
-  return { 
-    message: 'Order marked for deletion', 
-    orderId,
-    note: 'Backend DELETE route not available. Order removed from view only.'
-  };
+    const response = await fetchWithRetry(
+      `${API_URL}/orders/${encodeURIComponent(orderId)}`,
+      { method: 'DELETE' }
+    );
+    
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(errorData.error || 'Failed to delete order');
+    }
+    
+    return await response.json();
+  } catch (error) {
+    console.error('Error deleting order:', error.message);
+    throw error; // Re-throw to let AdminPanel handle the error
+  }
 };
 
 // ========== PRODUCT MANAGEMENT ==========
 
 // Get all products
-export const getProducts = async () => {
+export const getProducts = async (sellerEmail = null) => {
   try {
-    const response = await fetchWithRetry(`${API_URL}/products`);
+    let url = `${API_URL}/products`;
+    if (sellerEmail) {
+      url += `?sellerEmail=${encodeURIComponent(sellerEmail)}`;
+    }
+    const response = await fetchWithRetry(url);
     if (!response.ok) throw new Error('Failed to get products');
     return await response.json();
   } catch (error) {
@@ -174,7 +194,12 @@ export const getProducts = async () => {
 export const addProduct = async (productData) => {
   try {
     if (!productData.id || !productData.cost) {
-      throw new Error('Missing required product fields');
+      throw new Error('Missing required product fields: id and cost');
+    }
+
+    // Add default seller info if not provided
+    if (!productData.sellerEmail) {
+      productData.sellerEmail = 'rohan.sivaa@gmail.com';
     }
 
     const response = await fetchWithRetry(`${API_URL}/products`, {
@@ -182,22 +207,16 @@ export const addProduct = async (productData) => {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(productData)
     });
+    
     if (!response.ok) {
       const error = await response.json();
       throw new Error(error.error || 'Failed to add product');
     }
+    
     return await response.json();
   } catch (error) {
     console.error('Error adding product:', error.message);
-    // Fallback to localStorage
-    const products = JSON.parse(localStorage.getItem('products') || '[]');
-    products.push(productData);
-    localStorage.setItem('products', JSON.stringify(products));
-
-    // Trigger storage event for App.jsx to update
-    window.dispatchEvent(new CustomEvent('productsUpdated', { detail: products }));
-
-    throw error; // Re-throw to show error message
+    throw error; // Re-throw to show error message in UI
   }
 };
 
@@ -206,15 +225,25 @@ export const updateProduct = async (productId, productData) => {
   try {
     if (!productId) throw new Error('Product ID is required');
 
-    const response = await fetchWithRetry(`${API_URL}/products/${encodeURIComponent(productId)}`, {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(productData)
-    });
+    // Add default seller info if not provided
+    if (!productData.sellerEmail) {
+      productData.sellerEmail = 'rohan.sivaa@gmail.com';
+    }
+
+    const response = await fetchWithRetry(
+      `${API_URL}/products/${encodeURIComponent(productId)}`,
+      {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(productData)
+      }
+    );
+    
     if (!response.ok) {
       const error = await response.json();
       throw new Error(error.error || 'Failed to update product');
     }
+    
     return await response.json();
   } catch (error) {
     console.error('Error updating product:', error.message);
@@ -223,29 +252,103 @@ export const updateProduct = async (productId, productData) => {
 };
 
 // Delete product
-export const deleteProduct = async (productId) => {
+export const deleteProduct = async (productId, sellerEmail = 'rohan.sivaa@gmail.com') => {
   try {
     if (!productId) throw new Error('Product ID is required');
 
     const response = await fetchWithRetry(
-      `${API_URL}/products/${encodeURIComponent(productId)}`,
+      `${API_URL}/products/${encodeURIComponent(productId)}?sellerEmail=${encodeURIComponent(sellerEmail)}`,
       { method: 'DELETE' }
     );
+    
     if (!response.ok) {
       const error = await response.json();
       throw new Error(error.error || 'Failed to delete product');
     }
+    
     return await response.json();
   } catch (error) {
     console.error('Error deleting product:', error.message);
-    // Fallback to localStorage
-    const products = JSON.parse(localStorage.getItem('products') || '[]');
-    const updatedProducts = products.filter(p => p.id !== productId);
-    localStorage.setItem('products', JSON.stringify(updatedProducts));
+    throw error;
+  }
+};
 
-    // Trigger storage event for App.jsx to update
-    window.dispatchEvent(new CustomEvent('productsUpdated', { detail: updatedProducts }));
+// ========== SELLER MANAGEMENT ==========
 
-    throw error; // Re-throw to show error message
+// Get seller information
+export const getSeller = async (email) => {
+  try {
+    if (!email) throw new Error('Email is required');
+    
+    const response = await fetchWithRetry(`${API_URL}/sellers/${encodeURIComponent(email)}`);
+    if (!response.ok) {
+      if (response.status === 404) {
+        return null; // Seller not found
+      }
+      throw new Error('Failed to get seller information');
+    }
+    return await response.json();
+  } catch (error) {
+    console.error('Error getting seller:', error.message);
+    return null;
+  }
+};
+
+// Register new seller
+export const registerSeller = async (sellerData) => {
+  try {
+    if (!sellerData.email || !sellerData.name || !sellerData.businessName) {
+      throw new Error('Missing required seller fields');
+    }
+
+    const response = await fetchWithRetry(`${API_URL}/sellers/register`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(sellerData)
+    });
+    
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error || 'Failed to register seller');
+    }
+    
+    return await response.json();
+  } catch (error) {
+    console.error('Error registering seller:', error.message);
+    throw error;
+  }
+};
+
+// Get all sellers (admin only)
+export const getAllSellers = async () => {
+  try {
+    const response = await fetchWithRetry(`${API_URL}/sellers`);
+    if (!response.ok) throw new Error('Failed to get sellers');
+    return await response.json();
+  } catch (error) {
+    console.error('Error getting all sellers:', error.message);
+    return [];
+  }
+};
+
+// Approve seller (admin only)
+export const approveSeller = async (email) => {
+  try {
+    if (!email) throw new Error('Email is required');
+    
+    const response = await fetchWithRetry(
+      `${API_URL}/sellers/${encodeURIComponent(email)}/approve`,
+      { method: 'PUT' }
+    );
+    
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error || 'Failed to approve seller');
+    }
+    
+    return await response.json();
+  } catch (error) {
+    console.error('Error approving seller:', error.message);
+    throw error;
   }
 };
