@@ -21,6 +21,7 @@ const AdminPanel = () => {
   const [activeTab, setActiveTab] = useState('dashboard');
   const [productLoading, setProductLoading] = useState(false);
   const [imagePreview, setImagePreview] = useState(null);
+  const [expandedOrder, setExpandedOrder] = useState(null);
 
   // New product form state
   const [newProduct, setNewProduct] = useState({
@@ -231,6 +232,10 @@ const AdminPanel = () => {
     }
   };
 
+  const toggleOrderDetails = (orderId) => {
+    setExpandedOrder(expandedOrder === orderId ? null : orderId);
+  };
+
   if (loading && orders.length === 0) {
     return (
       <div className="admin-panel">
@@ -283,6 +288,12 @@ const AdminPanel = () => {
           onClick={() => setActiveTab('dashboard')}
         >
           <i className="bi bi-speedometer2"></i> Dashboard
+        </button>
+        <button 
+          className={`btn ${activeTab === 'orders' ? 'btn-primary' : 'btn-outline-primary'} me-2`}
+          onClick={() => setActiveTab('orders')}
+        >
+          <i className="bi bi-cart-check"></i> Orders
         </button>
         <button 
           className={`btn ${activeTab === 'products' ? 'btn-primary' : 'btn-outline-primary'} me-2`}
@@ -338,7 +349,7 @@ const AdminPanel = () => {
             </div>
           </div>
 
-          {/* Recent Orders */}
+          {/* Recent Orders Summary */}
           <div className="recent-orders">
             <h3>Recent Orders ({orders.length || 0} total)</h3>
             {getRecentOrders().length === 0 ? (
@@ -411,6 +422,179 @@ const AdminPanel = () => {
             </div>
           </div>
         </>
+      )}
+
+      {/* Orders Tab - Detailed View */}
+      {activeTab === 'orders' && (
+        <div className="orders-detailed">
+          <h3 className="mb-4">
+            <i className="bi bi-cart-check"></i> All Orders ({orders.length || 0})
+          </h3>
+          
+          {orders.length === 0 ? (
+            <div className="alert alert-info">
+              <i className="bi bi-info-circle"></i> No orders yet. Orders will appear here when customers complete checkout.
+            </div>
+          ) : (
+            <div className="orders-list">
+              {orders.map(order => {
+                const orderId = order._id || order.id || 'N/A';
+                const displayId = typeof orderId === 'string' ? orderId.slice(-6) : String(orderId).slice(-6);
+                const orderDate = order.createdAt || order.date;
+                const isExpanded = expandedOrder === orderId;
+                
+                return (
+                  <div key={orderId} className="card mb-3 shadow-sm">
+                    <div className="card-header bg-light">
+                      <div className="row align-items-center">
+                        <div className="col-md-3">
+                          <strong>Order #{displayId}</strong>
+                          <div className="text-muted small">
+                            {orderDate ? new Date(orderDate).toLocaleString() : 'N/A'}
+                          </div>
+                        </div>
+                        <div className="col-md-3">
+                          <i className="bi bi-person"></i> {order.userName || 'Unknown'}
+                          <div className="text-muted small">{order.user || 'N/A'}</div>
+                        </div>
+                        <div className="col-md-2">
+                          <i className="bi bi-box"></i> {order.items || 0} items
+                        </div>
+                        <div className="col-md-2">
+                          <strong className="text-success">₹{order.total || 0}</strong>
+                        </div>
+                        <div className="col-md-2 text-end">
+                          <button 
+                            className="btn btn-sm btn-outline-primary"
+                            onClick={() => toggleOrderDetails(orderId)}
+                          >
+                            {isExpanded ? (
+                              <><i className="bi bi-chevron-up"></i> Hide</>
+                            ) : (
+                              <><i className="bi bi-chevron-down"></i> Details</>
+                            )}
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                    
+                    {isExpanded && (
+                      <div className="card-body">
+                        <div className="row">
+                          {/* Customer Information */}
+                          <div className="col-md-6 mb-3">
+                            <h5 className="border-bottom pb-2">
+                              <i className="bi bi-person-circle"></i> Customer Information
+                            </h5>
+                            <p className="mb-1"><strong>Name:</strong> {order.userName || 'N/A'}</p>
+                            <p className="mb-1"><strong>Email:</strong> {order.user || 'N/A'}</p>
+                            <p className="mb-1"><strong>Phone:</strong> {order.phone || 'N/A'}</p>
+                          </div>
+                          
+                          {/* Delivery Address */}
+                          <div className="col-md-6 mb-3">
+                            <h5 className="border-bottom pb-2">
+                              <i className="bi bi-geo-alt"></i> Delivery Address
+                            </h5>
+                            {order.address ? (
+                              <>
+                                <p className="mb-1">{order.address.street || 'N/A'}</p>
+                                <p className="mb-1">
+                                  {order.address.city || 'N/A'}, {order.address.state || 'N/A'} {order.address.pincode || ''}
+                                </p>
+                                <p className="mb-1">{order.address.country || 'India'}</p>
+                              </>
+                            ) : (
+                              <p className="text-muted">Address not provided</p>
+                            )}
+                          </div>
+                        </div>
+                        
+                        {/* Order Items */}
+                        <div className="mb-3">
+                          <h5 className="border-bottom pb-2">
+                            <i className="bi bi-cart"></i> Order Items
+                          </h5>
+                          {order.cart && order.cart.length > 0 ? (
+                            <div className="table-responsive">
+                              <table className="table table-sm table-bordered">
+                                <thead className="table-light">
+                                  <tr>
+                                    <th style={{width: '60px'}}>Image</th>
+                                    <th>Product</th>
+                                    <th style={{width: '100px'}}>Price</th>
+                                    <th style={{width: '80px'}}>Qty</th>
+                                    <th style={{width: '100px'}}>Subtotal</th>
+                                  </tr>
+                                </thead>
+                                <tbody>
+                                  {order.cart.map((item, index) => (
+                                    <tr key={index}>
+                                      <td>
+                                        {item.img ? (
+                                          <img 
+                                            src={item.img} 
+                                            alt={item.id || 'Product'} 
+                                            style={{width: '50px', height: '50px', objectFit: 'cover'}}
+                                            className="rounded"
+                                            onError={(e) => e.target.src = 'https://via.placeholder.com/50'}
+                                          />
+                                        ) : (
+                                          <div 
+                                            className="bg-light rounded d-flex align-items-center justify-content-center"
+                                            style={{width: '50px', height: '50px'}}
+                                          >
+                                            <i className="bi bi-image text-muted"></i>
+                                          </div>
+                                        )}
+                                      </td>
+                                      <td>
+                                        <div>{item.id || 'Unknown Product'}</div>
+                                        {item.brand && (
+                                          <small className="text-muted">{item.brand}</small>
+                                        )}
+                                      </td>
+                                      <td>₹{item.cost || 0}</td>
+                                      <td className="text-center">{item.quantity || 1}</td>
+                                      <td className="fw-bold">₹{(item.cost || 0) * (item.quantity || 1)}</td>
+                                    </tr>
+                                  ))}
+                                </tbody>
+                                <tfoot className="table-light">
+                                  <tr>
+                                    <td colspan="4" className="text-end"><strong>Total:</strong></td>
+                                    <td className="fw-bold text-success">₹{order.total || 0}</td>
+                                  </tr>
+                                </tfoot>
+                              </table>
+                            </div>
+                          ) : (
+                            <p className="text-muted">No items in this order</p>
+                          )}
+                        </div>
+                        
+                        {/* Order Summary */}
+                        <div className="row">
+                          <div className="col-md-6">
+                            <div className="alert alert-info mb-0">
+                              <strong><i className="bi bi-info-circle"></i> Order Summary</strong>
+                              <p className="mb-0 mt-2">
+                                <strong>Order Date:</strong> {orderDate ? new Date(orderDate).toLocaleDateString() : 'N/A'}<br/>
+                                <strong>Order Time:</strong> {orderDate ? new Date(orderDate).toLocaleTimeString() : 'N/A'}<br/>
+                                <strong>Total Items:</strong> {order.items || 0}<br/>
+                                <strong>Total Amount:</strong> <span className="text-success">₹{order.total || 0}</span>
+                              </p>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
       )}
 
       {/* Products Tab */}
