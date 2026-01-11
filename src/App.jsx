@@ -512,7 +512,7 @@ function App() {
       addAddress(currentUser.email, formValues);
     }
 
-    // Place order with address
+    // Place order with address - FIXED: Changed shippingAddress to address
     try {
       const orderData = {
         user: currentUser.email,
@@ -522,9 +522,11 @@ function App() {
         products: groupedCart.map(item => ({
           name: item.id,
           quantity: item.quantity,
-          price: item.cost
+          price: item.cost,
+          sellerEmail: item.sellerEmail || 'rohan.sivaa@gmail.com',
+          sellerName: item.sellerName || 'Rohan'
         })),
-        shippingAddress: {
+        address: {  // ✅ FIXED: Changed from shippingAddress to address
           name: formValues.name,
           phone: formValues.phone,
           street: formValues.street,
@@ -535,8 +537,8 @@ function App() {
         }
       };
 
-      await createOrder(orderData);
-      console.log('✅ Order saved to MongoDB!');
+      const result = await createOrder(orderData);
+      console.log('✅ Order saved to MongoDB:', result);
 
       Swal.fire({
         icon: 'success',
@@ -550,7 +552,7 @@ function App() {
             <small>${formValues.street}, ${formValues.city}</small><br>
             <small>${formValues.state} - ${formValues.pincode}</small>
           </div>
-          <small class="text-muted d-block mt-3">☁️ Synced across all devices</small>
+          <small class="text-muted d-block mt-3">☁️ Order saved to database & email sent!</small>
         `,
         confirmButtonText: 'OK'
       }).then(() => {
@@ -561,14 +563,10 @@ function App() {
     } catch (error) {
       console.error('Error saving order:', error);
       Swal.fire({
-        icon: 'warning',
-        title: 'Order Placed (Local Only)',
-        text: `Your order of ₹${totalPrice} has been saved locally. Backend server may be offline.`,
+        icon: 'error',
+        title: 'Order Failed',
+        text: error.message || 'Failed to place order. Please try again.',
         confirmButtonText: 'OK'
-      }).then(() => {
-        setCartItems([]);
-        saveCart(currentUser.email, []);
-        setActivePage('home');
       });
     }
   }, [currentUser, cartItems, totalPrice, groupedCart]);
