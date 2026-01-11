@@ -512,7 +512,7 @@ function App() {
       addAddress(currentUser.email, formValues);
     }
 
-    // Place order with address - FIXED: Changed shippingAddress to address
+    // Place order with address and cart - FIXED: Now including cart array with full product details
     try {
       const orderData = {
         user: currentUser.email,
@@ -526,7 +526,15 @@ function App() {
           sellerEmail: item.sellerEmail || 'rohan.sivaa@gmail.com',
           sellerName: item.sellerName || 'Rohan'
         })),
-        address: {  // ✅ FIXED: Changed from shippingAddress to address
+        cart: groupedCart.map(item => ({  // ✅ ADDED: Full cart data for display
+          id: item.id,
+          cost: item.cost,
+          img: item.img,
+          brand: item.brand || item.sellerBusinessName || item.sellerName,
+          category: item.category,
+          quantity: item.quantity
+        })),
+        address: {
           name: formValues.name,
           phone: formValues.phone,
           street: formValues.street,
