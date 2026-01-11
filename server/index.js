@@ -766,6 +766,33 @@ app.get('/api/orders/:id', async (req, res) => {
   }
 });
 
+// Delete order permanently from MongoDB
+app.delete('/api/orders/:id', async (req, res) => {
+  try {
+    const order = await Order.findByIdAndDelete(req.params.id).maxTimeMS(5000);
+    
+    if (!order) {
+      return res.status(404).json({ error: 'Order not found' });
+    }
+    
+    // Update stats - decrease total orders count
+    let stats = await Stats.findOne().maxTimeMS(5000);
+    if (stats && stats.totalOrders > 0) {
+      stats.totalOrders -= 1;
+      stats.updatedAt = new Date();
+      await stats.save();
+    }
+    
+    res.json({ 
+      message: 'Order deleted permanently from database', 
+      deletedOrder: order 
+    });
+  } catch (error) {
+    console.error('Delete order error:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
 // Start server
 if (process.env.NODE_ENV !== 'production') {
   app.listen(PORT, () => {
