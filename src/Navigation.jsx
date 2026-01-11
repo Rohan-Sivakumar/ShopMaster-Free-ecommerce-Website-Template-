@@ -116,6 +116,11 @@ export default function Navigation({ activePage, onPageChange, cartCount = 0 }) 
         <li className={activePage === "p" ? "active-nav-link" : ""}>
           <a href="#product" onClick={go("p")}>Products</a>
         </li>
+        <li className={activePage === "tracking" ? "active-nav-link" : ""}>
+          <a href="#tracking" onClick={go("tracking")}>
+            <i className="bi bi-box-seam"></i> Track Order
+          </a>
+        </li>
         {!currentUser ? (
           <li className={activePage === "login" ? "active-nav-link" : ""}>
             <a href="#login" onClick={go("login")}>Login</a>
