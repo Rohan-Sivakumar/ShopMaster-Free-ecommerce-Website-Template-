@@ -263,9 +263,21 @@ const AdminPanel = () => {
   const handleDeleteOrder = async (orderId) => {
     if (!orderId) return;
 
+    // Find the order to show details in confirmation
+    const orderToDelete = orders.find(o => (o._id || o.id) === orderId);
+    const displayId = typeof orderId === 'string' ? orderId.slice(-6) : String(orderId).slice(-6);
+
     const result = await Swal.fire({
       title: 'Delete Order?',
-      text: 'Are you sure you want to delete this order? This action cannot be undone.',
+      html: `
+        <p>Are you sure you want to delete this order?</p>
+        <div style="text-align: left; margin-top: 15px; padding: 10px; background: #f8f9fa; border-radius: 5px;">
+          <strong>Order #${displayId}</strong><br/>
+          <small>Customer: ${orderToDelete?.userName || 'Unknown'}</small><br/>
+          <small>Total: ₹${orderToDelete?.total || 0}</small>
+        </div>
+        <p style="color: #dc3545; margin-top: 10px;"><strong>Note:</strong> Since the backend DELETE route is not available, this will only remove the order from your view. The order will reappear on page refresh.</p>
+      `,
       icon: 'warning',
       showCancelButton: true,
       confirmButtonColor: '#d33',
@@ -276,21 +288,25 @@ const AdminPanel = () => {
 
     if (result.isConfirmed) {
       try {
-        setLoading(true);
+        // Call delete API (which will return success even though backend route doesn't exist)
         await deleteOrder(orderId);
+        
+        // Remove from UI state immediately
+        setOrders(prevOrders => prevOrders.filter(o => (o._id || o.id) !== orderId));
+        
+        // Update stats
+        setStats(prevStats => ({
+          ...prevStats,
+          totalOrders: Math.max(0, (prevStats.totalOrders || 0) - 1)
+        }));
         
         Swal.fire({
           icon: 'success',
           title: 'Deleted!',
-          text: 'Order has been deleted successfully',
-          timer: 2000
+          html: 'Order has been removed from view.<br/><small style="color: #6c757d;">Note: Order will reappear on page refresh until backend DELETE route is added.</small>',
+          timer: 3000
         });
-
-        // Reload orders
-        await loadData();
-        setLoading(false);
       } catch (error) {
-        setLoading(false);
         Swal.fire({
           icon: 'error',
           title: 'Error',
@@ -404,7 +420,7 @@ const AdminPanel = () => {
                 <i className="bi bi-cart-check"></i>
               </div>
               <div className="stat-details">
-                <h3>{stats.totalOrders || 0}</h3>
+                <h3>{stats.totalOrders || orders.length || 0}</h3>
                 <p>Total Orders</p>
               </div>
             </div>
@@ -558,7 +574,6 @@ const AdminPanel = () => {
                           <button 
                             className="btn btn-sm btn-outline-danger"
                             onClick={() => handleDeleteOrder(orderId)}
-                            disabled={loading}
                           >
                             <i className="bi bi-trash"></i> Delete
                           </button>
