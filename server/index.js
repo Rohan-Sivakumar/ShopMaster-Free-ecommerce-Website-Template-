@@ -141,6 +141,7 @@ const Product = mongoose.model('Product', productSchema);
 
 // Order Schema (updated with cart field for complete product details)
 const orderSchema = new mongoose.Schema({
+  trackingId: { type: String, required: true, unique: true },
   user: { type: String, required: true },
   userName: { type: String, required: true },
   items: { type: Number, required: true },
@@ -223,6 +224,7 @@ const createOrderEmailHTML = (orderData) => {
         <div class="content">
           <div class="section">
             <div class="section-title">📦 Order Details</div>
+            <p><strong>Tracking ID:</strong> <code style="background: #f0f0f0; padding: 2px 6px; border-radius: 3px; font-family: monospace;">${orderData.trackingId}</code></p>
             <p><strong>Order Date:</strong> ${new Date(orderData.createdAt).toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' })}</p>
             <p><strong>Total Items:</strong> ${orderData.items}</p>
           </div>
@@ -276,13 +278,13 @@ const sendOrderEmail = async (orderData) => {
   try {
     const mailOptions = {
       from: `ShopMaster <${process.env.EMAIL_USER || 'rohan.sivaa@gmail.com'}>`,
-      to: 'rohan.sivaa@gmail.com',
-      subject: `🛒 New Order Received - ₹${orderData.total.toFixed(2)} from ${orderData.userName}`,
+      to: orderData.user, // Send to customer's email address
+      subject: `🛒 Order Confirmation - ₹${orderData.total.toFixed(2)} - ${orderData.userName}`,
       html: createOrderEmailHTML(orderData)
     };
 
     const info = await transporter.sendMail(mailOptions);
-    console.log('✅ Order notification email sent:', info.messageId);
+    console.log('✅ Order confirmation email sent to:', orderData.user, 'Message ID:', info.messageId);
     return info;
   } catch (error) {
     console.error('❌ Error sending order email:', error.message);
@@ -681,18 +683,36 @@ app.post('/api/stats/view', async (req, res) => {
 
 // ========== ORDER ROUTES ==========
 
+// Generate unique tracking ID
+const generateTrackingId = () => {
+  const randomNum = Math.floor(100000 + Math.random() * 900000); // 6-digit number
+  return `SM${randomNum}`;
+};
+
 // Create order with email notification
 app.post('/api/orders', async (req, res) => {
   try {
     const { user, userName, items, total, products, cart, address } = req.body;
-    
+
     // Validate address
     if (!address || !address.name || !address.street || !address.city || !address.state || !address.pincode || !address.phone) {
       return res.status(400).json({ error: 'Complete address information is required' });
     }
-    
+
+    // Generate unique tracking ID
+    let trackingId;
+    let attempts = 0;
+    do {
+      trackingId = generateTrackingId();
+      attempts++;
+      if (attempts > 10) {
+        return res.status(500).json({ error: 'Failed to generate unique tracking ID' });
+      }
+    } while (await Order.findOne({ trackingId }).maxTimeMS(5000));
+
     // Create order with both products (for summary) and cart (for display)
     const order = await Order.create({
+      trackingId,
       user,
       userName,
       items,

@@ -27,19 +27,18 @@ const OrderTracking = () => {
       
       // Get all orders
       const orders = await getOrders(100);
-      
+
       if (!Array.isArray(orders)) {
         throw new Error('Invalid orders data');
       }
 
-      // Search for order by ID (exact match or partial match of the ID)
-      const searchId = trackingId.trim().toLowerCase();
+      // Search for order by tracking ID (exact match)
+      const searchId = trackingId.trim().toUpperCase();
       const foundOrder = orders.find(order => {
-        const orderId = (order._id || order.id || '').toString().toLowerCase();
-        const displayId = orderId.slice(-6);
-        
-        // Match against full ID or last 6 digits
-        return orderId.includes(searchId) || displayId === searchId;
+        const orderTrackingId = (order.trackingId || '').toString().toUpperCase();
+
+        // Match against tracking ID
+        return orderTrackingId === searchId;
       });
 
       if (foundOrder) {
@@ -157,7 +156,7 @@ const OrderTracking = () => {
                     <input
                       type="text"
                       className="form-control border-0"
-                      placeholder="Enter your tracking ID (e.g., 123456)"
+                      placeholder="Enter your tracking ID (e.g., SM1023343)"
                       value={trackingId}
                       onChange={(e) => setTrackingId(e.target.value)}
                       disabled={loading}
@@ -231,7 +230,7 @@ const OrderTracking = () => {
                         <div className="mb-2">
                           <strong>Tracking ID:</strong><br/>
                           <code style={{fontSize: '0.9rem'}}>
-                            #{((orderDetails._id || orderDetails.id || '').toString()).slice(-6).toUpperCase()}
+                            {orderDetails.trackingId || 'N/A'}
                           </code>
                         </div>
                         <div>
