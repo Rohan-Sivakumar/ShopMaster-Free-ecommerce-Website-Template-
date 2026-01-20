@@ -2,7 +2,7 @@ import React, { useState, useEffect, useMemo, useCallback, useRef } from "react"
 import Navigation from "./Navigation";
 import Auth from "./Auth";
 import AdminPanel from "./AdminPanel";
-import OrderTracking from "./OrderTracking";
+import OrderHistory from "./OrderHistory";
 import "./App.css";
 import { getCart, saveCart, addToCart, removeFromCart, getCurrentUser } from "./cartService";
 import { trackView, createOrder, getProducts } from "./api";
@@ -684,10 +684,6 @@ function App() {
         <AdminPanel />
       </div>
 
-      <div id="tracking" className={`page ${activePage === 'tracking' ? 'active' : ''}`}>
-        <OrderTracking />
-      </div>
-
       <div id="p" className={`page ${activePage === 'p' ? 'active' : ''}`}>
         <div className="container my-4">
           <h2 className="text-center mb-4">Products</h2>
@@ -1020,8 +1016,8 @@ function App() {
                   <p>Cart Items: <strong>{cartItems.length}</strong></p>
                   <button className="btn btn-primary me-2" onClick={() => setActivePage('p')}>Shop Now</button>
                   <button className="btn btn-secondary me-2" onClick={() => setActivePage('Cart')}>View Cart</button>
-                  <button className="btn btn-info me-2" onClick={() => setActivePage('tracking')}>
-                    <i className="bi bi-box-seam"></i> Track Order
+                  <button className="btn btn-success me-2" onClick={() => setActivePage('orderhistory')}>
+                    <i className="bi bi-clock-history"></i> Order History
                   </button>
                   {isAdmin && (<button className="btn btn-warning me-2" onClick={() => setActivePage('admin')}>🔑 Admin Panel</button>)}
                   <button className="btn btn-danger" onClick={handleSignOut}>Sign Out</button>
@@ -1035,6 +1031,17 @@ function App() {
             )}
           </div>
         </div>
+      </div>
+
+      <div id="orderhistory" className={`page ${activePage === 'orderhistory' ? 'active' : ''}`}>
+        {currentUser ? <OrderHistory /> : (
+          <div className="container my-5">
+            <div className="text-center">
+              <h2>Please sign in to view your order history</h2>
+              <Auth onSignInSuccess={handleSignInSuccess} onSignInFailure={handleSignInFailure} />
+            </div>
+          </div>
+        )}
       </div>
     </>
   );

@@ -116,11 +116,6 @@ export default function Navigation({ activePage, onPageChange, cartCount = 0 }) 
         <li className={activePage === "p" ? "active-nav-link" : ""}>
           <a href="#product" onClick={go("p")}>Products</a>
         </li>
-        <li className={activePage === "tracking" ? "active-nav-link" : ""}>
-          <a href="#tracking" onClick={go("tracking")}>
-            <i className="bi bi-box-seam"></i> Track Order
-          </a>
-        </li>
         {!currentUser ? (
           <li className={activePage === "login" ? "active-nav-link" : ""}>
             <a href="#login" onClick={go("login")}>Login</a>
@@ -161,6 +156,25 @@ export default function Navigation({ activePage, onPageChange, cartCount = 0 }) 
                   onMouseOut={(e) => e.target.style.backgroundColor = 'white'}
                 >
                   Dashboard
+                </a>
+                <a 
+                  href="#orderhistory" 
+                  onClick={(e) => {
+                    e.preventDefault();
+                    setShowUserMenu(false);
+                    onPageChange('orderhistory');
+                  }}
+                  style={{
+                    display: 'block',
+                    padding: '10px 15px',
+                    color: '#333',
+                    textDecoration: 'none',
+                    borderBottom: '1px solid #eee'
+                  }}
+                  onMouseOver={(e) => e.target.style.backgroundColor = '#f5f5f5'}
+                  onMouseOut={(e) => e.target.style.backgroundColor = 'white'}
+                >
+                  Order History
                 </a>
                 <a 
                   href="#signout" 
