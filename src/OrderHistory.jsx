@@ -25,11 +25,20 @@ const OrderHistory = () => {
     return (
         <div>
             <h2>Order History</h2>
-            <ul>
-                {orders.map(order => (
-                    <li key={order.id}>{order.description} - {order.date}</li>
-                ))}
-            </ul>
+            {orders.length === 0 ? (
+                <p>No orders found.</p>
+            ) : (
+                <ul>
+                    {orders.map(order => (
+                        <li key={order.id}>
+                            <strong>Order ID:</strong> {order.id || 'N/A'}<br />
+                            <strong>Description:</strong> {order.description || 'No description available'}<br />
+                            <strong>Date:</strong> {order.date ? new Date(order.date).toLocaleString() : 'N/A'}<br />
+                            <strong>Total:</strong> ₹{order.total || '0'}
+                        </li>
+                    ))}
+                </ul>
+            )}
         </div>
     );
 };
