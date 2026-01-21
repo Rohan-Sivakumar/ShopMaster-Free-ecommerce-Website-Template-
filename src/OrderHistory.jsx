@@ -10,7 +10,7 @@ const OrderHistory = () => {
         const user = getCurrentUser();
         if (user && user.email) {
             const getOrderHistory = async () => {
-                const data = await fetchOrderHistory(user.email);
+                const data = await getOrders(50, user.email); // Updated to use getOrders
                 setOrders(data);
                 setLoading(false);
             };
