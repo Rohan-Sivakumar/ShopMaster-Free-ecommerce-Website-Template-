@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { fetchOrderHistory } from './api';
+import { getOrders } from './api';
 import { getCurrentUser } from './cartService';
 
 const OrderHistory = () => {

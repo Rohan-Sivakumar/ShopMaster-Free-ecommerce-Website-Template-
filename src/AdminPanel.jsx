@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { getStats, getOrders, checkBackendHealth, getProducts, addProduct, updateProduct, deleteProduct, deleteOrder } from './api';
+import { getStats, getOrders, checkBackendHealth, getProducts, addProduct, updateProduct, deleteProduct, deleteOrder, updateOrderStatus } from './api';
 import './AdminPanel.css';
 import Swal from 'sweetalert2';
 
@@ -313,6 +313,16 @@ const AdminPanel = () => {
           text: error.message || 'Failed to delete order. Please try again.'
         });
       }
+    }
+  };
+
+  const handleStatusChange = async (orderId, newStatus) => {
+    try {
+      await updateOrderStatus(orderId, newStatus);
+      Swal.fire('Updated!', 'Order status has been updated.', 'success');
+      loadData(); // Reload data to reflect changes
+    } catch (error) {
+      Swal.fire('Error', error.message || 'Failed to update order status', 'error');
     }
   };
 
@@ -688,6 +698,21 @@ const AdminPanel = () => {
                                 <strong>Total Amount:</strong> <span className="text-success">₹{order.total || 0}</span>
                               </p>
                             </div>
+                          </div>
+                          <div className="col-md-6 mb-3">
+                            <h5 className="border-bottom pb-2">
+                              <i className="bi bi-truck"></i> Shipment Status
+                            </h5>
+                            <select 
+                              className="form-select"
+                              value={order.status || 'Order Placed'}
+                              onChange={(e) => handleStatusChange(orderId, e.target.value)}
+                            >
+                              <option value="Order Placed">Order Placed</option>
+                              <option value="Processing">Processing</option>
+                              <option value="Shipped">Shipped</option>
+                              <option value="Delivered">Delivered</option>
+                            </select>
                           </div>
                         </div>
                       </div>

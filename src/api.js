@@ -352,3 +352,31 @@ export const approveSeller = async (email) => {
     throw error;
   }
 };
+
+// Update order status
+export const updateOrderStatus = async (orderId, newStatus) => {
+  try {
+    if (!orderId || !newStatus) {
+      throw new Error('Order ID and new status are required');
+    }
+
+    const response = await fetchWithRetry(
+      `${API_URL}/orders/${encodeURIComponent(orderId)}/status`,
+      {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status: newStatus })
+      }
+    );
+    
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(errorData.error || 'Failed to update order status');
+    }
+    
+    return await response.json();
+  } catch (error) {
+    console.error('Error updating order status:', error.message);
+    throw error;
+  }
+};
