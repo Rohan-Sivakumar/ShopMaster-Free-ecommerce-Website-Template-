@@ -35,6 +35,9 @@ export default function Navigation({ activePage, onPageChange, cartCount = 0 }) 
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
+// src/Navigation.jsx updates
+
+
 
   const go = (page) => (e) => {
     e.preventDefault();
@@ -197,6 +200,44 @@ export default function Navigation({ activePage, onPageChange, cartCount = 0 }) 
         <li className={activePage === "Cart" ? "active-nav-link" : ""}>
           <a href="#Cart" onClick={go("Cart")}>Cart ({cartCount})</a>
         </li>
+      </ul>
+    </nav>
+  );
+}
+
+export default function Navigation({ activePage, onPageChange, search, setSearch, cartCount }) {
+  const handleSearch = (e) => {
+    setSearch(e.target.value);
+    if (activePage !== 'p' && e.target.value.length > 0) {
+      onPageChange('p'); // Auto-switch to products page when searching
+    }
+  };
+
+  return (
+    <nav className="navbar navbar-expand-lg navbar-light bg-white sticky-top shadow-sm px-4">
+      <a className="navbar-brand fw-bold fs-3" href="#" onClick={(e) => { e.preventDefault(); onPageChange('home'); }}>
+        ShopMaster
+      </a>
+      
+      {/* Global Search Box */}
+      <div className="mx-auto d-none d-md-block" style={{width: '40%'}}>
+        <div className="input-group">
+          <input 
+            type="text" 
+            className="form-control bg-light border-0" 
+            placeholder="Search products, brands and more..." 
+            value={search}
+            onChange={handleSearch}
+          />
+          <span className="input-group-text bg-light border-0"><i className="bi bi-search"></i></span>
+        </div>
+      </div>
+
+      <ul className="navbar-nav ms-auto align-items-center">
+        <li className="nav-item">
+          <a className={`nav-link ${activePage === 'home' ? 'active fw-bold' : ''}`} href="#" onClick={(e) => { e.preventDefault(); onPageChange('home'); }}>Home</a>
+        </li>
+        {/* ... other links fix to use onPageChange(page) ... */}
       </ul>
     </nav>
   );

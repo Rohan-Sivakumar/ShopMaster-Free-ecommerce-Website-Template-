@@ -1004,85 +1004,75 @@ function App() {
         </div>
       </div>
 
-      <div id="dashboard" className={`page ${activePage === 'dashboard' ? 'active' : ''}`}>
-  <div className="container my-5">
-    <div className="row mb-4">
-      <div className="col">
-        <h2 className="fw-bold">Your Account</h2>
+  
+
+  // inside src/App.jsx - Dashboard Section
+<div id="dashboard" className={`page ${activePage === 'dashboard' ? 'active' : ''}`}>
+  <div className="container py-5">
+    <div className="row">
+      {/* Profile Sidebar */}
+      <div className="col-lg-4 mb-4">
+        <div className="card shadow-sm border-0 text-center py-5 h-100">
+          <div className="bg-light rounded-circle d-inline-flex align-items-center justify-content-center mb-3 mx-auto" style={{width: '80px', height: '80px'}}>
+            <i className="bi bi-person text-secondary" style={{fontSize: '2.5rem'}}></i>
+          </div>
+          <h4 className="fw-bold mb-1">{currentUser?.name}</h4>
+          <p className="text-muted small mb-4">{currentUser?.email}</p>
+          <button className="btn btn-outline-danger btn-sm px-4 rounded-pill" onClick={handleSignOut}>
+            Sign Out
+          </button>
+        </div>
       </div>
-    </div>
-    
-    {currentUser ? (
-      <div className="row g-4">
-        {/* Orders Card */}
-        <div className="col-md-4">
-          <div className="card h-100 shadow-sm border clickable-amazon-card" onClick={() => setActivePage('orderhistory')}>
-            <div className="card-body d-flex align-items-center">
-              <img src="https://m.media-amazon.com/images/G/31/x-locale/cs/help/images/gateway/box._CB485935124_.png" alt="Orders" className="me-3" width="70" />
-              <div>
-                <h5 className="mb-1 fw-bold">Your Orders</h5>
-                <p className="text-muted small mb-0">Track, return, or buy things again</p>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Security Card */}
-        <div className="col-md-4">
-          <div className="card h-100 shadow-sm border clickable-amazon-card">
-            <div className="card-body d-flex align-items-center">
-              <img src="https://m.media-amazon.com/images/G/31/x-locale/cs/help/images/gateway/sign-in-lock._CB485935124_.png" alt="Security" className="me-3" width="70" />
-              <div>
-                <h5 className="mb-1 fw-bold">Login & Security</h5>
-                <p className="text-muted small mb-0">Edit login, name, and mobile number</p>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Addresses Card */}
-        <div className="col-md-4">
-          <div className="card h-100 shadow-sm border clickable-amazon-card">
-            <div className="card-body d-flex align-items-center">
-              <img src="https://m.media-amazon.com/images/G/31/x-locale/cs/help/images/gateway/address-map-pin._CB485935124_.png" alt="Addresses" className="me-3" width="70" />
-              <div>
-                <h5 className="mb-1 fw-bold">Your Addresses</h5>
-                <p className="text-muted small mb-0">Edit addresses for orders and gifts</p>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Admin Card (Conditional) */}
-        {isAdmin && (
-          <div className="col-md-4">
-            <div className="card h-100 shadow-sm border border-warning clickable-amazon-card" style={{backgroundColor: '#fffbe6'}} onClick={() => setActivePage('admin')}>
-              <div className="card-body d-flex align-items-center">
-                <i className="bi bi-shield-lock text-warning me-3" style={{fontSize: '3.5rem'}}></i>
+      
+      {/* Action Cards */}
+      <div className="col-lg-8">
+        <div className="row g-3">
+          <div className="col-md-6" onClick={() => setActivePage('orderhistory')} style={{cursor: 'pointer'}}>
+            <div className="card shadow-sm border-0 h-100 action-card hover-lift">
+              <div className="card-body d-flex align-items-center p-4">
+                <div className="icon-box bg-primary-soft text-primary me-3">
+                  <i className="bi bi-box-seam fs-3"></i>
+                </div>
                 <div>
-                  <h5 className="mb-1 fw-bold text-dark">Admin Control</h5>
-                  <p className="text-muted small mb-0">Manage products, orders and statistics</p>
+                  <h6 className="fw-bold mb-1">Your Orders</h6>
+                  <p className="text-muted small mb-0">Track, return, or buy again</p>
                 </div>
               </div>
             </div>
           </div>
-        )}
+          
+          <div className="col-md-6" onClick={() => setActivePage('Cart')} style={{cursor: 'pointer'}}>
+            <div className="card shadow-sm border-0 h-100 action-card hover-lift">
+              <div className="card-body d-flex align-items-center p-4">
+                <div className="icon-box bg-success-soft text-success me-3">
+                  <i className="bi bi-cart3 fs-3"></i>
+                </div>
+                <div>
+                  <h6 className="fw-bold mb-1">View Cart</h6>
+                  <p className="text-muted small mb-0">{cartItems.length} items in your bag</p>
+                </div>
+              </div>
+            </div>
+          </div>
 
-        {/* Sign Out Section at bottom */}
-        <div className="col-12 mt-5 text-center pt-4 border-top">
-          <button className="btn btn-outline-danger px-5 shadow-sm" onClick={handleSignOut}>
-            <i className="bi bi-box-arrow-right me-2"></i> Sign Out of Account
-          </button>
+          {isAdmin && (
+            <div className="col-md-6" onClick={() => setActivePage('admin')} style={{cursor: 'pointer'}}>
+              <div className="card shadow-sm border-0 h-100 action-card hover-lift">
+                <div className="card-body d-flex align-items-center p-4">
+                  <div className="icon-box bg-warning-soft text-warning me-3">
+                    <i className="bi bi-shield-lock fs-3"></i>
+                  </div>
+                  <div>
+                    <h6 className="fw-bold mb-1">Admin Panel</h6>
+                    <p className="text-muted small mb-0">Store management tools</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
       </div>
-    ) : (
-      <div className="card p-5 text-center shadow-sm">
-         <h3>Please sign in to view your dashboard</h3>
-         <div className="mt-4">
-            <Auth onSignInSuccess={handleSignInSuccess} onSignInFailure={handleSignInFailure} />
-         </div>
-      </div>
-    )}
+    </div>
   </div>
 </div>
 
