@@ -170,7 +170,8 @@ const orderSchema = new mongoose.Schema({
     phone: { type: String, required: true },
     country: { type: String }
   },
-  createdAt: { type: Date, default: Date.now }
+  createdAt: { type: Date, default: Date.now },
+  status: { type: String, default: 'Order Placed' }
 });
 
 const Order = mongoose.model('Order', orderSchema);
@@ -829,18 +830,16 @@ app.put('/api/orders/:orderId/status', async (req, res) => {
     const { orderId } = req.params;
     const { status } = req.body;
 
-    // Validate status
     const validStatuses = ['Order Placed', 'Processing', 'Shipped', 'Delivered'];
     if (!validStatuses.includes(status)) {
       return res.status(400).json({ error: 'Invalid status value' });
     }
 
-    // Find and update the order
     const order = await Order.findByIdAndUpdate(
       orderId,
       { status },
       { new: true, runValidators: true }
-    ).maxTimeMS(5000);
+    );
 
     if (!order) {
       return res.status(404).json({ error: 'Order not found' });
@@ -848,7 +847,6 @@ app.put('/api/orders/:orderId/status', async (req, res) => {
 
     res.json({ message: 'Order status updated successfully', order });
   } catch (error) {
-    console.error('Update order status error:', error);
     res.status(500).json({ error: error.message });
   }
 });
