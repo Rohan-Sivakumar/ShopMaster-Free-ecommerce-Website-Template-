@@ -678,7 +678,14 @@ function App() {
 
   return (
     <>
-      <Navigation activePage={activePage} onPageChange={handlePageChange} cartCount={cartItems.length} isAdmin={isAdmin} />
+      <Navigation 
+  activePage={activePage} 
+  onPageChange={handlePageChange} 
+  cartCount={cartItems.length} 
+  isAdmin={isAdmin}
+  search={search}
+  setSearch={setSearch}
+/>
 
       <div id="admin" className={`page ${activePage === 'admin' ? 'active' : ''}`}>
         <AdminPanel />
