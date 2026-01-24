@@ -759,3 +759,28 @@
     gap: 0.85rem;
   }
 }
+.clickable-amazon-card {
+  cursor: pointer;
+  transition: all 0.2s ease;
+  border-radius: 8px;
+}
+
+.clickable-amazon-card:hover {
+  background-color: #f7fafa;
+  border-color: #adb5bd !important;
+  transform: translateY(-2px);
+}
+
+.font-amazon-bold {
+  font-weight: 700;
+}
+
+.breadcrumb-item a {
+  text-decoration: none;
+  color: #007185;
+}
+
+.breadcrumb-item a:hover {
+  color: #c7511f;
+  text-decoration: underline;
+}
