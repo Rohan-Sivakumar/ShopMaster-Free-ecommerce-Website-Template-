@@ -114,7 +114,7 @@ export default function Navigation({ activePage, onPageChange, search, setSearch
               <a
                 href="#dashboard"
               >
-                {currentUser.name ? currentUser.name.split(' ')[0] : 'User'} ▾
+                {currentUser.name ? currentUser.name.split(' ')[0] : 'User'} 
               </a>
               
             </li>
