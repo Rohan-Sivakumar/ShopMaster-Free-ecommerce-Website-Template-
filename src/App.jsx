@@ -1010,10 +1010,6 @@ function App() {
           </div>
         </div>
       </div>
-
-  
-
-  // inside src/App.jsx - Dashboard Section
 <div id="dashboard" className={`page ${activePage === 'dashboard' ? 'active' : ''}`}>
   <div className="container py-5">
     <div className="row">
