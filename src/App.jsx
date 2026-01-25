@@ -1016,9 +1016,20 @@ function App() {
       {/* Profile Sidebar */}
       <div className="col-lg-4 mb-4">
         <div className="card shadow-sm border-0 text-center py-5 h-100">
-          <div className="bg-light rounded-circle d-inline-flex align-items-center justify-content-center mb-3 mx-auto" style={{width: '80px', height: '80px'}}>
-            <i className="bi bi-person text-secondary" style={{fontSize: '2.5rem'}}></i>
-          </div>
+          <div className="bg-light rounded-circle d-inline-flex align-items-center justify-content-center mb-3 mx-auto avatar-frame" style={{ width: '120px', height: '120px' }}>
+  {currentUser?.photoURL ? (
+    <img
+      src={currentUser.photoURL}
+      alt={currentUser?.name ? `${currentUser.name.split(' ')[0]} avatar` : 'User avatar'}
+      className="avatar-img rounded-circle"
+      loading="lazy"
+    />
+  ) : (
+    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" style={{ fontSize: '3rem' }} fill="currentColor" class="bi bi-person text-secondary" viewBox="0 0 16 16">
+  <path d="M8 8a3 3 0 1 0 0-6 3 3 0 0 0 0 6m2-3a2 2 0 1 1-4 0 2 2 0 0 1 4 0m4 8c0 1-1 1-1 1H3s-1 0-1-1 1-4 6-4 6 3 6 4m-1-.004c-.001-.246-.154-.986-.832-1.664C11.516 10.68 10.289 10 8 10s-3.516.68-4.168 1.332c-.678.678-.83 1.418-.832 1.664z"/>
+</svg>
+  )}
+</div>
           <h4 className="fw-bold mb-1">{currentUser?.name}</h4>
           <p className="text-muted small mb-4">{currentUser?.email}</p>
           <button className="btn btn-outline-danger btn-sm px-4 rounded-pill" onClick={handleSignOut}>

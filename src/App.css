@@ -805,3 +805,14 @@
 .bg-success-soft { background-color: rgba(25, 135, 84, 0.1); }
 .bg-warning-soft { background-color: rgba(255, 193, 7, 0.1); }
 .bg-info-soft { background-color: rgba(13, 202, 240, 0.1); }
+.avatar-frame {
+  border: 5px solid rgba(33, 128, 141, 0.2);
+  background: rgba(255, 255, 255, 0.25);
+}
+
+.avatar-frame .avatar-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: 50%;
+}
