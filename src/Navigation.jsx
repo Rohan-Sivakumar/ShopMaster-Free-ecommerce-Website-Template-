@@ -110,34 +110,13 @@ export default function Navigation({ activePage, onPageChange, search, setSearch
               </a>
             </li>
           ) : (
-            <li ref={userMenuRef} className={activePage === 'dashboard' || activePage === 'orderhistory' ? 'active-nav-link' : ''} style={{ position: 'relative' }}>
+            <li ref={userMenuRef} className={activePage === 'dashboard' ? 'active-nav-link' : ''} style={{ position: 'relative' }}>
               <a
                 href="#dashboard"
-                onClick={(event) => {
-                  event.preventDefault();
-                  toggleUserMenu();
-                }}
               >
                 {currentUser.name ? currentUser.name.split(' ')[0] : 'User'} ▾
               </a>
-              {showUserMenu && (
-                <div className="user-menu-dropdown shadow-sm">
-                  <a href="#dashboard" onClick={(event) => { event.preventDefault(); setShowUserMenu(false); onPageChange('dashboard'); }}>
-                    Dashboard
-                  </a>
-                  <a href="#orderhistory" onClick={(event) => { event.preventDefault(); setShowUserMenu(false); onPageChange('orderhistory'); }}>
-                    Order History
-                  </a>
-                  {isAdmin && (
-                    <a href="#admin" onClick={(event) => { event.preventDefault(); setShowUserMenu(false); onPageChange('admin'); }} className="text-warning">
-                      Admin Panel
-                    </a>
-                  )}
-                  <a href="#signout" onClick={handleSignOut} className="text-danger">
-                    Sign Out
-                  </a>
-                </div>
-              )}
+              
             </li>
           )}
         </ul>
