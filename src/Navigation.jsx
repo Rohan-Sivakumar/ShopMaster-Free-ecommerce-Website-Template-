@@ -113,6 +113,7 @@ export default function Navigation({ activePage, onPageChange, search, setSearch
             <li ref={userMenuRef} className={activePage === 'dashboard' ? 'active-nav-link' : ''} style={{ position: 'relative' }}>
               <a
                 href="#dashboard"
+                onClick={go('dashboard')}
               >
                 {currentUser.name ? currentUser.name.split(' ')[0] : 'User'} 
               </a>
