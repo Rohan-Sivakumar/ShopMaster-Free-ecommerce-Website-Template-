@@ -12,12 +12,10 @@ export default function Navigation({ activePage, onPageChange, search, setSearch
   useEffect(() => {
     const user = getCurrentUser();
     setCurrentUser(user);
-
     const handleUserChange = () => {
       const updatedUser = getCurrentUser();
       setCurrentUser(updatedUser);
     };
-
     window.addEventListener('userChanged', handleUserChange);
     return () => window.removeEventListener('userChanged', handleUserChange);
   }, []);
@@ -28,84 +26,144 @@ export default function Navigation({ activePage, onPageChange, search, setSearch
         setShowUserMenu(false);
       }
     };
-
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  const handleSearch = (e) => {
-    const value = e.target.value;
+  const go = (page) => (event) => {
+    event.preventDefault();
+    onPageChange(page);
+    setMobileMenuOpen(false);
+  };
+
+  const handleSearch = (event) => {
+    const value = event.target.value;
     setSearch(value);
     if (activePage !== 'p' && value.length > 0) {
       onPageChange('p');
     }
   };
 
-  const handleSignOut = (e) => {
-    e.preventDefault();
+  const toggleUserMenu = () => {
+    setShowUserMenu((prev) => !prev);
+  };
+
+  const handleSignOut = (event) => {
+    event.preventDefault();
     setShowUserMenu(false);
-    
     Swal.fire({
       title: 'Sign Out?',
       text: 'Are you sure you want to sign out?',
       icon: 'question',
       showCancelButton: true,
-      confirmButtonText: 'Yes, sign out'
+      confirmButtonText: 'Yes, sign out',
+      cancelButtonText: 'Cancel'
     }).then((result) => {
       if (result.isConfirmed) {
         sessionStorage.removeItem('authUser');
         sessionStorage.removeItem('authToken');
         window.dispatchEvent(new Event('userChanged'));
-        onPageChange('home');
+        Swal.fire({
+          icon: 'success',
+          title: 'Signed Out',
+          text: 'You have been signed out successfully',
+          timer: 1500,
+          showConfirmButton: false
+        });
+        setTimeout(() => onPageChange('home'), 1500);
       }
     });
   };
 
-  return (
-    <nav className={`navigation sticky-top ${mobileMenuOpen ? 'mobile-menu-open' : ''}`}>
-      <div className="nav-container d-flex align-items-center w-100">
-        <h2 className="heading mb-0" onClick={() => onPageChange('home')}>ShopMaster</h2>
+  const searchContainerClass = `search-box-container mx-3 d-none d-md-flex ${activePage === 'p' ? 'd-none' : ''}`;
+  const mobileSearchClass = `w-100 px-3 pb-2 d-md-none ${activePage === 'p' ? 'd-none' : ''}`;
 
-        <div className="search-box-container flex-grow-1 mx-4 d-none d-md-block">
+  return (
+    <nav className={`navigation ${mobileMenuOpen ? 'mobile-menu-open' : ''}`}>
+      <div className="d-flex align-items-center justify-content-between w-100">
+        <h2 className="heading mb-0" onClick={go('home')}>
+          Shopmaster
+        </h2>
+        <div className={searchContainerClass} style={{ width: '260px' }}>
           <div className="input-group">
-            <input 
-              type="text" 
-              className="form-control border-0 bg-light" 
-              placeholder="Search for products, brands and more..." 
+            <input
+              type="text"
+              className="form-control border-0 bg-light"
+              placeholder="Search for products, brands and more..."
               value={search}
               onChange={handleSearch}
             />
-            <button className="btn btn-primary"><i className="bi bi-search"></i></button>
+            <button className="btn btn-primary">
+              <i className="bi bi-search"></i>
+            </button>
           </div>
         </div>
-
-        <ul className="nav-links mb-0 d-none d-md-flex align-items-center">
-          <li><a href="#" onClick={() => onPageChange('p')}>Products</a></li>
-          <li>
-            <a href="#" onClick={() => onPageChange('Cart')} className="position-relative">
-              <i className="bi bi-cart3"></i>
-              {cartCount > 0 && <span className="badge rounded-pill bg-danger ms-1">{cartCount}</span>}
+        <button className="mobile-menu-toggle d-md-none" aria-label="Toggle menu" onClick={() => setMobileMenuOpen((prev) => !prev)}>
+          {mobileMenuOpen ? '✕' : '☰'}
+        </button>
+        <ul className={`navigation-links mb-0 ${mobileMenuOpen ? 'd-flex flex-column' : 'd-none d-md-flex align-items-center'}`}>
+          <li className={activePage === 'home' ? 'active-nav-link' : ''}>
+            <a href="#home" onClick={go('home')}>
+              Home
             </a>
           </li>
-          {currentUser ? (
-            <li className="nav-item dropdown" ref={userMenuRef}>
-              <a href="#" onClick={() => setShowUserMenu(!showUserMenu)}>
-                <i className="bi bi-person-circle"></i> {currentUser.name.split(' ')[0]}
+          <li className={activePage === 'p' ? 'active-nav-link' : ''}>
+            <a href="#product" onClick={go('p')}>
+              Products
+            </a>
+          </li>
+          <li className={activePage === 'Cart' ? 'active-nav-link' : ''}>
+            <a href="#Cart" onClick={go('Cart')} className="position-relative">
+              Cart ({cartCount})
+            </a>
+          </li>
+          {!currentUser ? (
+            <li className={activePage === 'login' ? 'active-nav-link' : ''}>
+              <a href="#login" onClick={go('login')}>
+                Login
+              </a>
+            </li>
+          ) : (
+            <li ref={userMenuRef} className={activePage === 'dashboard' || activePage === 'orderhistory' ? 'active-nav-link' : ''} style={{ position: 'relative' }}>
+              <a
+                href="#dashboard"
+                onClick={(event) => {
+                  event.preventDefault();
+                  toggleUserMenu();
+                }}
+              >
+                {currentUser.name ? currentUser.name.split(' ')[0] : 'User'} ▾
               </a>
               {showUserMenu && (
-                <div className="dropdown-menu-custom shadow border-0">
-                  <a href="#" onClick={() => {onPageChange('dashboard'); setShowUserMenu(false);}}>Dashboard</a>
-                  <a href="#" onClick={() => {onPageChange('orderhistory'); setShowUserMenu(false);}}>Orders</a>
-                  {isAdmin && <a href="#" className="fw-bold text-warning" onClick={() => onPageChange('admin')}>Admin Panel</a>}
-                  <hr className="my-1"/>
-                  <a href="#" className="text-danger" onClick={handleSignOut}>Sign Out</a>
+                <div className="user-menu-dropdown shadow-sm">
+                  <a href="#dashboard" onClick={(event) => { event.preventDefault(); setShowUserMenu(false); onPageChange('dashboard'); }}>
+                    Dashboard
+                  </a>
+                  <a href="#orderhistory" onClick={(event) => { event.preventDefault(); setShowUserMenu(false); onPageChange('orderhistory'); }}>
+                    Order History
+                  </a>
+                  {isAdmin && (
+                    <a href="#admin" onClick={(event) => { event.preventDefault(); setShowUserMenu(false); onPageChange('admin'); }} className="text-warning">
+                      Admin Panel
+                    </a>
+                  )}
+                  <a href="#signout" onClick={handleSignOut} className="text-danger">
+                    Sign Out
+                  </a>
                 </div>
               )}
             </li>
-          ) : (
-            <li><a href="#" onClick={() => onPageChange('login')}>Login</a></li>
           )}
         </ul>
+      </div>
+      <div className={mobileSearchClass}>
+        <input
+          type="text"
+          className="form-control border-0 bg-light"
+          placeholder="Search for products..."
+          value={search}
+          onChange={handleSearch}
+        />
       </div>
     </nav>
   );
