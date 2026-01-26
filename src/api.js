@@ -380,3 +380,35 @@ export const updateOrderStatus = async (orderId, newStatus) => {
     throw error;
   }
 };
+export const submitReview = async (payload = {}) => {
+  const { productId, rating, comment = "", userEmail, orderId } = payload;
+  if (!productId || !rating) throw new Error("Product ID and rating are required");
+
+  try {
+    const response = await fetchWithRetry(`${API_URL}/reviews`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ productId, rating, comment, userEmail, orderId })
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(errorData.error || "Failed to submit review");
+    }
+
+    return await response.json();
+  } catch (error) {
+    console.error("Error submitting review:", error.message);
+    const fallback = JSON.parse(localStorage.getItem("productReviews") || "{}");
+    fallback[productId] = fallback[productId] || [];
+    fallback[productId].push({
+      rating,
+      comment,
+      userEmail,
+      orderId,
+      createdAt: new Date().toISOString()
+    });
+    localStorage.setItem("productReviews", JSON.stringify(fallback));
+    return { fallback: true, reviews: fallback[productId] };
+  }
+};

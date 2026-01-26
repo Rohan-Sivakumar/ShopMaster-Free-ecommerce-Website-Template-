@@ -194,7 +194,21 @@ function App() {
     window.addEventListener('userChanged', handleUserChange);
     return () => window.removeEventListener('userChanged', handleUserChange);
   }, []);
-
+  useEffect(() => {
+    const handleReviewSubmitted = (event) => {
+      const detail = event?.detail;
+      if (!detail?.productId) return;
+      setProducts(prev =>
+        prev.map(product =>
+          (product.id === detail.productId || product._id === detail.productId)
+            ? { ...product, rating: detail.rating || product.rating }
+            : product
+        )
+      );
+    };
+    window.addEventListener('reviewSubmitted', handleReviewSubmitted);
+    return () => window.removeEventListener('reviewSubmitted', handleReviewSubmitted);
+  }, []);
   useEffect(() => {
     const handleProductsUpdate = (event) => {
       console.log('🔄 Products updated event received');

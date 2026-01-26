@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import Swal from 'sweetalert2';
-import { getOrders } from './api';
+import { getOrders, submitReview } from './api';
 import { getCurrentUser } from './cartService';
 
 const OrderHistory = () => {
@@ -11,17 +11,17 @@ const OrderHistory = () => {
     useEffect(() => {
         const user = getCurrentUser();
         if (user && user.email) {
-            const getOrderHistory = async () => {
+            const loadOrders = async () => {
                 try {
                     const data = await getOrders(50, user.email);
                     setOrders(Array.isArray(data) ? data : []);
                 } catch (error) {
-                    console.error("Failed to fetch orders:", error);
+                    console.error('Failed to fetch orders:', error);
                 } finally {
                     setLoading(false);
                 }
             };
-            getOrderHistory();
+            loadOrders();
         } else {
             setLoading(false);
         }
@@ -58,7 +58,7 @@ const OrderHistory = () => {
         }));
     };
 
-    const handleSubmitReview = (itemId, item, status) => {
+    const handleSubmitReview = async (itemId, item, status, orderId) => {
         const reviewState = reviewStates[itemId] || {};
         if (status?.toLowerCase() !== 'delivered') {
             Swal.fire({
@@ -78,22 +78,48 @@ const OrderHistory = () => {
             return;
         }
 
-        setReviewStates(prev => ({
-            ...prev,
-            [itemId]: {
-                ...prev[itemId],
-                submitted: true,
-                showForm: false
-            }
-        }));
+        const user = getCurrentUser();
+        try {
+            await submitReview({
+                productId: item.id || item._id,
+                rating: reviewState.rating,
+                comment: (reviewState.comment || '').trim(),
+                userEmail: user?.email,
+                orderId
+            });
 
-        Swal.fire({
-            icon: 'success',
-            title: 'Thanks for the review!',
-            text: `You rated ${item.id || item.name || 'this product'} ${reviewState.rating}/5.`,
-            timer: 1400,
-            showConfirmButton: false
-        });
+            setReviewStates(prev => ({
+                ...prev,
+                [itemId]: {
+                    ...prev[itemId],
+                    submitted: true,
+                    showForm: false
+                }
+            }));
+
+            window.dispatchEvent(new CustomEvent('reviewSubmitted', {
+                detail: {
+                    productId: item.id || item._id,
+                    rating: reviewState.rating
+                }
+            }));
+            window.dispatchEvent(new CustomEvent('productsUpdated'));
+
+            Swal.fire({
+                icon: 'success',
+                title: 'Thanks for the review!',
+                text: `You rated ${item.id || item._id || 'this product'} ${reviewState.rating}/5.`,
+                timer: 1400,
+                showConfirmButton: false
+            });
+        } catch (error) {
+            console.error('Error submitting review:', error);
+            Swal.fire({
+                icon: 'error',
+                title: 'Review failed',
+                text: error.message || 'Unable to submit your review right now.'
+            });
+        }
     };
 
     const getStatusColor = (status) => {
@@ -241,7 +267,7 @@ const OrderHistory = () => {
                                                                         value={reviewState.comment || ''}
                                                                         onChange={(e) => setReviewComment(itemId, e.target.value)}
                                                                     />
-                                                                    <button className="btn btn-dark btn-sm" onClick={() => handleSubmitReview(itemId, item, status)}>
+                                                                    <button className="btn btn-dark btn-sm" onClick={() => handleSubmitReview(itemId, item, status, orderId)}>
                                                                         Publish Review
                                                                     </button>
                                                                 </div>
