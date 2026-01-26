@@ -1,10 +1,12 @@
 import React, { useState, useEffect } from 'react';
+import Swal from 'sweetalert2';
 import { getOrders } from './api';
 import { getCurrentUser } from './cartService';
 
 const OrderHistory = () => {
     const [orders, setOrders] = useState([]);
     const [loading, setLoading] = useState(true);
+    const [reviewStates, setReviewStates] = useState({});
 
     useEffect(() => {
         const user = getCurrentUser();
@@ -24,6 +26,66 @@ const OrderHistory = () => {
             setLoading(false);
         }
     }, []);
+
+    const toggleReviewForm = (itemId) => {
+        setReviewStates(prev => ({
+            ...prev,
+            [itemId]: {
+                ...prev[itemId],
+                showForm: !prev[itemId]?.showForm
+            }
+        }));
+    };
+
+    const setReviewRating = (itemId, rating) => {
+        setReviewStates(prev => ({
+            ...prev,
+            [itemId]: {
+                ...prev[itemId],
+                rating
+            }
+        }));
+    };
+
+    const setReviewComment = (itemId, comment) => {
+        setReviewStates(prev => ({
+            ...prev,
+            [itemId]: {
+                ...prev[itemId],
+                comment
+            }
+        }));
+    };
+
+    const handleSubmitReview = (item) => {
+        const itemId = item.id || item._id || `${item.name}-${item.brand}`;
+        const state = reviewStates[itemId] || {};
+        if (!state.rating) {
+            Swal.fire({
+                icon: 'warning',
+                title: 'Select a rating',
+                text: 'Please pick 1–5 stars before submitting your review.'
+            });
+            return;
+        }
+
+        setReviewStates(prev => ({
+            ...prev,
+            [itemId]: {
+                ...prev[itemId],
+                submitted: true,
+                showForm: false
+            }
+        }));
+
+        Swal.fire({
+            icon: 'success',
+            title: 'Thanks for the review!',
+            text: `You rated ${item.id} ${state.rating}/5.`,
+            timer: 1400,
+            showConfirmButton: false
+        });
+    };
 
     const getStatusColor = (status) => {
         switch (status) {
@@ -111,33 +173,75 @@ const OrderHistory = () => {
                                     </div>
                                     <div className="card-body p-0">
                                         <div className="list-group list-group-flush">
-                                            {(order.cart || []).map((item, idx) => (
-                                                <div key={idx} className="list-group-item p-4 border-0">
-                                                    <div className="row">
-                                                        <div className="col-md-2 col-3">
-                                                            <img 
-                                                                src={item.img} 
-                                                                alt={item.id} 
-                                                                className="img-fluid rounded" 
-                                                                style={{ maxHeight: '100px', width: '100%', objectFit: 'contain' }}
-                                                                onError={(e) => e.target.src = 'https://via.placeholder.com/100'}
-                                                            />
+                                            {(order.cart || []).map((item, idx) => {
+                                                const itemId = item.id || `${orderId}-${idx}`;
+                                                const reviewState = reviewStates[itemId] || {};
+                                                return (
+                                                    <div key={itemId} className="list-group-item p-4 border-0">
+                                                        <div className="row">
+                                                            <div className="col-md-2 col-3">
+                                                                <img 
+                                                                    src={item.img} 
+                                                                    alt={item.id} 
+                                                                    className="img-fluid rounded" 
+                                                                    style={{ maxHeight: '100px', width: '100%', objectFit: 'contain' }}
+                                                                    onError={(e) => e.target.src = 'https://via.placeholder.com/100'}
+                                                                />
+                                                            </div>
+                                                            <div className="col-md-7 col-9">
+                                                                <h6 className="text-primary mb-1 fw-bold">{item.id}</h6>
+                                                                <p className="text-muted small mb-2">{item.brand || 'ShopMaster Selection'}</p>
+                                                            </div>
+                                                            <div className="col-md-3 mt-3 mt-md-0 d-grid gap-2 h-100">
+                                                                <button className="btn btn-sm btn-outline-secondary rounded-pill">Track Package</button>
+                                                                <button className="btn btn-sm btn-outline-secondary rounded-pill">Return Items</button>
+                                                                <button className="btn btn-sm btn-outline-secondary rounded-pill" type="button" onClick={() => toggleReviewForm(itemId)}>
+                                                                    Write a product review
+                                                                </button>
+                                                            </div>
                                                         </div>
-                                                        <div className="col-md-7 col-9">
-                                                            <h6 className="text-primary mb-1 fw-bold">{item.id}</h6>
-                                                            <p className="text-muted small mb-2">{item.brand || 'ShopMaster Selection'}</p>
-                                                            <button className="btn btn-warning btn-sm p-1 px-3 shadow-sm rounded-pill">
-                                                                <i className="bi bi-arrow-repeat me-1"></i> Buy it again
-                                                            </button>
-                                                        </div>
-                                                        <div className="col-md-3 mt-3 mt-md-0 d-grid gap-2 h-100">
-                                                            <button className="btn btn-sm btn-outline-secondary rounded-pill">Track Package</button>
-                                                            <button className="btn btn-sm btn-outline-secondary rounded-pill">Return Items</button>
-                                                            <button className="btn btn-sm btn-outline-secondary rounded-pill">Write a product review</button>
-                                                        </div>
+                                                        {reviewState.showForm && (
+                                                            <div className="mt-3 px-2">
+                                                                <div className="p-3 border rounded review-form">
+                                                                    <div className="d-flex align-items-center gap-1 mb-2 review-stars">
+                                                                        {[1, 2, 3, 4, 5].map(star => (
+                                                                            <button
+                                                                                key={star}
+                                                                                type="button"
+                                                                                className={`review-star-btn ${reviewState.rating >= star ? 'active' : ''}`}
+                                                                                onClick={() => setReviewRating(itemId, star)}
+                                                                            >
+                                                                                <i className="bi bi-star-fill"></i>
+                                                                            </button>
+                                                                        ))}
+                                                                        {reviewState.rating > 0 && (
+                                                                            <span className="small text-muted ms-2">{reviewState.rating}/5</span>
+                                                                        )}
+                                                                    </div>
+                                                                    <textarea
+                                                                        className="form-control form-control-sm mb-2"
+                                                                        rows="2"
+                                                                        placeholder="Quick feedback (optional)"
+                                                                        value={reviewState.comment || ''}
+                                                                        onChange={(e) => setReviewComment(itemId, e.target.value)}
+                                                                    />
+                                                                    <button className="btn btn-dark btn-sm" onClick={() => handleSubmitReview(item)}>
+                                                                        Publish Review
+                                                                    </button>
+                                                                </div>
+                                                            </div>
+                                                        )}
+                                                        {reviewState.submitted && !reviewState.showForm && (
+                                                            <div className="mt-3 px-2">
+                                                                <small className="text-success">
+                                                                    ✅ You rated this item {reviewState.rating}/5.
+                                                                    {reviewState.comment ? ` Comment: "${reviewState.comment}".` : ''}
+                                                                </small>
+                                                            </div>
+                                                        )}
                                                     </div>
-                                                </div>
-                                            ))}
+                                                );
+                                            })}
                                         </div>
                                     </div>
                                 </div>
