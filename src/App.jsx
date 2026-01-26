@@ -11,9 +11,13 @@ import Swal from 'sweetalert2';
 
 const ADMIN_EMAIL = 'rohan.sivaa@gmail.com';
 
+const getBrandName = (product) => {
+  return (product.brand || product.sellerBusinessName || product.sellerName || '').trim();
+};
+
 // Memoized Product Card Component
 const ProductCard = React.memo(({ product, quantity, onShowDetails, onAddCart, onRemoveCart, variant = 'grid' }) => {
-  const brandText = (product.brand || product.sellerBusinessName || product.sellerName || "").trim();
+  const brandText = getBrandName(product);
   const shippingText = product.shippingEtaText || product.shippingText || product.shipping || '';
   const mrp = product.mrp;
   const showMrp = typeof mrp === 'number' && mrp > product.cost;
@@ -147,7 +151,6 @@ function App() {
       setProductsLoading(true);
       const productsData = await getProducts();
       setProducts(productsData);
-      console.log('✅ Products loaded from MongoDB:', productsData.length);
       setProductsLoading(false);
     } catch (error) {
       console.error('Error loading products:', error);
@@ -193,7 +196,6 @@ function App() {
 
   useEffect(() => {
     const handleProductsUpdate = (event) => {
-      console.log('🔄 Products updated event received');
       if (event.detail) {
         setProducts(event.detail);
       } else {
@@ -206,14 +208,20 @@ function App() {
   }, [loadProducts]);
 
   const categories = useMemo(() =>
-    Array.from(new Set(products.map(p => p.category).filter(Boolean))),
+    Array.from(new Set(products.map(p => (p.category || '').trim()).filter(Boolean))),
     [products]
   );
 
-  const brands = useMemo(() =>
-    Array.from(new Set(products.map(p => p.brand).filter(Boolean))),
-    [products]
-  );
+  const brands = useMemo(() => {
+    const brandSet = new Set();
+    products.forEach(product => {
+      const brandName = getBrandName(product);
+      if (brandName) {
+        brandSet.add(brandName);
+      }
+    });
+    return Array.from(brandSet);
+  }, [products]);
 
   const productMaxPrice = useMemo(() => {
     if (products.length === 0) return 100000;
@@ -262,7 +270,8 @@ function App() {
     let filtered = products.filter(product => {
       const matchesSearch = product.id.toLowerCase().includes(search.toLowerCase());
       const matchesCategory = selectedCategories.length === 0 || selectedCategories.includes(product.category);
-      const matchesBrand = selectedBrands.length === 0 || selectedBrands.includes(product.brand);
+      const productBrand = getBrandName(product);
+      const matchesBrand = selectedBrands.length === 0 || selectedBrands.includes(productBrand);
       const matchesRating = (product.rating || 0) >= minRating;
       
       const min = minPrice === '' ? 0 : parseFloat(minPrice);
@@ -272,7 +281,6 @@ function App() {
       return matchesSearch && matchesCategory && matchesBrand && matchesPrice && matchesRating;
     });
 
-    // Apply sorting
     switch (sortBy) {
       case 'price-asc':
         filtered.sort((a, b) => a.cost - b.cost);
@@ -287,7 +295,6 @@ function App() {
         filtered.sort((a, b) => (b.rating || 0) - (a.rating || 0));
         break;
       default:
-        // featured - keep original order
         break;
     }
 
@@ -353,14 +360,11 @@ function App() {
     return { groupedCart: grouped, totalPrice: total };
   }, [cartItems]);
 
-  // Handle checkout with address collection
   const handleCheckout = useCallback(async () => {
     if (!currentUser || cartItems.length === 0) return;
 
-    // Get saved addresses
     const savedAddresses = getAddresses(currentUser.email);
 
-    // Show address selection/input modal
     const { value: formValues } = await Swal.fire({
       title: 'Delivery Address',
       html: `
@@ -433,7 +437,6 @@ function App() {
       cancelButtonText: 'Cancel',
       focusConfirm: false,
       didOpen: () => {
-        // Handle saved address selection
         const addressSelect = document.getElementById('swal-address-select');
         if (addressSelect) {
           addressSelect.addEventListener('change', (e) => {
@@ -451,7 +454,6 @@ function App() {
           });
         }
 
-        // Handle location button
         const locationBtn = document.getElementById('use-location-btn');
         locationBtn.addEventListener('click', async (e) => {
           e.preventDefault();
@@ -505,14 +507,12 @@ function App() {
       }
     });
 
-    if (!formValues) return; // User cancelled
+    if (!formValues) return;
 
-    // Save address if requested
     if (formValues.saveAddress) {
       addAddress(currentUser.email, formValues);
     }
 
-    // Place order with address and cart - FIXED: Now including cart array with full product details
     try {
       const orderData = {
         user: currentUser.email,
@@ -526,7 +526,7 @@ function App() {
           sellerEmail: item.sellerEmail || 'rohan.sivaa@gmail.com',
           sellerName: item.sellerName || 'Rohan'
         })),
-        cart: groupedCart.map(item => ({  // ✅ ADDED: Full cart data for display
+        cart: groupedCart.map(item => ({
           id: item.id,
           cost: item.cost,
           img: item.img,
@@ -546,7 +546,6 @@ function App() {
       };
 
       const result = await createOrder(orderData);
-      console.log('✅ Order saved to MongoDB:', result);
 
       Swal.fire({
         icon: 'success',
@@ -664,7 +663,8 @@ function App() {
           <h1 style={{color: 'white', fontSize: '3.5rem', fontWeight: 'bold', marginBottom: '30px', animation: 'pulse 2s ease-in-out infinite'}}>ShopMaster</h1>
           <div style={{width: '60px', height: '60px', border: '6px solid rgba(255, 255, 255, 0.3)', borderTop: '6px solid white', borderRadius: '50%', margin: '0 auto', animation: 'spin 1s linear infinite'}}></div>
           <p style={{color: 'rgba(255, 255, 255, 0.9)', marginTop: '30px', fontSize: '1.2rem', animation: 'pulse 2s ease-in-out infinite'}}>Loading amazing deals...</p>
-          <div style={{marginTop: '40px', padding: '15px 30px', background: 'rgba(255, 255, 255, 0.15)', borderRadius: '10px', backdropFilter: 'blur(10px)', border: '1px solid rgba(255, 255, 255, 0.3)'}}>            <p style={{color: 'white', fontSize: '0.9rem', margin: 0, fontWeight: '500'}}>⚠️ This is a development website</p>
+          <div style={{marginTop: '40px', padding: '15px 30px', background: 'rgba(255, 255, 255, 0.15)', borderRadius: '10px', backdropFilter: 'blur(10px)', border: '1px solid rgba(255, 255, 255, 0.3)'}}>
+            <p style={{color: 'white', fontSize: '0.9rem', margin: 0, fontWeight: '500'}}>⚠️ This is a development website</p>
           </div>
         </div>
         <style>{`
@@ -679,13 +679,13 @@ function App() {
   return (
     <>
       <Navigation 
-  activePage={activePage} 
-  onPageChange={handlePageChange} 
-  cartCount={cartItems.length} 
-  isAdmin={isAdmin}
-  search={search}
-  setSearch={setSearch}
-/>
+        activePage={activePage} 
+        onPageChange={handlePageChange} 
+        cartCount={cartItems.length} 
+        isAdmin={isAdmin}
+        search={search}
+        setSearch={setSearch}
+      />
 
       <div id="admin" className={`page ${activePage === 'admin' ? 'active' : ''}`}>
         <AdminPanel />
@@ -695,7 +695,6 @@ function App() {
         <div className="container my-4">
           <h2 className="text-center mb-4">Products</h2>
           
-          {/* Search Bar */}
           <div className="d-flex justify-content-center mb-4">
             <input 
               type="text" 
@@ -707,7 +706,6 @@ function App() {
             />
           </div>
 
-          {/* Mobile Filter Toggle */}
           <button 
             className="mobile-filter-toggle"
             onClick={() => setMobileFiltersOpen(!mobileFiltersOpen)}
@@ -715,15 +713,12 @@ function App() {
             <i className="bi bi-funnel"></i> Filters {hasActiveFilters && `(${selectedCategories.length + selectedBrands.length + (minRating > 0 ? 1 : 0) + (minPrice || maxPrice ? 1 : 0)})`}
           </button>
 
-          {/* Filter Overlay for Mobile */}
           <div 
             className={`filter-overlay ${mobileFiltersOpen ? 'active' : ''}`}
             onClick={() => setMobileFiltersOpen(false)}
           ></div>
 
-          {/* Products Container with Sidebar */}
           <div className="products-container">
-            {/* Amazon-style Filter Sidebar */}
             <aside className={`filter-sidebar ${mobileFiltersOpen ? 'mobile-open' : ''}`}>
               {hasActiveFilters && (
                 <button className="clear-filters-btn" onClick={clearAllFilters}>
@@ -731,7 +726,6 @@ function App() {
                 </button>
               )}
 
-              {/* Category Filter */}
               {categories.length > 0 && (
                 <div className="filter-section">
                   <h3 className="filter-section-title">Category</h3>
@@ -749,7 +743,6 @@ function App() {
                 </div>
               )}
 
-              {/* Brand Filter */}
               {brands.length > 0 && (
                 <div className="filter-section">
                   <h3 className="filter-section-title">Brand</h3>
@@ -767,7 +760,6 @@ function App() {
                 </div>
               )}
 
-              {/* Rating Filter */}
               <div className="filter-section">
                 <h3 className="filter-section-title">Customer Rating</h3>
                 {[4, 3, 2, 1].map(rating => (
@@ -801,7 +793,6 @@ function App() {
                 )}
               </div>
 
-              {/* Price Filter */}
               <div className="filter-section">
                 <h3 className="filter-section-title">Price</h3>
                 <div className="price-input-group">
@@ -832,7 +823,6 @@ function App() {
               </div>
             </aside>
 
-            {/* Products Main Area */}
             <div className="products-main">
               <div className="products-header">
                 <span className="results-count">
@@ -914,7 +904,13 @@ function App() {
                         )}
                         <p className="card-text">{selectedProduct.description}</p>
                         <p className="card-text"><small className="text-muted">Category: {selectedProduct.category}</small></p>
-                        {selectedProduct.brand && (<p className="card-text"><small className="text-muted">Brand: {selectedProduct.brand}</small></p>)}
+                        {(selectedProduct.brand || selectedProduct.sellerBusinessName || selectedProduct.sellerName) && (
+                          <p className="card-text">
+                            <small className="text-muted">
+                              Brand: {getBrandName(selectedProduct)}
+                            </small>
+                          </p>
+                        )}
                         <p className="card-text"><small className="text-muted">Year: {selectedProduct.year}</small></p>
                         <h4 className="text-success mb-2">₹{selectedProduct.cost}</h4>
                         {typeof selectedProduct.mrp === 'number' && selectedProduct.mrp > selectedProduct.cost ? (<p className="mb-3"><small className="text-muted">MRP: <span style={{textDecoration:'line-through'}}>₹{selectedProduct.mrp}</span></small></p>) : null}
@@ -1010,92 +1006,86 @@ function App() {
           </div>
         </div>
       </div>
-<div id="dashboard" className={`page ${activePage === 'dashboard' ? 'active' : ''}`}>
-  <div className="container py-5">
-    <div className="row">
-      {/* Profile Sidebar */}
-      <div className="col-lg-4 mb-4">
-        <div className="card shadow-sm border-0 text-center py-5 h-100">
-          <div className="bg-light rounded-circle d-inline-flex align-items-center justify-content-center mb-3 mx-auto avatar-frame" style={{ width: '120px', height: '120px' }}>
-  {currentUser?.photoURL ? (
-    <img
-      src={currentUser.photoURL}
-      alt={currentUser?.name ? `${currentUser.name.split(' ')[0]} avatar` : 'User avatar'}
-      className="avatar-img rounded-circle"
-      loading="lazy"
-    />
-  ) : (
-    <svg xmlns="http://www.w3.org/2000/svg" width="3rem" height="3rem"  fill="currentColor" class="bi bi-person text-secondary" viewBox="0 0 16 16">
-  <path d="M8 8a3 3 0 1 0 0-6 3 3 0 0 0 0 6m2-3a2 2 0 1 1-4 0 2 2 0 0 1 4 0m4 8c0 1-1 1-1 1H3s-1 0-1-1 1-4 6-4 6 3 6 4m-1-.004c-.001-.246-.154-.986-.832-1.664C11.516 10.68 10.289 10 8 10s-3.516.68-4.168 1.332c-.678.678-.83 1.418-.832 1.664z"/>
-</svg>
-  )}
-</div>
-          <h4 className="fw-bold mb-1">{currentUser?.name}</h4>
-          <p className="text-muted small mb-4">{currentUser?.email}</p>
-          <button className="btn btn-outline-danger btn-sm px-4 rounded-pill" onClick={handleSignOut}>
-          <svg xmlns="http://www.w3.org/2000/svg" height="24px" viewBox="0 -960 960 960" width="24px" fill="#EA3323"><path d="M200-120q-33 0-56.5-23.5T120-200v-560q0-33 23.5-56.5T200-840h280v80H200v560h280v80H200Zm440-160-55-58 102-102H360v-80h327L585-622l55-58 200 200-200 200Z"/></svg> Sign Out
-          </button>
-        </div>
-      </div>
-      
-      {/* Action Cards */}
-      <div className="col-lg-8">
-        <div className="row g-3">
-          <div className="col-md-6" onClick={() => setActivePage('orderhistory')} style={{cursor: 'pointer'}}>
-            <div className="card shadow-sm border-0 h-100 action-card hover-lift">
-              <div className="card-body d-flex align-items-center p-4">
-                <div className="icon-box bg-primary-soft text-primary me-3">
-                  <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" fill="currentColor" class="bi bi-box-seam" viewBox="0 0 16 16">
-  <path d="M8.186 1.113a.5.5 0 0 0-.372 0L1.846 3.5l2.404.961L10.404 2zm3.564 1.426L5.596 5 8 5.961 14.154 3.5zm3.25 1.7-6.5 2.6v7.922l6.5-2.6V4.24zM7.5 14.762V6.838L1 4.239v7.923zM7.443.184a1.5 1.5 0 0 1 1.114 0l7.129 2.852A.5.5 0 0 1 16 3.5v8.662a1 1 0 0 1-.629.928l-7.185 2.874a.5.5 0 0 1-.372 0L.63 13.09a1 1 0 0 1-.63-.928V3.5a.5.5 0 0 1 .314-.464z"/>
-</svg>
-                </div>
-                <div>
-                  <h6 className="fw-bold mb-1">Your Orders</h6>
-                  <p className="text-muted small mb-0">Track, return, or buy again</p>
-                </div>
-              </div>
-            </div>
-          </div>
-          
-          <div className="col-md-6" onClick={() => setActivePage('Cart')} style={{cursor: 'pointer'}}>
-            <div className="card shadow-sm border-0 h-100 action-card hover-lift">
-              <div className="card-body d-flex align-items-center p-4">
-                <div className="icon-box bg-success-soft text-success me-3">
-                  <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" fill="currentColor" class="bi bi-cart" viewBox="0 0 16 16">
-  <path d="M0 1.5A.5.5 0 0 1 .5 1H2a.5.5 0 0 1 .485.379L2.89 3H14.5a.5.5 0 0 1 .491.592l-1.5 8A.5.5 0 0 1 13 12H4a.5.5 0 0 1-.491-.408L2.01 3.607 1.61 2H.5a.5.5 0 0 1-.5-.5M3.102 4l1.313 7h8.17l1.313-7zM5 12a2 2 0 1 0 0 4 2 2 0 0 0 0-4m7 0a2 2 0 1 0 0 4 2 2 0 0 0 0-4m-7 1a1 1 0 1 1 0 2 1 1 0 0 1 0-2m7 0a1 1 0 1 1 0 2 1 1 0 0 1 0-2"/>
-</svg>
-                </div>
-                <div>
-                  <h6 className="fw-bold mb-1">View Cart</h6>
-                  <p className="text-muted small mb-0">{cartItems.length} items in your bag</p>
-                </div>
-              </div>
-            </div>
-          </div>
 
-          {isAdmin && (
-            <div className="col-md-6" onClick={() => setActivePage('admin')} style={{cursor: 'pointer'}}>
-              <div className="card shadow-sm border-0 h-100 action-card hover-lift">
-                <div className="card-body d-flex align-items-center p-4">
-                  <div className="icon-box bg-warning-soft text-warning me-3">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" fill="currentColor" class="bi bi-shield-lock" viewBox="0 0 16 16">
-  <path d="M5.338 1.59a61 61 0 0 0-2.837.856.48.48 0 0 0-.328.39c-.554 4.157.726 7.19 2.253 9.188a10.7 10.7 0 0 0 2.287 2.233c.346.244.652.42.893.533q.18.085.293.118a1 1 0 0 0 .101.025 1 1 0 0 0 .1-.025q.114-.034.294-.118c.24-.113.547-.29.893-.533a10.7 10.7 0 0 0 2.287-2.233c1.527-1.997 2.807-5.031 2.253-9.188a.48.48 0 0 0-.328-.39c-.651-.213-1.75-.56-2.837-.855C9.552 1.29 8.531 1.067 8 1.067c-.53 0-1.552.223-2.662.524zM5.072.56C6.157.265 7.31 0 8 0s1.843.265 2.928.56c1.11.3 2.229.655 2.887.87a1.54 1.54 0 0 1 1.044 1.262c.596 4.477-.787 7.795-2.465 9.99a11.8 11.8 0 0 1-2.517 2.453 7 7 0 0 1-1.048.625c-.28.132-.581.24-.829.24s-.548-.108-.829-.24a7 7 0 0 1-1.048-.625 11.8 11.8 0 0 1-2.517-2.453C1.928 10.487.545 7.169 1.141 2.692A1.54 1.54 0 0 1 2.185 1.43 63 63 0 0 1 5.072.56"/>
-  <path d="M9.5 6.5a1.5 1.5 0 0 1-1 1.415l.385 1.99a.5.5 0 0 1-.491.595h-.788a.5.5 0 0 1-.49-.595l.384-1.99a1.5 1.5 0 1 1 2-1.415"/>
-</svg>
-                  </div>
-                  <div>
-                    <h6 className="fw-bold mb-1">Admin Panel</h6>
-                    <p className="text-muted small mb-0">Store management tools</p>
-                  </div>
+      <div id="dashboard" className={`page ${activePage === 'dashboard' ? 'active' : ''}`}>
+        <div className="container py-5">
+          <div className="row">
+            <div className="col-lg-4 mb-4">
+              <div className="card shadow-sm border-0 text-center py-5 h-100">
+                <div className="bg-light rounded-circle d-inline-flex align-items-center justify-content-center mb-3 mx-auto avatar-frame" style={{ width: '120px', height: '120px' }}>
+                  {currentUser?.photoURL ? (
+                    <img
+                      src={currentUser.photoURL}
+                      alt={currentUser?.name ? `${currentUser.name.split(' ')[0]} avatar` : 'User avatar'}
+                      className="avatar-img rounded-circle"
+                      loading="lazy"
+                    />
+                  ) : (
+                    <i className="bi bi-person text-secondary" style={{fontSize: '3rem'}}></i>
+                  )}
                 </div>
+                <h4 className="fw-bold mb-1">{currentUser?.name}</h4>
+                <p className="text-muted small mb-4">{currentUser?.email}</p>
+                <button className="btn btn-outline-danger btn-sm px-4 rounded-pill" onClick={handleSignOut}>
+                  Sign Out
+                </button>
               </div>
             </div>
-          )}
+            <div className="col-lg-8">
+              <div className="row g-3">
+                <div className="col-md-6" onClick={() => setActivePage('orderhistory')} style={{cursor: 'pointer'}}>
+                  <div className="card shadow-sm border-0 h-100 action-card hover-lift">
+                    <div className="card-body d-flex align-items-center p-4">
+                      <div className="icon-box bg-primary-soft text-primary me-3">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" fill="currentColor" className="bi bi-box-seam" viewBox="0 0 16 16">
+                          <path d="M8.186 1.113a.5.5 0 0 0-.372 0L1.846 3.5l2.404.961L10.404 2zm3.564 1.426L5.596 5 8 5.961 14.154 3.5zm3.25 1.7-6.5 2.6v7.922l6.5-2.6V4.24zM7.5 14.762V6.838L1 4.239v7.923zM7.443.184a1.5 1.5 0 0 1 1.114 0l7.129 2.852A.5.5 0 0 1 16 3.5v8.662a1 1 0 0 1-.629.928l-7.185 2.874a.5.5 0 0 1-.372 0L.63 13.09a1 1 0 0 1-.63-.928V3.5a.5.5 0 0 1 .314-.464z"/>
+                        </svg>
+                      </div>
+                      <div>
+                        <h6 className="fw-bold mb-1">Your Orders</h6>
+                        <p className="text-muted small mb-0">Track, return, or buy again</p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                <div className="col-md-6" onClick={() => setActivePage('Cart')} style={{cursor: 'pointer'}}>
+                  <div className="card shadow-sm border-0 h-100 action-card hover-lift">
+                    <div className="card-body d-flex align-items-center p-4">
+                      <div className="icon-box bg-success-soft text-success me-3">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" fill="currentColor" className="bi bi-cart" viewBox="0 0 16 16">
+                          <path d="M0 1.5A.5.5 0 0 1 .5 1H2a.5.5 0 0 1 .485.379L2.89 3H14.5a.5.5 0 0 1 .491.592l-1.5 8A.5.5 0 0 1 13 12H4a.5.5 0 0 1-.491-.408L2.01 3.607 1.61 2H.5a.5.5 0 0 1-.5-.5M3.102 4l1.313 7h8.17l1.313-7zM5 12a2 2 0 1 0 0 4 2 2 0 0 0 0-4m7 0a2 2 0 1 0 0 4 2 2 0 0 0 0-4m-7 1a1 1 0 1 1 0 2 1 1 0 0 1 0-2m7 0a1 1 0 1 1 0 2 1 1 0 0 1 0-2"/>
+                        </svg>
+                      </div>
+                      <div>
+                        <h6 className="fw-bold mb-1">View Cart</h6>
+                        <p className="text-muted small mb-0">{cartItems.length} items in your bag</p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                {isAdmin && (
+                  <div className="col-md-6" onClick={() => setActivePage('admin')} style={{cursor: 'pointer'}}>
+                    <div className="card shadow-sm border-0 h-100 action-card hover-lift">
+                      <div className="card-body d-flex align-items-center p-4">
+                        <div className="icon-box bg-warning-soft text-warning me-3">
+                          <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" fill="currentColor" className="bi bi-shield-lock" viewBox="0 0 16 16">
+                            <path d="M5.338 1.59a61 61 0 0 0-2.837.856.48.48 0 0 0-.328.39c-.554 4.157.726 7.19 2.253 9.188a10.7 10.7 0 0 0 2.287 2.233c.346.244.652.42.893.533q.18.085.293.118a1 1 0 0 0 .101.025 1 1 0 0 0 .1-.025q.114-.034.294-.118c.24-.113.547-.29.893-.533a10.7 10.7 0 0 0 2.287-2.233c1.527-1.997 2.807-5.031 2.253-9.188a.48.48 0 0 0-.328-.39c-.651-.213-1.75-.56-2.837-.855C9.552 1.29 8.531 1.067 8 1.067c-.53 0-1.552.223-2.662.524zM5.072.56C6.157.265 7.31 0 8 0s1.843.265 2.928.56c1.11.3 2.229.655 2.887.87a1.54 1.54 0 0 1 1.044 1.262c.596 4.477-.787 7.795-2.465 9.99a11.8 11.8 0 0 1-2.517 2.453 7 7 0 0 1-1.048.625c-.28.132-.581.24-.829.24s-.548-.108-.829-.24a7 7 0 0 1-1.048-.625 11.8 11.8 0 0 1-2.517-2.453C1.928 10.487.545 7.169 1.141 2.692A1.54 1.54 0 0 1 2.185 1.43 63 63 0 0 1 5.072.56"/>
+                            <path d="M9.5 6.5a1.5 1.5 0 0 1-1 1.415l.385 1.99a.5.5 0 0 1-.491.595h-.788a.5.5 0 0 1-.49-.595l.384-1.99a1.5 1.5 0 1 1 2-1.415"/>
+                          </svg>
+                        </div>
+                        <div>
+                          <h6 className="fw-bold mb-1">Admin Panel</h6>
+                          <p className="text-muted small mb-0">Store management tools</p>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
         </div>
       </div>
-    </div>
-  </div>
-</div>
 
       <div id="orderhistory" className={`page ${activePage === 'orderhistory' ? 'active' : ''}`}>
         {currentUser ? <OrderHistory /> : (
