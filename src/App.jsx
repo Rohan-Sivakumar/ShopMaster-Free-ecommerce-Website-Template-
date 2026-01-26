@@ -15,7 +15,6 @@ const getBrandName = (product) => {
   return (product.brand || product.sellerBusinessName || product.sellerName || '').trim();
 };
 
-// Memoized Product Card Component
 const ProductCard = React.memo(({ product, quantity, onShowDetails, onAddCart, onRemoveCart, variant = 'grid' }) => {
   const brandText = getBrandName(product);
   const shippingText = product.shippingEtaText || product.shippingText || product.shipping || '';
@@ -145,6 +144,9 @@ function App() {
   const [isLoading, setIsLoading] = useState(true);
   const [isAdmin, setIsAdmin] = useState(false);
   const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false);
+  const [submittedRatings, setSubmittedRatings] = useState({});
+  const [detailRating, setDetailRating] = useState(0);
+  const [ratingComment, setRatingComment] = useState('');
 
   const loadProducts = useCallback(async () => {
     try {
@@ -207,6 +209,17 @@ function App() {
     return () => window.removeEventListener('productsUpdated', handleProductsUpdate);
   }, [loadProducts]);
 
+  useEffect(() => {
+    if (!selectedProduct) {
+      setDetailRating(0);
+      setRatingComment('');
+      return;
+    }
+    const saved = submittedRatings[selectedProduct.id];
+    setDetailRating(saved?.rating || 0);
+    setRatingComment(saved?.comment || '');
+  }, [selectedProduct, submittedRatings]);
+
   const categories = useMemo(() =>
     Array.from(new Set(products.map(p => (p.category || '').trim()).filter(Boolean))),
     [products]
@@ -265,6 +278,32 @@ function App() {
     setSearch('');
     setSortBy('featured');
   }, []);
+
+  const handleSubmitRating = useCallback(() => {
+    if (!selectedProduct) return;
+    if (detailRating === 0) {
+      Swal.fire({
+        icon: 'warning',
+        title: 'Select a rating',
+        text: 'Choose how many stars you want to give this product before submitting.'
+      });
+      return;
+    }
+    setSubmittedRatings(prev => ({
+      ...prev,
+      [selectedProduct.id]: {
+        rating: detailRating,
+        comment: ratingComment.trim()
+      }
+    }));
+    Swal.fire({
+      icon: 'success',
+      title: 'Thanks for the rating!',
+      text: `${detailRating}/5 has been recorded.`,
+      timer: 1400,
+      showConfirmButton: false
+    });
+  }, [selectedProduct, detailRating, ratingComment]);
 
   const filteredProducts = useMemo(() => {
     let filtered = products.filter(product => {
@@ -713,10 +752,7 @@ function App() {
             <i className="bi bi-funnel"></i> Filters {hasActiveFilters && `(${selectedCategories.length + selectedBrands.length + (minRating > 0 ? 1 : 0) + (minPrice || maxPrice ? 1 : 0)})`}
           </button>
 
-          <div 
-            className={`filter-overlay ${mobileFiltersOpen ? 'active' : ''}`}
-            onClick={() => setMobileFiltersOpen(false)}
-          ></div>
+          <div className={`filter-overlay ${mobileFiltersOpen ? 'active' : ''}`} onClick={() => setMobileFiltersOpen(false)}></div>
 
           <div className="products-container">
             <aside className={`filter-sidebar ${mobileFiltersOpen ? 'mobile-open' : ''}`}>
@@ -889,7 +925,9 @@ function App() {
               <div className="col-md-8">
                 <div className="card shadow">
                   <div className="row g-0">
-                    <div className="col-md-6"><img src={selectedProduct.img} className="img-fluid rounded-start p-3" alt={selectedProduct.id} loading="lazy" /></div>
+                    <div className="col-md-6">
+                      <img src={selectedProduct.img} className="img-fluid rounded-start p-3" alt={selectedProduct.id} loading="lazy" />
+                    </div>
                     <div className="col-md-6">
                       <div className="card-body">
                         <h3 className="card-title">{selectedProduct.id}</h3>
@@ -913,9 +951,48 @@ function App() {
                         )}
                         <p className="card-text"><small className="text-muted">Year: {selectedProduct.year}</small></p>
                         <h4 className="text-success mb-2">₹{selectedProduct.cost}</h4>
-                        {typeof selectedProduct.mrp === 'number' && selectedProduct.mrp > selectedProduct.cost ? (<p className="mb-3"><small className="text-muted">MRP: <span style={{textDecoration:'line-through'}}>₹{selectedProduct.mrp}</span></small></p>) : null}
-                        {(selectedProduct.shippingEtaText || selectedProduct.shippingText || selectedProduct.shipping) ? (<p className="mb-3"><small className="text-muted">{selectedProduct.shippingEtaText || selectedProduct.shippingText || selectedProduct.shipping}</small></p>) : null}
-                        <button className="btn btn-primary btn-lg w-100" onClick={() => handleAddToCart(selectedProduct)}>Add to Cart</button>
+                        {typeof selectedProduct.mrp === 'number' && selectedProduct.mrp > selectedProduct.cost ? (
+                          <p className="mb-3">
+                            <small className="text-muted">MRP: <span style={{textDecoration:'line-through'}}>₹{selectedProduct.mrp}</span></small>
+                          </p>
+                        ) : null}
+                        {(selectedProduct.shippingEtaText || selectedProduct.shippingText || selectedProduct.shipping) ? (
+                          <p className="mb-3"><small className="text-muted">{selectedProduct.shippingEtaText || selectedProduct.shippingText || selectedProduct.shipping}</small></p>
+                        ) : null}
+
+                        <div className="product-user-rating mt-4">
+                          <h5 className="fs-6 fw-semibold mb-2">Rate this product</h5>
+                          <div className="d-flex align-items-center gap-1 mb-2">
+                            {[1, 2, 3, 4, 5].map(value => (
+                              <button
+                                key={value}
+                                type="button"
+                                className={`rating-star-btn ${detailRating >= value ? 'active' : ''}`}
+                                onClick={() => setDetailRating(value)}
+                              >
+                                <i className="bi bi-star-fill"></i>
+                              </button>
+                            ))}
+                            {detailRating > 0 && <span className="ms-2 small text-muted">{detailRating}/5</span>}
+                          </div>
+                          <textarea
+                            className="form-control form-control-sm mb-2"
+                            rows="2"
+                            placeholder="Share quick feedback (optional)"
+                            value={ratingComment}
+                            onChange={(e) => setRatingComment(e.target.value)}
+                          ></textarea>
+                          <button className="btn btn-outline-dark btn-sm" type="button" onClick={handleSubmitRating}>
+                            Submit Rating
+                          </button>
+                          {submittedRatings[selectedProduct.id]?.rating && (
+                            <small className="text-success d-block mt-2">
+                              You rated this product {submittedRatings[selectedProduct.id].rating}/5.
+                            </small>
+                          )}
+                        </div>
+
+                        <button className="btn btn-primary btn-lg w-100 mt-3" onClick={() => handleAddToCart(selectedProduct)}>Add to Cart</button>
                         <button className="btn btn-secondary w-100 mt-2" onClick={() => setActivePage('p')}>Back to Products</button>
                       </div>
                     </div>
@@ -933,10 +1010,17 @@ function App() {
             <div className="text-center py-5">
               <h1 className="display-3 fw-bold mb-3">Welcome To ShopMaster</h1>
               <p className="lead mb-4">Your Single-Seller Marketplace</p>
-              <div className="d-flex justify-content-center gap-3 flex-wrap"><button className="btn btn-primary btn-lg px-5" onClick={() => setActivePage('p')}>Shop Now</button></div>
+              <div className="d-flex justify-content-center gap-3 flex-wrap">
+                <button className="btn btn-primary btn-lg px-5" onClick={() => setActivePage('p')}>Shop Now</button>
+              </div>
             </div>
             {productsLoading ? (
-              <div className="text-center pb-5"><div className="spinner-border text-primary" role="status"><span className="visually-hidden">Loading...</span></div><p className="mt-3 text-muted">Loading categories...</p></div>
+              <div className="text-center pb-5">
+                <div className="spinner-border text-primary" role="status">
+                  <span className="visually-hidden">Loading...</span>
+                </div>
+                <p className="mt-3 text-muted">Loading categories...</p>
+              </div>
             ) : products.length === 0 ? (
               <div className="alert alert-info text-center" role="alert">No products to show yet.</div>
             ) : (
@@ -944,7 +1028,18 @@ function App() {
                 {sectionCategories.map((cat) => {
                   const catProducts = getProductsForCategory(cat);
                   if (catProducts.length === 0) return null;
-                  return (<ProductSlider key={cat} title={`Shop By ${cat}`} products={catProducts} cartItems={cartItems} onShowDetails={showProductDetails} onAddCart={handleAddToCart} onRemoveCart={handleRemoveFromCart} onViewAll={() => { setSelectedCategories([cat]); setActivePage('p'); }} />);
+                  return (
+                    <ProductSlider
+                      key={cat}
+                      title={`Shop By ${cat}`}
+                      products={catProducts}
+                      cartItems={cartItems}
+                      onShowDetails={showProductDetails}
+                      onAddCart={handleAddToCart}
+                      onRemoveCart={handleRemoveFromCart}
+                      onViewAll={() => { setSelectedCategories([cat]); setActivePage('p'); }}
+                    />
+                  );
                 })}
               </div>
             )}
@@ -960,7 +1055,9 @@ function App() {
                 <div className="card-body p-5 text-center">
                   <h2 className="card-title mb-3">Sign In to ShopMaster</h2>
                   <p className="text-muted mb-4">Choose your preferred sign-in method</p>
-                  <div className="d-flex justify-content-center mb-4"><Auth onSignInSuccess={handleSignInSuccess} onSignInFailure={handleSignInFailure} /></div>
+                  <div className="d-flex justify-content-center mb-4">
+                    <Auth onSignInSuccess={handleSignInSuccess} onSignInFailure={handleSignInFailure} />
+                  </div>
                   <div className="mt-4">
                     <p className="small text-muted"><i className="bi bi-shield-check"></i> Secure sign-in with Google or Microsoft</p>
                     <p className="small text-muted">Your cart and preferences are saved automatically</p>
@@ -1012,7 +1109,7 @@ function App() {
           <div className="row">
             <div className="col-lg-4 mb-4">
               <div className="card shadow-sm border-0 text-center py-5 h-100">
-                <div className="bg-light rounded-circle d-inline-flex align-items-center justify-content-center mb-3 mx-auto avatar-frame" style={{ width: '120px', height: '120px' }}>
+                <div className="bg-light rounded-circle d-inline-flex align-items-center justify-content-center mb-3 mx-auto" style={{width: '120px', height: '120px'}}>
                   {currentUser?.photoURL ? (
                     <img
                       src={currentUser.photoURL}
@@ -1053,7 +1150,7 @@ function App() {
                     <div className="card-body d-flex align-items-center p-4">
                       <div className="icon-box bg-success-soft text-success me-3">
                         <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" fill="currentColor" className="bi bi-cart" viewBox="0 0 16 16">
-                          <path d="M0 1.5A.5.5 0 0 1 .5 1H2a.5.5 0 0 1 .485.379L2.89 3H14.5a.5.5 0 0 1 .491.592l-1.5 8A.5.5 0 0 1 13 12H4a.5.5 0 0 1-.491-.408L2.01 3.607 1.61 2H.5a.5.5 0 0 1-.5-.5M3.102 4l1.313 7h8.17l1.313-7zM5 12a2 2 0 1 0 0 4 2 2 0 0 0 0-4m7 0a2 2 0 1 0 0 4 2 2 0 0 0 0-4m-7 1a1 1 0 1 1 0 2 1 1 0 0 1 0-2m7 0a1 1 0 1 1 0 2 1 1 0 0 1 0-2"/>
+                          <path d="M0 1.5A.5.5 0 0 1 .5 1H2a.5.5 0 0 1 .485.379L2.89 3H14.5a.5.5 0 0 1 .491.592l-1.5 8A.5.5 0 0=1 13 12H4a.5.5 0 0 1-.491-.408L2.01 3.607 1.61 2H.5a.5.5 0 0 1-.5-.5M3.102 4l1.313 7h8.17l1.313-7zM5 12a2 2 0 1 0 0 4 2 2 0 0 0 0-4m7 0a2 2 0 1 0 0 4 2 2 0 0 0 0-4m-7 1a1 1 0 1 1 0 2 1 1 0 0 1 0-2m7 0a1 1 0 1 1 0 2 1 1 0 0 1 0-2"/>
                         </svg>
                       </div>
                       <div>

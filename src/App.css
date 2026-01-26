@@ -816,3 +816,26 @@
   object-fit: cover;
   border-radius: 50%;
 }
+.rating-star-btn {
+  border: none;
+  background: transparent;
+  font-size: 1.4rem;
+  color: #cfcfcf;
+  padding: 0;
+  display: inline-flex;
+  align-items: center;
+}
+
+.rating-star-btn.active,
+.rating-star-btn:hover {
+  color: #f59e0b;
+}
+
+.rating-star-btn:focus-visible {
+  outline: 2px solid #f59e0b;
+  outline-offset: 2px;
+}
+
+.product-user-rating textarea {
+  resize: none;
+}
