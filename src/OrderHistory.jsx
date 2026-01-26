@@ -27,7 +27,8 @@ const OrderHistory = () => {
         }
     }, []);
 
-    const toggleReviewForm = (itemId) => {
+    const toggleReviewForm = (itemId, canReview) => {
+        if (!canReview) return;
         setReviewStates(prev => ({
             ...prev,
             [itemId]: {
@@ -57,14 +58,22 @@ const OrderHistory = () => {
         }));
     };
 
-    const handleSubmitReview = (item) => {
-        const itemId = item.id || item._id || `${item.name}-${item.brand}`;
-        const state = reviewStates[itemId] || {};
-        if (!state.rating) {
+    const handleSubmitReview = (itemId, item, status) => {
+        const reviewState = reviewStates[itemId] || {};
+        if (status?.toLowerCase() !== 'delivered') {
+            Swal.fire({
+                icon: 'info',
+                title: 'Not available yet',
+                text: 'You can review this product once it has been delivered.'
+            });
+            return;
+        }
+
+        if (!reviewState.rating) {
             Swal.fire({
                 icon: 'warning',
                 title: 'Select a rating',
-                text: 'Please pick 1–5 stars before submitting your review.'
+                text: 'Please choose 1–5 stars before submitting.'
             });
             return;
         }
@@ -81,7 +90,7 @@ const OrderHistory = () => {
         Swal.fire({
             icon: 'success',
             title: 'Thanks for the review!',
-            text: `You rated ${item.id} ${state.rating}/5.`,
+            text: `You rated ${item.id || item.name || 'this product'} ${reviewState.rating}/5.`,
             timer: 1400,
             showConfirmButton: false
         });
@@ -139,7 +148,9 @@ const OrderHistory = () => {
                     {orders.map(order => {
                         const orderId = order._id || order.id || 'N/A';
                         const displayId = typeof orderId === 'string' ? orderId.slice(-8).toUpperCase() : String(orderId);
-                        
+                        const status = order.status || 'Order Placed';
+                        const canReview = status.toLowerCase() === 'delivered';
+
                         return (
                             <div key={orderId} className="col-12 mb-4">
                                 <div className="card shadow-sm border rounded-3 overflow-hidden">
@@ -164,8 +175,8 @@ const OrderHistory = () => {
                                             <div className="col-md-5 text-md-end">
                                                 <div className="text-secondary small">Order # {displayId}</div>
                                                 <div className="mt-1">
-                                                    <span className={`badge ${getStatusColor(order.status || 'Order Placed')} px-3 py-2 rounded-pill`}>
-                                                        {order.status || 'Order Placed'}
+                                                    <span className={`badge ${getStatusColor(status)} px-3 py-2 rounded-pill`}>
+                                                        {status}
                                                     </span>
                                                 </div>
                                             </div>
@@ -176,6 +187,7 @@ const OrderHistory = () => {
                                             {(order.cart || []).map((item, idx) => {
                                                 const itemId = item.id || `${orderId}-${idx}`;
                                                 const reviewState = reviewStates[itemId] || {};
+
                                                 return (
                                                     <div key={itemId} className="list-group-item p-4 border-0">
                                                         <div className="row">
@@ -195,12 +207,16 @@ const OrderHistory = () => {
                                                             <div className="col-md-3 mt-3 mt-md-0 d-grid gap-2 h-100">
                                                                 <button className="btn btn-sm btn-outline-secondary rounded-pill">Track Package</button>
                                                                 <button className="btn btn-sm btn-outline-secondary rounded-pill">Return Items</button>
-                                                                <button className="btn btn-sm btn-outline-secondary rounded-pill" type="button" onClick={() => toggleReviewForm(itemId)}>
-                                                                    Write a product review
-                                                                </button>
+                                                                {canReview ? (
+                                                                    <button className="btn btn-sm btn-outline-secondary rounded-pill" type="button" onClick={() => toggleReviewForm(itemId, canReview)}>
+                                                                        Write a product review
+                                                                    </button>
+                                                                ) : (
+                                                                    <span className="small text-muted">Review will unlock after delivery.</span>
+                                                                )}
                                                             </div>
                                                         </div>
-                                                        {reviewState.showForm && (
+                                                        {canReview && reviewState.showForm && (
                                                             <div className="mt-3 px-2">
                                                                 <div className="p-3 border rounded review-form">
                                                                     <div className="d-flex align-items-center gap-1 mb-2 review-stars">
@@ -225,7 +241,7 @@ const OrderHistory = () => {
                                                                         value={reviewState.comment || ''}
                                                                         onChange={(e) => setReviewComment(itemId, e.target.value)}
                                                                     />
-                                                                    <button className="btn btn-dark btn-sm" onClick={() => handleSubmitReview(item)}>
+                                                                    <button className="btn btn-dark btn-sm" onClick={() => handleSubmitReview(itemId, item, status)}>
                                                                         Publish Review
                                                                     </button>
                                                                 </div>
