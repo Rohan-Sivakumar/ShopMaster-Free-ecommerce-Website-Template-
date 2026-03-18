@@ -380,35 +380,39 @@ export const updateOrderStatus = async (orderId, newStatus) => {
     throw error;
   }
 };
-export const submitReview = async (payload = {}) => {
-  const { productId, rating, comment = "", userEmail, orderId } = payload;
-  if (!productId || !rating) throw new Error("Product ID and rating are required");
-
-  try {
-    const response = await fetchWithRetry(`${API_URL}/reviews`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ productId, rating, comment, userEmail, orderId })
-    });
-
-    if (!response.ok) {
-      const errorData = await response.json();
-      throw new Error(errorData.error || "Failed to submit review");
-    }
-
-    return await response.json();
-  } catch (error) {
-    console.error("Error submitting review:", error.message);
-    const fallback = JSON.parse(localStorage.getItem("productReviews") || "{}");
-    fallback[productId] = fallback[productId] || [];
-    fallback[productId].push({
-      rating,
-      comment,
-      userEmail,
-      orderId,
-      createdAt: new Date().toISOString()
-    });
-    localStorage.setItem("productReviews", JSON.stringify(fallback));
-    return { fallback: true, reviews: fallback[productId] };
-  }
+export const trackView = async () => {
+  await fetch(`${API_BASE}/track`, { method: 'POST' });
 };
+
+export const getProducts = async () => {
+  const response = await fetch(`${API_BASE}/products`);
+  if (!response.ok) {
+    throw new Error('Failed to fetch products');
+  }
+  const products = await response.json();
+  return products.map(product => ({
+    ...product,
+    averageRating: product.averageRating || product.rating || 0
+  }));
+};
+
+export const createOrder = async (orderData) => {
+  const response = await fetch(`${API_BASE}/orders`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(orderData)
+  });
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.message || 'Failed to create order');
+  }
+  return response.json();
+};
+
+export const getOrders = async (limit = 50, email) => {
+  const response = await fetch(`${API_BASE}/orders?email=${encodeURIComponent(email)}&limit=${limit}`);
+  if (!response.ok) return [];
+  return response.json();
+};
+
+export const submitReview = async (productId, rating, comment = '', userEmail) => {
