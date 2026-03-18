@@ -160,6 +160,7 @@ function App() {
   const [isLoading, setIsLoading] = useState(true);
   const [isAdmin, setIsAdmin] = useState(false);
   const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false);
+  const [authChecked, setAuthChecked] = useState(false);
 
   const loadProducts = useCallback(async () => {
     try {
@@ -181,13 +182,19 @@ function App() {
       const savedCart = getCart(user.email);
       setCartItems(savedCart);
     }
+    setAuthChecked(true);
     loadProducts();
     trackView();
-    const loadingTimer = setTimeout(() => setIsLoading(false), 2000);
-    window.addEventListener("productsUpdated", loadProducts);
+    const loadingTimer = setTimeout(() => {
+      setIsLoading(false);
+    }, 2000);
+    const handleProductsUpdated = () => {
+      loadProducts();
+    };
+    window.addEventListener("productsUpdated", handleProductsUpdated);
     return () => {
       clearTimeout(loadingTimer);
-      window.removeEventListener("productsUpdated", loadProducts);
+      window.removeEventListener("productsUpdated", handleProductsUpdated);
     };
   }, [loadProducts]);
 
@@ -207,13 +214,25 @@ function App() {
   }, []);
 
   useEffect(() => {
-    const onHashChange = () => {
+    if (!authChecked) return;
+    const enforceRoute = () => {
       const nextPage = resolveRoute(window.location.hash);
+      if (nextPage === "admin" && !isAdmin) {
+        Swal.fire({
+          icon: "error",
+          title: "Access Denied",
+          text: "Admin area requires a privileged account.",
+        });
+        window.location.hash = "#home";
+        setActivePage("home");
+        return;
+      }
       setActivePage(nextPage);
     };
-    window.addEventListener("hashchange", onHashChange);
-    return () => window.removeEventListener("hashchange", onHashChange);
-  }, []);
+    enforceRoute();
+    window.addEventListener("hashchange", enforceRoute);
+    return () => window.removeEventListener("hashchange", enforceRoute);
+  }, [authChecked, isAdmin]);
 
   const categories = useMemo(
     () =>
@@ -237,13 +256,23 @@ function App() {
 
   const handlePageChange = useCallback(
     (pageId) => {
+      if (pageId === "admin" && !isAdmin) {
+        Swal.fire({
+          icon: "error",
+          title: "Admin access only",
+          text: "Sign in using the registered admin account to continue.",
+        });
+        window.location.hash = "#home";
+        setActivePage("home");
+        return;
+      }
       setActivePage(pageId);
       window.location.hash = `#${pageId}`;
       if (pageId !== "pdetails") {
         setSelectedProduct(null);
       }
     },
-    []
+    [isAdmin]
   );
 
   const toggleCategory = useCallback((category) => {
@@ -769,7 +798,15 @@ function App() {
       />
 
       <div id="admin" className={`page ${activePage === "admin" ? "active" : ""}`}>
-        <AdminPanel />
+        {isAdmin ? (
+          <AdminPanel />
+        ) : (
+          <div className="container py-5">
+            <div className="alert alert-danger text-center">
+              Admin access is restricted. Sign in with a privileged account to continue.
+            </div>
+          </div>
+        )}
       </div>
 
       <div id="p" className={`page ${activePage === "p" ? "active" : ""}`}>
@@ -886,7 +923,7 @@ function App() {
                   />
                 </div>
                 <button className="price-go-btn" onClick={applyPriceFilter}>
-                    Go
+                  Go
                 </button>
                 {(minPrice || maxPrice) && (
                   <div className="mt-2" style={{ fontSize: "0.875rem", color: "#565959" }}>
