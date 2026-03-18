@@ -11,6 +11,19 @@ import Swal from "sweetalert2";
 
 const ADMIN_EMAIL = "rohan.sivaa@gmail.com";
 
+const ROUTES = {
+  "#dashboard": "dashboard",
+  "#orderhistory": "orderhistory",
+  "#admin": "admin",
+  "#Cart": "Cart",
+  "#home": "home",
+  "#p": "p",
+  "#pdetails": "pdetails",
+  "#login": "login",
+};
+
+const resolveRoute = (hash) => ROUTES[hash] || "home";
+
 const getBrandName = (product) => {
   return (product.brand || product.sellerBusinessName || product.sellerName || "").trim();
 };
@@ -38,9 +51,7 @@ const ProductCard = React.memo(({ product, quantity, onShowDetails, onAddCart, o
         />
         <div className="card-body d-flex flex-column">
           {brandText ? <div className="product-brand">{brandText}</div> : null}
-
           <h5 className="card-title">{product.id}</h5>
-
           {rating > 0 && (
             <div className="product-rating mb-2">
               <span className="text-warning">
@@ -50,14 +61,11 @@ const ProductCard = React.memo(({ product, quantity, onShowDetails, onAddCart, o
               <small className="text-muted ms-1">{rating.toFixed(1)}</small>
             </div>
           )}
-
           <div className="product-price-row">
             <span className="product-price">₹{product.cost}</span>
             {showMrp ? <span className="product-mrp">₹{mrp}</span> : null}
           </div>
-
           {shippingText ? <div className="product-shipping">{shippingText}</div> : null}
-
           <div className="mt-auto" onClick={(e) => e.stopPropagation()}>
             {quantity === 0 ? (
               <button className="btn btn-primary w-100" onClick={() => onAddCart(product)}>
@@ -91,7 +99,6 @@ const ProductSlider = React.memo(({ title, products, cartItems, onShowDetails, o
   const scrollByAmount = (dir) => {
     const el = trackRef.current;
     if (!el) return;
-
     const amount = Math.max(260, Math.floor(el.clientWidth * 0.75));
     el.scrollBy({ left: dir * amount, behavior: "smooth" });
   };
@@ -104,7 +111,6 @@ const ProductSlider = React.memo(({ title, products, cartItems, onShowDetails, o
           View all
         </button>
       </div>
-
       <div className="slider-wrap">
         <button className="slider-btn slider-btn-left" type="button" aria-label="Previous" onClick={() => scrollByAmount(-1)}>
           ‹
@@ -138,7 +144,7 @@ ProductSlider.displayName = "ProductSlider";
 function App() {
   const [products, setProducts] = useState([]);
   const [productsLoading, setProductsLoading] = useState(true);
-  const [activePage, setActivePage] = useState("home");
+  const [activePage, setActivePage] = useState(resolveRoute(window.location.hash));
   const [currentUser, setCurrentUser] = useState(null);
   const [cartItems, setCartItems] = useState([]);
   const [search, setSearch] = useState("");
@@ -175,23 +181,13 @@ function App() {
       const savedCart = getCart(user.email);
       setCartItems(savedCart);
     }
-
     loadProducts();
     trackView();
-
-    const loadingTimer = setTimeout(() => {
-      setIsLoading(false);
-    }, 2000);
-
-    const handleProductsUpdated = () => {
-      loadProducts();
-    };
-
-    window.addEventListener("productsUpdated", handleProductsUpdated);
-
+    const loadingTimer = setTimeout(() => setIsLoading(false), 2000);
+    window.addEventListener("productsUpdated", loadProducts);
     return () => {
       clearTimeout(loadingTimer);
-      window.removeEventListener("productsUpdated", handleProductsUpdated);
+      window.removeEventListener("productsUpdated", loadProducts);
     };
   }, [loadProducts]);
 
@@ -201,29 +197,23 @@ function App() {
       setCurrentUser(user);
       setIsAdmin(user ? user.email === ADMIN_EMAIL : false);
       if (user) {
-        const savedCart = getCart(user.email);
-        setCartItems(savedCart);
+        setCartItems(getCart(user.email));
       } else {
         setCartItems([]);
       }
     };
-
     window.addEventListener("userChanged", handleUserChange);
     return () => window.removeEventListener("userChanged", handleUserChange);
   }, []);
 
   useEffect(() => {
-    const handleProductsUpdate = (event) => {
-      if (event.detail) {
-        setProducts(event.detail);
-      } else {
-        loadProducts();
-      }
+    const onHashChange = () => {
+      const nextPage = resolveRoute(window.location.hash);
+      setActivePage(nextPage);
     };
-
-    window.addEventListener("productsUpdated", handleProductsUpdate);
-    return () => window.removeEventListener("productsUpdated", handleProductsUpdate);
-  }, [loadProducts]);
+    window.addEventListener("hashchange", onHashChange);
+    return () => window.removeEventListener("hashchange", onHashChange);
+  }, []);
 
   const categories = useMemo(
     () =>
@@ -235,9 +225,7 @@ function App() {
     const brandSet = new Set();
     products.forEach((product) => {
       const brandName = getBrandName(product);
-      if (brandName) {
-        brandSet.add(brandName);
-      }
+      if (brandName) brandSet.add(brandName);
     });
     return Array.from(brandSet);
   }, [products]);
@@ -247,10 +235,16 @@ function App() {
     return Math.max(...products.map((p) => p.cost));
   }, [products]);
 
-  const handlePageChange = useCallback((pageId) => {
-    setActivePage(pageId);
-    setSelectedProduct(null);
-  }, []);
+  const handlePageChange = useCallback(
+    (pageId) => {
+      setActivePage(pageId);
+      window.location.hash = `#${pageId}`;
+      if (pageId !== "pdetails") {
+        setSelectedProduct(null);
+      }
+    },
+    []
+  );
 
   const toggleCategory = useCallback((category) => {
     setSelectedCategories((prev) =>
@@ -293,7 +287,6 @@ function App() {
       const min = minPrice === "" ? 0 : parseFloat(minPrice);
       const max = maxPrice === "" ? Infinity : parseFloat(maxPrice);
       const matchesPrice = product.cost >= min && product.cost <= max;
-
       return matchesSearch && matchesCategory && matchesBrand && matchesPrice && matchesRating;
     });
 
@@ -309,14 +302,12 @@ function App() {
         break;
       case "rating":
         filtered.sort(
-          (a, b) =>
-            (b.averageRating || b.rating || 0) - (a.averageRating || a.rating || 0)
+          (a, b) => (b.averageRating || b.rating || 0) - (a.averageRating || a.rating || 0)
         );
         break;
       default:
         break;
     }
-
     return filtered;
   }, [
     products,
@@ -329,18 +320,13 @@ function App() {
     sortBy,
   ]);
 
-  const hasActiveFilters =
-    selectedCategories.length > 0 ||
-    selectedBrands.length > 0 ||
-    minRating > 0 ||
-    minPrice !== "" ||
-    maxPrice !== "" ||
-    search !== "";
-
-  const showProductDetails = useCallback((product) => {
-    setSelectedProduct(product);
-    setActivePage("pdetails");
-  }, []);
+  const showProductDetails = useCallback(
+    (product) => {
+      setSelectedProduct(product);
+      handlePageChange("pdetails");
+    },
+    [handlePageChange]
+  );
 
   const handleAddToCart = useCallback(
     (product) => {
@@ -352,15 +338,13 @@ function App() {
           confirmButtonText: "Sign In",
         }).then((result) => {
           if (result.isConfirmed) {
-            setActivePage("login");
+            handlePageChange("login");
           }
         });
         return;
       }
-
       const updatedCart = addToCart(currentUser.email, product, cartItems);
       setCartItems(updatedCart);
-
       Swal.fire({
         icon: "success",
         title: "Added to Cart!",
@@ -371,13 +355,12 @@ function App() {
         position: "top-end",
       });
     },
-    [currentUser, cartItems]
+    [currentUser, cartItems, handlePageChange]
   );
 
   const handleRemoveFromCart = useCallback(
     (product) => {
       if (!currentUser) return;
-
       const updatedCart = removeFromCart(currentUser.email, product, cartItems);
       setCartItems(updatedCart);
     },
@@ -394,17 +377,13 @@ function App() {
       }
       return acc;
     }, []);
-
     const total = grouped.reduce((sum, item) => sum + item.cost * item.quantity, 0);
-
     return { groupedCart: grouped, totalPrice: total };
   }, [cartItems]);
 
   const handleCheckout = useCallback(async () => {
     if (!currentUser || cartItems.length === 0) return;
-
     const savedAddresses = getAddresses(currentUser.email);
-
     const { value: formValues } = await Swal.fire({
       title: "Delivery Address",
       html: `
@@ -414,9 +393,9 @@ function App() {
               <label class="form-label fw-bold">Select Saved Address</label>
               <select id="swal-address-select" class="form-select">
                 <option value="">-- Or Enter New Address --</option>
-                ${savedAddresses.map((addr) => `
-                  <option value="${addr.id}">${addr.name || "Address"} - ${addr.street}, ${addr.city}</option>
-                `).join("")}
+                ${savedAddresses
+                  .map((addr) => `<option value="${addr.id}">${addr.name || "Address"} - ${addr.street}, ${addr.city}</option>`)
+                  .join("")}
               </select>
             </div>
             <div class="text-center my-2">OR</div>
@@ -486,13 +465,11 @@ function App() {
             }
           });
         }
-
         const locationBtn = document.getElementById("use-location-btn");
         locationBtn.addEventListener("click", async (e) => {
           e.preventDefault();
           locationBtn.disabled = true;
           locationBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Getting location...';
-
           try {
             const locationAddress = await getLocationAddress();
             document.getElementById("swal-street").value = locationAddress.street || "";
@@ -500,7 +477,6 @@ function App() {
             document.getElementById("swal-state").value = locationAddress.state || "";
             document.getElementById("swal-pincode").value = locationAddress.pincode || "";
             document.getElementById("swal-country").value = locationAddress.country || "India";
-
             locationBtn.innerHTML = '<i class="bi bi-check-circle"></i> Location Loaded!';
             locationBtn.classList.remove("btn-info");
             locationBtn.classList.add("btn-success");
@@ -520,32 +496,26 @@ function App() {
         const pincode = document.getElementById("swal-pincode").value;
         const country = document.getElementById("swal-country").value;
         const saveAddress = document.getElementById("swal-save-address").checked;
-
         if (!name || !phone || !street || !city || !state || !pincode) {
           Swal.showValidationMessage("Please fill all required fields");
           return false;
         }
-
         if (phone.length !== 10 || !/^\d+$/.test(phone)) {
           Swal.showValidationMessage("Please enter a valid 10-digit phone number");
           return false;
         }
-
         if (pincode.length !== 6 || !/^\d+$/.test(pincode)) {
           Swal.showValidationMessage("Please enter a valid 6-digit PIN code");
           return false;
         }
-
         return { name, phone, street, city, state, pincode, country, saveAddress };
       },
     });
 
     if (!formValues) return;
-
     if (formValues.saveAddress) {
       addAddress(currentUser.email, formValues);
     }
-
     try {
       const orderData = {
         user: currentUser.email,
@@ -598,7 +568,7 @@ function App() {
       }).then(() => {
         setCartItems([]);
         saveCart(currentUser.email, []);
-        setActivePage("home");
+        handlePageChange("home");
       });
     } catch (error) {
       console.error("Error saving order:", error);
@@ -609,21 +579,23 @@ function App() {
         confirmButtonText: "OK",
       });
     }
-  }, [currentUser, cartItems, totalPrice, groupedCart]);
+  }, [currentUser, cartItems, totalPrice, groupedCart, handlePageChange]);
 
-  const handleSignInSuccess = useCallback((userData) => {
-    setCurrentUser(userData);
-    setIsAdmin(userData.email === ADMIN_EMAIL);
-    const savedCart = getCart(userData.email);
-    setCartItems(savedCart);
-    Swal.fire({
-      icon: "success",
-      title: "Welcome!",
-      text: `Successfully signed in as ${userData.name}`,
-      timer: 2000,
-      showConfirmButton: false,
-    });
-  }, []);
+  const handleSignInSuccess = useCallback(
+    (userData) => {
+      setCurrentUser(userData);
+      setIsAdmin(userData.email === ADMIN_EMAIL);
+      setCartItems(getCart(userData.email));
+      Swal.fire({
+        icon: "success",
+        title: "Welcome!",
+        text: `Successfully signed in as ${userData.name}`,
+        timer: 2000,
+        showConfirmButton: false,
+      });
+    },
+    []
+  );
 
   const handleSignInFailure = useCallback(() => {
     Swal.fire({
@@ -656,12 +628,10 @@ function App() {
           timer: 1500,
           showConfirmButton: false,
         });
-        setTimeout(() => {
-          setActivePage("home");
-        }, 1500);
+        setTimeout(() => handlePageChange("home"), 1500);
       }
     });
-  }, []);
+  }, [handlePageChange]);
 
   const sectionCategories = useMemo(() => {
     const cats = Array.from(new Set(products.map((p) => (p.category || "").trim()).filter(Boolean)));
@@ -779,6 +749,14 @@ function App() {
     );
   }
 
+  const hasActiveFilters =
+    selectedCategories.length > 0 ||
+    selectedBrands.length > 0 ||
+    minRating > 0 ||
+    minPrice !== "" ||
+    maxPrice !== "" ||
+    search !== "";
+
   return (
     <>
       <Navigation
@@ -797,7 +775,6 @@ function App() {
       <div id="p" className={`page ${activePage === "p" ? "active" : ""}`}>
         <div className="container my-4">
           <h2 className="text-center mb-4">Products</h2>
-
           <div className="d-flex justify-content-center mb-4">
             <input
               type="text"
@@ -808,7 +785,6 @@ function App() {
               style={{ maxWidth: "600px" }}
             />
           </div>
-
           <button className="mobile-filter-toggle" onClick={() => setMobileFiltersOpen(!mobileFiltersOpen)}>
             <i className="bi bi-funnel"></i> Filters{" "}
             {hasActiveFilters &&
@@ -817,9 +793,7 @@ function App() {
                 (minRating > 0 ? 1 : 0) +
                 (minPrice || maxPrice ? 1 : 0)})`}
           </button>
-
           <div className={`filter-overlay ${mobileFiltersOpen ? "active" : ""}`} onClick={() => setMobileFiltersOpen(false)}></div>
-
           <div className="products-container">
             <aside className={`filter-sidebar ${mobileFiltersOpen ? "mobile-open" : ""}`}>
               {hasActiveFilters && (
@@ -827,7 +801,6 @@ function App() {
                   <i className="bi bi-x-circle"></i> Clear All Filters
                 </button>
               )}
-
               {categories.length > 0 && (
                 <div className="filter-section">
                   <h3 className="filter-section-title">Category</h3>
@@ -844,7 +817,6 @@ function App() {
                   ))}
                 </div>
               )}
-
               {brands.length > 0 && (
                 <div className="filter-section">
                   <h3 className="filter-section-title">Brand</h3>
@@ -861,7 +833,6 @@ function App() {
                   ))}
                 </div>
               )}
-
               <div className="filter-section">
                 <h3 className="filter-section-title">Customer Rating</h3>
                 {[4, 3, 2, 1].map((rating) => (
@@ -895,7 +866,6 @@ function App() {
                   </div>
                 )}
               </div>
-
               <div className="filter-section">
                 <h3 className="filter-section-title">Price</h3>
                 <div className="price-input-group">
@@ -916,7 +886,7 @@ function App() {
                   />
                 </div>
                 <button className="price-go-btn" onClick={applyPriceFilter}>
-                  Go
+                    Go
                 </button>
                 {(minPrice || maxPrice) && (
                   <div className="mt-2" style={{ fontSize: "0.875rem", color: "#565959" }}>
@@ -925,7 +895,6 @@ function App() {
                 )}
               </div>
             </aside>
-
             <div className="products-main">
               <div className="products-header">
                 <span className="results-count">
@@ -939,7 +908,6 @@ function App() {
                   <option value="newest">Newest Arrivals</option>
                 </select>
               </div>
-
               {productsLoading ? (
                 <div className="text-center py-5">
                   <div className="spinner-border text-primary" role="status">
@@ -1032,17 +1000,17 @@ function App() {
                             </small>
                           </p>
                         ) : null}
-                        {(selectedProduct.shippingEtaText || selectedProduct.shippingText || selectedProduct.shipping) ? (
+                        {(selectedProduct.shippingEtaText || selectedProduct.shippingText || selectedProduct.shipping) && (
                           <p className="mb-3">
                             <small className="text-muted">
                               {selectedProduct.shippingEtaText || selectedProduct.shippingText || selectedProduct.shipping}
                             </small>
                           </p>
-                        ) : null}
+                        )}
                         <button className="btn btn-primary btn-lg w-100" onClick={() => handleAddToCart(selectedProduct)}>
                           Add to Cart
                         </button>
-                        <button className="btn btn-secondary w-100 mt-2" onClick={() => setActivePage("p")}>
+                        <button className="btn btn-secondary w-100 mt-2" onClick={() => handlePageChange("p")}>
                           Back to Products
                         </button>
                       </div>
@@ -1062,7 +1030,7 @@ function App() {
               <h1 className="display-3 fw-bold mb-3">Welcome To ShopMaster</h1>
               <p className="lead mb-4">Your Single-Seller Marketplace</p>
               <div className="d-flex justify-content-center gap-3 flex-wrap">
-                <button className="btn btn-primary btn-lg px-5" onClick={() => setActivePage("p")}>
+                <button className="btn btn-primary btn-lg px-5" onClick={() => handlePageChange("p")}>
                   Shop Now
                 </button>
               </div>
@@ -1094,7 +1062,7 @@ function App() {
                       onRemoveCart={handleRemoveFromCart}
                       onViewAll={() => {
                         setSelectedCategories([cat]);
-                        setActivePage("p");
+                        handlePageChange("p");
                       }}
                     />
                   );
@@ -1139,7 +1107,7 @@ function App() {
                   {!currentUser ? (
                     <div className="alert alert-info text-center" role="alert">
                       Please{" "}
-                      <a href="#" onClick={() => setActivePage("login")} className="alert-link">
+                      <a href="#" onClick={() => handlePageChange("login")} className="alert-link">
                         sign in
                       </a>{" "}
                       to view your cart.
@@ -1205,7 +1173,7 @@ function App() {
             </div>
             <div className="col-lg-8">
               <div className="row g-3">
-                <div className="col-md-6" onClick={() => setActivePage("orderhistory")} style={{ cursor: "pointer" }}>
+                <div className="col-md-6" onClick={() => handlePageChange("orderhistory")} style={{ cursor: "pointer" }}>
                   <div className="card shadow-sm border-0 h-100 action-card hover-lift">
                     <div className="card-body d-flex align-items-center p-4">
                       <div className="icon-box bg-primary-soft text-primary me-3">
@@ -1220,7 +1188,7 @@ function App() {
                     </div>
                   </div>
                 </div>
-                <div className="col-md-6" onClick={() => setActivePage("Cart")} style={{ cursor: "pointer" }}>
+                <div className="col-md-6" onClick={() => handlePageChange("Cart")} style={{ cursor: "pointer" }}>
                   <div className="card shadow-sm border-0 h-100 action-card hover-lift">
                     <div className="card-body d-flex align-items-center p-4">
                       <div className="icon-box bg-success-soft text-success me-3">
@@ -1236,7 +1204,7 @@ function App() {
                   </div>
                 </div>
                 {isAdmin && (
-                  <div className="col-md-6" onClick={() => setActivePage("admin")} style={{ cursor: "pointer" }}>
+                  <div className="col-md-6" onClick={() => handlePageChange("admin")} style={{ cursor: "pointer" }}>
                     <div className="card shadow-sm border-0 h-100 action-card hover-lift">
                       <div className="card-body d-flex align-items-center p-4">
                         <div className="icon-box bg-warning-soft text-warning me-3">
