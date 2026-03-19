@@ -58,7 +58,7 @@ const OrderHistory = () => {
     }));
   };
 
-  const handleSubmitReview = async (itemId, item, status) => {
+  const handleSubmitReview = async (itemId, item, status, orderId) => {
     const reviewState = reviewStates[itemId] || {};
     const user = getCurrentUser();
 
@@ -89,8 +89,16 @@ const OrderHistory = () => {
       return;
     }
 
+    const productId = item.id || item.productId || itemId;
+
     try {
-      await submitReview(item.id, reviewState.rating, reviewState.comment, user.email);
+      await submitReview({
+        productId,
+        rating: reviewState.rating,
+        comment: reviewState.comment,
+        userEmail: user.email,
+        orderId,
+      });
 
       setReviewStates((prev) => ({
         ...prev,
@@ -155,7 +163,7 @@ const OrderHistory = () => {
       <nav aria-label="breadcrumb">
         <ol className="breadcrumb">
           <li className="breadcrumb-item">
-            <a href="#dashboard" onClick={() => (window.location.hash = "dashboard")}>
+            <a href="#dashboard" onClick={() => (window.location.hash = "#dashboard")}>
               Your Account
             </a>
           </li>
@@ -176,7 +184,7 @@ const OrderHistory = () => {
             <i className="bi bi-bag-x text-muted" style={{ fontSize: "4rem" }}></i>
             <h4 className="mt-3 font-amazon-bold">No orders found</h4>
             <p className="text-muted">Looks like you haven't placed any orders in the last 3 months.</p>
-            <button className="btn btn-warning px-4 shadow-sm" onClick={() => (window.location.hash = "product")}>
+            <button className="btn btn-warning px-4 shadow-sm" onClick={() => (window.location.hash = "#p")}>
               Continue Shopping
             </button>
           </div>
@@ -282,7 +290,10 @@ const OrderHistory = () => {
                                     value={reviewState.comment || ""}
                                     onChange={(e) => setReviewComment(itemId, e.target.value)}
                                   />
-                                  <button className="btn btn-dark btn-sm" onClick={() => handleSubmitReview(itemId, item, status)}>
+                                  <button
+                                    className="btn btn-dark btn-sm"
+                                    onClick={() => handleSubmitReview(itemId, item, status, orderId)}
+                                  >
                                     Publish Review
                                   </button>
                                 </div>

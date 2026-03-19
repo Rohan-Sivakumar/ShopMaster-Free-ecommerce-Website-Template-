@@ -1,10 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import './GoogleAuth.css';
 
-// OAuth Configuration
 const GOOGLE_CLIENT_ID = '902043632684-87h6kimr4divhgqhuabu11l8713vc240.apps.googleusercontent.com';
-
-// Microsoft OAuth Configuration (Simple Implicit Flow)
 const MICROSOFT_CLIENT_ID = '0ad4fe15-57b7-4e64-8189-2840b19c05f5';
 const MICROSOFT_REDIRECT_URI = window.location.origin;
 
@@ -39,11 +36,9 @@ const Auth = ({ onSignInSuccess, onSignInFailure }) => {
       window.google.accounts.id.initialize({
         client_id: GOOGLE_CLIENT_ID,
         callback: handleGoogleCredentialResponse,
-        auto_select: false, // Disable auto-select
+        auto_select: false,
         cancel_on_tap_outside: true,
       });
-      
-      // Disable auto-select to prevent automatic sign-in after sign-out
       window.google.accounts.id.disableAutoSelect();
     }
   };
@@ -51,7 +46,7 @@ const Auth = ({ onSignInSuccess, onSignInFailure }) => {
   const handleGoogleSignInClick = () => {
     setIsGoogleLoading(true);
     setIsLoading(true);
-    
+
     if (window.google) {
       window.google.accounts.id.prompt((notification) => {
         if (notification.isNotDisplayed() || notification.isSkippedMoment()) {
@@ -65,7 +60,7 @@ const Auth = ({ onSignInSuccess, onSignInFailure }) => {
   const handleGoogleCredentialResponse = (response) => {
     try {
       const userObject = parseJwt(response.credential);
-      
+
       const userData = {
         provider: 'google',
         email: userObject.email,
@@ -77,12 +72,12 @@ const Auth = ({ onSignInSuccess, onSignInFailure }) => {
 
       setUserInfo(userData);
       setIsSignedIn(true);
-      
+
       sessionStorage.setItem('authUser', JSON.stringify(userData));
       sessionStorage.setItem('authToken', response.credential);
-      
+
       window.dispatchEvent(new Event('userChanged'));
-      
+
       if (onSignInSuccess) {
         onSignInSuccess(userData);
       }
@@ -97,10 +92,9 @@ const Auth = ({ onSignInSuccess, onSignInFailure }) => {
     }
   };
 
-  // Simplified Microsoft Sign-In using Popup
   const handleMicrosoftSignIn = () => {
     setIsLoading(true);
-    
+
     const authUrl = 'https://login.microsoftonline.com/common/oauth2/v2.0/authorize';
     const params = new URLSearchParams({
       client_id: MICROSOFT_CLIENT_ID,
@@ -123,38 +117,31 @@ const Auth = ({ onSignInSuccess, onSignInFailure }) => {
       `width=${width},height=${height},left=${left},top=${top}`
     );
 
-    // Listen for popup closing
-    const checkPopup = setInterval(() => {
-      if (!popup || popup.closed) {
-        clearInterval(checkPopup);
-        setIsLoading(false);
-      }
-    }, 500);
+    let popupCheckInterval;
 
-    // Listen for message from popup
     const handleMessage = (event) => {
-      // Security check - only accept messages from Microsoft domain
       if (!event.origin.includes('microsoft') && event.origin !== window.location.origin) {
         return;
       }
 
       if (event.data && event.data.type === 'microsoft-auth') {
-        clearInterval(checkPopup);
+        cleanupMessageListener();
         if (popup) popup.close();
+        clearInterval(popupCheckInterval);
         window.removeEventListener('message', handleMessage);
 
         if (event.data.success) {
           const userData = event.data.userData;
           setUserInfo(userData);
           setIsSignedIn(true);
-          
+
           sessionStorage.setItem('authUser', JSON.stringify(userData));
           sessionStorage.setItem('authToken', event.data.token);
-          
+
           window.dispatchEvent(new Event('userChanged'));
-          
+
           setIsLoading(false);
-          
+
           if (onSignInSuccess) {
             onSignInSuccess(userData);
           }
@@ -167,12 +154,22 @@ const Auth = ({ onSignInSuccess, onSignInFailure }) => {
       }
     };
 
+    const cleanupMessageListener = () => {
+      window.removeEventListener('message', handleMessage);
+    };
+
     window.addEventListener('message', handleMessage);
+
+    popupCheckInterval = setInterval(() => {
+      if (!popup || popup.closed) {
+        clearInterval(popupCheckInterval);
+        cleanupMessageListener();
+        setIsLoading(false);
+      }
+    }, 500);
   };
 
-  // Handle callback in popup
   useEffect(() => {
-    // Check if we're in a popup (has opener)
     if (window.opener) {
       const hash = window.location.hash.substring(1);
       const params = new URLSearchParams(hash);
@@ -182,7 +179,7 @@ const Auth = ({ onSignInSuccess, onSignInFailure }) => {
       if (idToken) {
         try {
           const userObject = parseJwt(idToken);
-          
+
           const userData = {
             provider: 'microsoft',
             email: userObject.email || userObject.preferred_username,
@@ -192,15 +189,13 @@ const Auth = ({ onSignInSuccess, onSignInFailure }) => {
             loginTime: new Date().toISOString(),
           };
 
-          // Send message to parent window
           window.opener.postMessage({
             type: 'microsoft-auth',
             success: true,
             userData: userData,
-            token: idToken
+            token: idToken,
           }, window.location.origin);
 
-          // Close popup
           window.close();
         } catch (err) {
           window.opener.postMessage({
@@ -242,32 +237,31 @@ const Auth = ({ onSignInSuccess, onSignInFailure }) => {
     if (window.google && userInfo?.provider === 'google') {
       window.google.accounts.id.disableAutoSelect();
     }
-    
+
     setIsSignedIn(false);
     setUserInfo(null);
     setIsLoading(false);
     setIsGoogleLoading(false);
-    
+
     sessionStorage.removeItem('authUser');
     sessionStorage.removeItem('authToken');
-    
+
     window.dispatchEvent(new Event('userChanged'));
   };
 
-  // Load stored user and listen for changes
   useEffect(() => {
     const checkStoredUser = () => {
       const storedUser = sessionStorage.getItem('authUser');
       const storedToken = sessionStorage.getItem('authToken');
-      
+
       if (storedUser && storedToken) {
         try {
           const userData = JSON.parse(storedUser);
-          
+
           const loginTime = new Date(userData.loginTime);
           const currentTime = new Date();
           const timeDiff = (currentTime - loginTime) / (1000 * 60 * 60);
-          
+
           if (timeDiff < 1) {
             setUserInfo(userData);
             setIsSignedIn(true);
@@ -292,10 +286,8 @@ const Auth = ({ onSignInSuccess, onSignInFailure }) => {
       }
     };
 
-    // Check on mount
     checkStoredUser();
 
-    // Listen for user changes (sign in/sign out)
     const handleUserChange = () => {
       checkStoredUser();
     };
@@ -348,7 +340,6 @@ const Auth = ({ onSignInSuccess, onSignInFailure }) => {
 
   return (
     <div className="google-auth-container">
-      {/* Custom Google Sign-In Button with Loading Spinner */}
       <button
         onClick={handleGoogleSignInClick}
         disabled={isGoogleLoading}
@@ -392,11 +383,11 @@ const Auth = ({ onSignInSuccess, onSignInFailure }) => {
         )}
         <span>{isGoogleLoading ? 'Signing in...' : 'Sign in with Google'}</span>
       </button>
-      
+
       <div style={{margin: '15px 0', textAlign: 'center', color: '#666'}}>
         <span>or</span>
       </div>
-      
+
       <button
         onClick={handleMicrosoftSignIn}
         disabled={isLoading}
@@ -427,11 +418,11 @@ const Auth = ({ onSignInSuccess, onSignInFailure }) => {
         </svg>
         Sign in with Microsoft
       </button>
-      
+
       <p className="google-auth-disclaimer">
         By signing in, you agree to our Terms of Service and Privacy Policy
       </p>
-      
+
       <style>{`
         @keyframes spin {
           0% { transform: rotate(0deg); }

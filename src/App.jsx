@@ -6,7 +6,7 @@ import OrderHistory from "./OrderHistory";
 import "./App.css";
 import { getCart, saveCart, addToCart, removeFromCart, getCurrentUser } from "./cartService";
 import { trackView, createOrder, getProducts } from "./api";
-import { getAddresses, addAddress, deleteAddress, getLocationAddress } from "./addressService";
+import { getAddresses, addAddress, getLocationAddress } from "./addressService";
 import Swal from "sweetalert2";
 
 const ADMIN_EMAIL = "rohan.sivaa@gmail.com";

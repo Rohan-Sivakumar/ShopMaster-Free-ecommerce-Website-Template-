@@ -3,7 +3,7 @@ import "./Navigation.css";
 import { getCurrentUser } from "./cartService";
 import Swal from 'sweetalert2';
 
-export default function Navigation({ activePage, onPageChange, search, setSearch, cartCount = 0, isAdmin = false }) {
+export default function Navigation({ activePage, onPageChange, search, setSearch, cartCount = 0 }) {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [currentUser, setCurrentUser] = useState(null);
   const [showUserMenu, setShowUserMenu] = useState(false);
@@ -84,9 +84,26 @@ export default function Navigation({ activePage, onPageChange, search, setSearch
         <h2 className="heading mb-0" onClick={go('home')}>
           Shopmaster
         </h2>
-        <button className="mobile-menu-toggle d-md-none" aria-label="Toggle menu" onClick={() => setMobileMenuOpen((prev) => !prev)}>
+
+        <div className={searchContainerClass}>
+          <input
+            type="text"
+            className="form-control border-0 bg-light"
+            placeholder="Search for products..."
+            value={search}
+            onChange={handleSearch}
+            aria-label="Search products"
+          />
+        </div>
+
+        <button
+          className="mobile-menu-toggle d-md-none"
+          aria-label="Toggle menu"
+          onClick={() => setMobileMenuOpen((prev) => !prev)}
+        >
           {mobileMenuOpen ? '✕' : '☰'}
         </button>
+
         <ul className={`navigation-links mb-0 ${mobileMenuOpen ? 'd-flex flex-column' : 'd-none d-md-flex align-items-center'}`}>
           <li className={activePage === 'home' ? 'active-nav-link' : ''}>
             <a href="#home" onClick={go('home')}>
@@ -94,7 +111,7 @@ export default function Navigation({ activePage, onPageChange, search, setSearch
             </a>
           </li>
           <li className={activePage === 'p' ? 'active-nav-link' : ''}>
-            <a href="#product" onClick={go('p')}>
+            <a href="#p" onClick={go('p')}>
               Products
             </a>
           </li>
@@ -111,17 +128,14 @@ export default function Navigation({ activePage, onPageChange, search, setSearch
             </li>
           ) : (
             <li ref={userMenuRef} className={activePage === 'dashboard' ? 'active-nav-link' : ''} style={{ position: 'relative' }}>
-              <a
-                href="#dashboard"
-                onClick={go('dashboard')}
-              >
-                {currentUser.name ? currentUser.name.split(' ')[0] : 'User'} 
+              <a href="#dashboard" onClick={go('dashboard')}>
+                {currentUser.name ? currentUser.name.split(' ')[0] : 'User'}
               </a>
-              
             </li>
           )}
         </ul>
       </div>
+
       <div className={mobileSearchClass}>
         <input
           type="text"

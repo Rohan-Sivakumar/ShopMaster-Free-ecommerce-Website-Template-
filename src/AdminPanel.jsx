@@ -1,5 +1,15 @@
-import React, { useState, useEffect } from 'react';
-import { getStats, getOrders, checkBackendHealth, getProducts, addProduct, updateProduct, deleteProduct, deleteOrder, updateOrderStatus } from './api';
+import React, { useState, useEffect, useCallback } from 'react';
+import {
+  getStats,
+  getOrders,
+  checkBackendHealth,
+  getProducts,
+  addProduct,
+  updateProduct,
+  deleteProduct,
+  deleteOrder,
+  updateOrderStatus
+} from './api';
 import './AdminPanel.css';
 import Swal from 'sweetalert2';
 
@@ -24,7 +34,6 @@ const AdminPanel = () => {
   const [expandedOrder, setExpandedOrder] = useState(null);
   const [editingProduct, setEditingProduct] = useState(null);
 
-  // New product form state
   const [newProduct, setNewProduct] = useState({
     id: '',
     year: new Date().getFullYear(),
@@ -35,12 +44,9 @@ const AdminPanel = () => {
     description: ''
   });
 
-  // Load stats and orders from MongoDB
-  const loadData = async () => {
+  const loadData = useCallback(async () => {
+    setLoading(true);
     try {
-      setLoading(true);
-      
-      // Check if backend is available
       const isOnline = await checkBackendHealth();
       setBackendOnline(isOnline);
 
@@ -50,7 +56,6 @@ const AdminPanel = () => {
           getOrders(50),
           getProducts()
         ]);
-        
         setStats(statsData || {});
         setOrders(Array.isArray(ordersData) ? ordersData : []);
         setProducts(Array.isArray(productsData) ? productsData : []);
@@ -60,31 +65,25 @@ const AdminPanel = () => {
         setOrders([]);
         setProducts([]);
       }
-      
+
       setLastUpdated(new Date());
-      setLoading(false);
     } catch (error) {
       console.error('Error loading admin data:', error);
       setBackendOnline(false);
+    } finally {
       setLoading(false);
     }
-  };
-
-  useEffect(() => {
-    // Initial load
-    loadData();
-    
-    // Auto-refresh every 30 minutes
-    const intervalId = setInterval(loadData, 30 * 60 * 1000);
-    
-    return () => clearInterval(intervalId);
   }, []);
 
-  // Handle image file selection
+  useEffect(() => {
+    loadData();
+    const intervalId = setInterval(loadData, 30 * 60 * 1000);
+    return () => clearInterval(intervalId);
+  }, [loadData]);
+
   const handleImageChange = (e) => {
     const file = e.target.files?.[0];
     if (file) {
-      // Validate file type
       if (!file.type.startsWith('image/')) {
         Swal.fire({
           icon: 'error',
@@ -94,7 +93,6 @@ const AdminPanel = () => {
         return;
       }
 
-      // Validate file size (max 5MB)
       if (file.size > 5 * 1024 * 1024) {
         Swal.fire({
           icon: 'error',
@@ -104,11 +102,10 @@ const AdminPanel = () => {
         return;
       }
 
-      // Create preview
       const reader = new FileReader();
       reader.onloadend = () => {
         setImagePreview(reader.result);
-        setNewProduct({...newProduct, img: reader.result});
+        setNewProduct((prev) => ({ ...prev, img: reader.result }));
       };
       reader.readAsDataURL(file);
     }
@@ -116,9 +113,14 @@ const AdminPanel = () => {
 
   const handleAddProduct = async (e) => {
     e.preventDefault();
-    
-    // Validation
-    if (!newProduct.id?.trim() || !newProduct.cost || !newProduct.img || !newProduct.category?.trim() || !newProduct.description?.trim()) {
+
+    if (
+      !newProduct.id?.trim() ||
+      !newProduct.cost ||
+      !newProduct.img ||
+      !newProduct.category?.trim() ||
+      !newProduct.description?.trim()
+    ) {
       Swal.fire({
         icon: 'error',
         title: 'Validation Error',
@@ -137,16 +139,15 @@ const AdminPanel = () => {
       return;
     }
 
+    setProductLoading(true);
     try {
-      setProductLoading(true);
       const productData = {
         ...newProduct,
-        cost: cost,
+        cost,
         year: parseInt(newProduct.year),
         brand: newProduct.brand?.trim() || undefined
       };
 
-      // Check if editing or adding
       if (editingProduct) {
         await updateProduct(editingProduct, productData);
         Swal.fire({
@@ -166,7 +167,6 @@ const AdminPanel = () => {
         });
       }
 
-      // Reset form
       setNewProduct({
         id: '',
         year: new Date().getFullYear(),
@@ -178,16 +178,15 @@ const AdminPanel = () => {
       });
       setImagePreview(null);
 
-      // Reload products
       await loadData();
-      setProductLoading(false);
     } catch (error) {
-      setProductLoading(false);
       Swal.fire({
         icon: 'error',
         title: 'Error',
         text: error.message || 'Failed to save product. Please try again.'
       });
+    } finally {
+      setProductLoading(false);
     }
   };
 
@@ -235,27 +234,24 @@ const AdminPanel = () => {
     });
 
     if (result.isConfirmed) {
+      setProductLoading(true);
       try {
-        setProductLoading(true);
         await deleteProduct(productId);
-        
         Swal.fire({
           icon: 'success',
           title: 'Deleted!',
           text: 'Product has been deleted successfully',
           timer: 2000
         });
-
-        // Reload products
         await loadData();
-        setProductLoading(false);
       } catch (error) {
-        setProductLoading(false);
         Swal.fire({
           icon: 'error',
           title: 'Error',
           text: error.message || 'Failed to delete product. Please try again.'
         });
+      } finally {
+        setProductLoading(false);
       }
     }
   };
@@ -263,8 +259,7 @@ const AdminPanel = () => {
   const handleDeleteOrder = async (orderId) => {
     if (!orderId) return;
 
-    // Find the order to show details in confirmation
-    const orderToDelete = orders.find(o => (o._id || o.id) === orderId);
+    const orderToDelete = orders.find((o) => (o._id || o.id) === orderId);
     const displayId = typeof orderId === 'string' ? orderId.slice(-6) : String(orderId).slice(-6);
 
     const result = await Swal.fire({
@@ -288,18 +283,12 @@ const AdminPanel = () => {
 
     if (result.isConfirmed) {
       try {
-        // Call backend DELETE API
         await deleteOrder(orderId);
-        
-        // Remove from UI state immediately
-        setOrders(prevOrders => prevOrders.filter(o => (o._id || o.id) !== orderId));
-        
-        // Update stats
-        setStats(prevStats => ({
+        setOrders((prevOrders) => prevOrders.filter((o) => (o._id || o.id) !== orderId));
+        setStats((prevStats) => ({
           ...prevStats,
           totalOrders: Math.max(0, (prevStats.totalOrders || 0) - 1)
         }));
-        
         Swal.fire({
           icon: 'success',
           title: 'Deleted!',
@@ -320,7 +309,7 @@ const AdminPanel = () => {
     try {
       await updateOrderStatus(orderId, newStatus);
       Swal.fire('Updated!', 'Order status has been updated.', 'success');
-      loadData(); // Reload data to reflect changes
+      await loadData();
     } catch (error) {
       Swal.fire('Error', error.message || 'Failed to update order status', 'error');
     }
@@ -388,35 +377,23 @@ const AdminPanel = () => {
         </button>
       </div>
 
-      {/* Tab Navigation */}
       <div className="admin-tabs mb-4">
-        <button 
-          className={`btn ${activeTab === 'dashboard' ? 'btn-primary' : 'btn-outline-primary'} me-2`}
-          onClick={() => setActiveTab('dashboard')}
-        >
+        <button className={`btn ${activeTab === 'dashboard' ? 'btn-primary' : 'btn-outline-primary'} me-2`} onClick={() => setActiveTab('dashboard')}>
           <i className="bi bi-speedometer2"></i> Dashboard
         </button>
-        <button 
-          className={`btn ${activeTab === 'orders' ? 'btn-primary' : 'btn-outline-primary'} me-2`}
-          onClick={() => setActiveTab('orders')}
-        >
+        <button className={`btn ${activeTab === 'orders' ? 'btn-primary' : 'btn-outline-primary'} me-2`} onClick={() => setActiveTab('orders')}>
           <i className="bi bi-cart-check"></i> Orders
         </button>
-        <button 
-          className={`btn ${activeTab === 'products' ? 'btn-primary' : 'btn-outline-primary'} me-2`}
-          onClick={() => setActiveTab('products')}
-        >
+        <button className={`btn ${activeTab === 'products' ? 'btn-primary' : 'btn-outline-primary'} me-2`} onClick={() => setActiveTab('products')}>
           <i className="bi bi-box-seam"></i> Products
         </button>
       </div>
 
-      {/* Dashboard Tab */}
       {activeTab === 'dashboard' && (
         <>
-          {/* Stats Cards */}
           <div className="stats-grid">
             <div className="stat-card">
-              <div className="stat-icon" style={{background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)'}}>
+              <div className="stat-icon" style={{ background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)' }}>
                 <i className="bi bi-box-seam"></i>
               </div>
               <div className="stat-details">
@@ -426,7 +403,7 @@ const AdminPanel = () => {
             </div>
 
             <div className="stat-card">
-              <div className="stat-icon" style={{background: 'linear-gradient(135deg, #f093fb 0%, #f5576c 100%)'}}>
+              <div className="stat-icon" style={{ background: 'linear-gradient(135deg, #f093fb 0%, #f5576c 100%)' }}>
                 <i className="bi bi-cart-check"></i>
               </div>
               <div className="stat-details">
@@ -436,7 +413,7 @@ const AdminPanel = () => {
             </div>
 
             <div className="stat-card">
-              <div className="stat-icon" style={{background: 'linear-gradient(135deg, #43e97b 0%, #38f9d7 100%)'}}>
+              <div className="stat-icon" style={{ background: 'linear-gradient(135deg, #43e97b 0%, #38f9d7 100%)' }}>
                 <i className="bi bi-currency-rupee"></i>
               </div>
               <div className="stat-details">
@@ -446,17 +423,16 @@ const AdminPanel = () => {
             </div>
 
             <div className="stat-card">
-              <div className="stat-icon" style={{background: 'linear-gradient(135deg, #4facfe 0%, #00f2fe 100%)'}}>
+              <div className="stat-icon" style={{ background: 'linear-gradient(135deg, #4facfe 0%, #00f2fe 100%)' }}>
                 <i className="bi bi-check-circle"></i>
               </div>
               <div className="stat-details">
-                <h3>{stats.activeProducts || (products?.filter(p => p.isActive)?.length) || 0}</h3>
+                <h3>{stats.activeProducts || (products?.filter((p) => p.isActive)?.length) || 0}</h3>
                 <p>Active Products</p>
               </div>
             </div>
           </div>
 
-          {/* Recent Orders Summary */}
           <div className="recent-orders">
             <h3>Recent Orders ({orders.length || 0} total)</h3>
             {getRecentOrders().length === 0 ? (
@@ -476,11 +452,11 @@ const AdminPanel = () => {
                     </tr>
                   </thead>
                   <tbody>
-                    {getRecentOrders().map(order => {
+                    {getRecentOrders().map((order) => {
                       const orderId = order._id || order.id || 'N/A';
                       const displayId = typeof orderId === 'string' ? orderId.slice(-6) : String(orderId).slice(-6);
                       const orderDate = order.createdAt || order.date;
-                      
+
                       return (
                         <tr key={orderId}>
                           <td>#{displayId}</td>
@@ -500,7 +476,6 @@ const AdminPanel = () => {
             )}
           </div>
 
-          {/* Backend Status */}
           <div className="quick-actions">
             <h3>Backend Status</h3>
             <div className="action-buttons">
@@ -531,25 +506,24 @@ const AdminPanel = () => {
         </>
       )}
 
-      {/* Orders Tab - Detailed View */}
       {activeTab === 'orders' && (
         <div className="orders-detailed">
           <h3 className="mb-4">
             <i className="bi bi-cart-check"></i> All Orders ({orders.length || 0})
           </h3>
-          
+
           {orders.length === 0 ? (
             <div className="alert alert-info">
               <i className="bi bi-info-circle"></i> No orders yet. Orders will appear here when customers complete checkout.
             </div>
           ) : (
             <div className="orders-list">
-              {orders.map(order => {
+              {orders.map((order) => {
                 const orderId = order._id || order.id || 'N/A';
                 const displayId = typeof orderId === 'string' ? orderId.slice(-6) : String(orderId).slice(-6);
                 const orderDate = order.createdAt || order.date;
                 const isExpanded = expandedOrder === orderId;
-                
+
                 return (
                   <div key={orderId} className="card mb-3 shadow-sm">
                     <div className="card-header bg-light">
@@ -571,40 +545,42 @@ const AdminPanel = () => {
                           <strong className="text-success">₹{order.total || 0}</strong>
                         </div>
                         <div className="col-md-3 text-end">
-                          <button 
-                            className="btn btn-sm btn-outline-primary me-2"
-                            onClick={() => toggleOrderDetails(orderId)}
-                          >
+                          <button className="btn btn-sm btn-outline-primary me-2" onClick={() => toggleOrderDetails(orderId)}>
                             {isExpanded ? (
-                              <><i className="bi bi-chevron-up"></i> Hide</>
+                              <>
+                                <i className="bi bi-chevron-up"></i> Hide
+                              </>
                             ) : (
-                              <><i className="bi bi-chevron-down"></i> Details</>
+                              <>
+                                <i className="bi bi-chevron-down"></i> Details
+                              </>
                             )}
                           </button>
-                          <button 
-                            className="btn btn-sm btn-outline-danger"
-                            onClick={() => handleDeleteOrder(orderId)}
-                          >
+                          <button className="btn btn-sm btn-outline-danger" onClick={() => handleDeleteOrder(orderId)}>
                             <i className="bi bi-trash"></i> Delete
                           </button>
                         </div>
                       </div>
                     </div>
-                    
+
                     {isExpanded && (
                       <div className="card-body">
                         <div className="row">
-                          {/* Customer Information */}
                           <div className="col-md-6 mb-3">
                             <h5 className="border-bottom pb-2">
                               <i className="bi bi-person-circle"></i> Customer Information
                             </h5>
-                            <p className="mb-1"><strong>Name:</strong> {order.userName || 'N/A'}</p>
-                            <p className="mb-1"><strong>Email:</strong> {order.user || 'N/A'}</p>
-                            <p className="mb-1"><strong>Phone:</strong> {order.phone || 'N/A'}</p>
+                            <p className="mb-1">
+                              <strong>Name:</strong> {order.userName || 'N/A'}
+                            </p>
+                            <p className="mb-1">
+                              <strong>Email:</strong> {order.user || 'N/A'}
+                            </p>
+                            <p className="mb-1">
+                              <strong>Phone:</strong> {order.phone || 'N/A'}
+                            </p>
                           </div>
-                          
-                          {/* Delivery Address */}
+
                           <div className="col-md-6 mb-3">
                             <h5 className="border-bottom pb-2">
                               <i className="bi bi-geo-alt"></i> Delivery Address
@@ -622,8 +598,7 @@ const AdminPanel = () => {
                             )}
                           </div>
                         </div>
-                        
-                        {/* Order Items */}
+
                         <div className="mb-3">
                           <h5 className="border-bottom pb-2">
                             <i className="bi bi-cart"></i> Order Items
@@ -633,11 +608,11 @@ const AdminPanel = () => {
                               <table className="table table-sm table-bordered">
                                 <thead className="table-light">
                                   <tr>
-                                    <th style={{width: '60px'}}>Image</th>
+                                    <th style={{ width: '60px' }}>Image</th>
                                     <th>Product</th>
-                                    <th style={{width: '100px'}}>Price</th>
-                                    <th style={{width: '80px'}}>Qty</th>
-                                    <th style={{width: '100px'}}>Subtotal</th>
+                                    <th style={{ width: '100px' }}>Price</th>
+                                    <th style={{ width: '80px' }}>Qty</th>
+                                    <th style={{ width: '100px' }}>Subtotal</th>
                                   </tr>
                                 </thead>
                                 <tbody>
@@ -645,17 +620,17 @@ const AdminPanel = () => {
                                     <tr key={index}>
                                       <td>
                                         {item.img ? (
-                                          <img 
-                                            src={item.img} 
-                                            alt={item.id || 'Product'} 
-                                            style={{width: '50px', height: '50px', objectFit: 'cover'}}
+                                          <img
+                                            src={item.img}
+                                            alt={item.id || 'Product'}
+                                            style={{ width: '50px', height: '50px', objectFit: 'cover' }}
                                             className="rounded"
-                                            onError={(e) => e.target.src = 'https://via.placeholder.com/50'}
+                                            onError={(e) => (e.target.src = 'https://via.placeholder.com/50')}
                                           />
                                         ) : (
-                                          <div 
+                                          <div
                                             className="bg-light rounded d-flex align-items-center justify-content-center"
-                                            style={{width: '50px', height: '50px'}}
+                                            style={{ width: '50px', height: '50px' }}
                                           >
                                             <i className="bi bi-image text-muted"></i>
                                           </div>
@@ -663,9 +638,7 @@ const AdminPanel = () => {
                                       </td>
                                       <td>
                                         <div>{item.id || 'Unknown Product'}</div>
-                                        {item.brand && (
-                                          <small className="text-muted">{item.brand}</small>
-                                        )}
+                                        {item.brand && <small className="text-muted">{item.brand}</small>}
                                       </td>
                                       <td>₹{item.cost || 0}</td>
                                       <td className="text-center">{item.quantity || 1}</td>
@@ -675,7 +648,9 @@ const AdminPanel = () => {
                                 </tbody>
                                 <tfoot className="table-light">
                                   <tr>
-                                    <td colSpan="4" className="text-end"><strong>Total:</strong></td>
+                                    <td colSpan="4" className="text-end">
+                                      <strong>Total:</strong>
+                                    </td>
                                     <td className="fw-bold text-success">₹{order.total || 0}</td>
                                   </tr>
                                 </tfoot>
@@ -685,17 +660,22 @@ const AdminPanel = () => {
                             <p className="text-muted">No items in this order</p>
                           )}
                         </div>
-                        
-                        {/* Order Summary */}
+
                         <div className="row">
                           <div className="col-md-6">
                             <div className="alert alert-info mb-0">
-                              <strong><i className="bi bi-info-circle"></i> Order Summary</strong>
+                              <strong>
+                                <i className="bi bi-info-circle"></i> Order Summary
+                              </strong>
                               <p className="mb-0 mt-2">
-                                <strong>Order Date:</strong> {orderDate ? new Date(orderDate).toLocaleDateString() : 'N/A'}<br/>
-                                <strong>Order Time:</strong> {orderDate ? new Date(orderDate).toLocaleTimeString() : 'N/A'}<br/>
-                                <strong>Total Items:</strong> {order.items || 0}<br/>
-                                <strong>Total Amount:</strong> <span className="text-success">₹{order.total || 0}</span>
+                                <strong>Order Date:</strong> {orderDate ? new Date(orderDate).toLocaleDateString() : 'N/A'}
+                                <br />
+                                <strong>Order Time:</strong> {orderDate ? new Date(orderDate).toLocaleTimeString() : 'N/A'}
+                                <br />
+                                <strong>Total Items:</strong> {order.items || 0}
+                                <br />
+                                <strong>Total Amount:</strong>{' '}
+                                <span className="text-success">₹{order.total || 0}</span>
                               </p>
                             </div>
                           </div>
@@ -703,7 +683,7 @@ const AdminPanel = () => {
                             <h5 className="border-bottom pb-2">
                               <i className="bi bi-truck"></i> Shipment Status
                             </h5>
-                            <select 
+                            <select
                               className="form-select"
                               value={order.status || 'Order Placed'}
                               onChange={(e) => handleStatusChange(orderId, e.target.value)}
@@ -725,19 +705,21 @@ const AdminPanel = () => {
         </div>
       )}
 
-      {/* Products Tab */}
       {activeTab === 'products' && (
         <div className="products-management">
           <div className="row">
-            {/* Add/Edit Product Form */}
             <div className="col-lg-5 mb-4">
               <div className="card shadow">
                 <div className="card-body">
                   <h3 className="card-title mb-4">
                     {editingProduct ? (
-                      <><i className="bi bi-pencil-square"></i> Edit Product</>
+                      <>
+                        <i className="bi bi-pencil-square"></i> Edit Product
+                      </>
                     ) : (
-                      <><i className="bi bi-plus-circle"></i> Add New Product</>
+                      <>
+                        <i className="bi bi-plus-circle"></i> Add New Product
+                      </>
                     )}
                   </h3>
                   <form onSubmit={handleAddProduct}>
@@ -747,7 +729,7 @@ const AdminPanel = () => {
                         type="text"
                         className="form-control"
                         value={newProduct.id}
-                        onChange={(e) => setNewProduct({...newProduct, id: e.target.value})}
+                        onChange={(e) => setNewProduct({ ...newProduct, id: e.target.value })}
                         placeholder="e.g., Wireless Headphones"
                         required
                       />
@@ -759,7 +741,7 @@ const AdminPanel = () => {
                         type="text"
                         className="form-control"
                         value={newProduct.brand}
-                        onChange={(e) => setNewProduct({...newProduct, brand: e.target.value})}
+                        onChange={(e) => setNewProduct({ ...newProduct, brand: e.target.value })}
                         placeholder="e.g., CNCMART, ULTRA"
                       />
                       <small className="text-muted">Optional - Enter brand name like CNCMART or ULTRA</small>
@@ -771,7 +753,7 @@ const AdminPanel = () => {
                         type="number"
                         className="form-control"
                         value={newProduct.cost}
-                        onChange={(e) => setNewProduct({...newProduct, cost: e.target.value})}
+                        onChange={(e) => setNewProduct({ ...newProduct, cost: e.target.value })}
                         placeholder="e.g., 9999"
                         min="0"
                         step="0.01"
@@ -789,22 +771,22 @@ const AdminPanel = () => {
                         required={!newProduct.img}
                       />
                       <small className="text-muted">Choose an image file (JPG, PNG, WEBP, etc.) - Max 5MB</small>
-                      
+
                       {imagePreview && (
                         <div className="mt-3 text-center">
-                          <img 
-                            src={imagePreview} 
-                            alt="Preview" 
+                          <img
+                            src={imagePreview}
+                            alt="Preview"
                             className="img-thumbnail"
-                            style={{maxWidth: '200px', maxHeight: '200px', objectFit: 'contain'}}
+                            style={{ maxWidth: '200px', maxHeight: '200px', objectFit: 'contain' }}
                           />
                           <div className="mt-2">
-                            <button 
-                              type="button" 
+                            <button
+                              type="button"
                               className="btn btn-sm btn-outline-danger"
                               onClick={() => {
                                 setImagePreview(null);
-                                setNewProduct({...newProduct, img: ''});
+                                setNewProduct((prev) => ({ ...prev, img: '' }));
                               }}
                             >
                               <i className="bi bi-x-circle"></i> Remove Image
@@ -820,7 +802,7 @@ const AdminPanel = () => {
                         type="text"
                         className="form-control"
                         value={newProduct.category}
-                        onChange={(e) => setNewProduct({...newProduct, category: e.target.value})}
+                        onChange={(e) => setNewProduct({ ...newProduct, category: e.target.value })}
                         placeholder="e.g., Electronics"
                         required
                       />
@@ -832,7 +814,7 @@ const AdminPanel = () => {
                         type="number"
                         className="form-control"
                         value={newProduct.year}
-                        onChange={(e) => setNewProduct({...newProduct, year: e.target.value})}
+                        onChange={(e) => setNewProduct({ ...newProduct, year: e.target.value })}
                         min="2000"
                         max="2100"
                       />
@@ -843,7 +825,7 @@ const AdminPanel = () => {
                       <textarea
                         className="form-control"
                         value={newProduct.description}
-                        onChange={(e) => setNewProduct({...newProduct, description: e.target.value})}
+                        onChange={(e) => setNewProduct({ ...newProduct, description: e.target.value })}
                         placeholder="Product description..."
                         rows="3"
                         required
@@ -851,11 +833,7 @@ const AdminPanel = () => {
                     </div>
 
                     <div className="d-grid gap-2">
-                      <button 
-                        type="submit" 
-                        className="btn btn-success"
-                        disabled={productLoading}
-                      >
+                      <button type="submit" className="btn btn-success" disabled={productLoading}>
                         {productLoading ? (
                           <>
                             <span className="spinner-border spinner-border-sm me-2"></span>
@@ -863,17 +841,13 @@ const AdminPanel = () => {
                           </>
                         ) : (
                           <>
-                            <i className={`bi ${editingProduct ? 'bi-check-lg' : 'bi-plus-lg'}`}></i> {editingProduct ? 'Update Product' : 'Add Product'}
+                            <i className={`bi ${editingProduct ? 'bi-check-lg' : 'bi-plus-lg'}`}></i>{' '}
+                            {editingProduct ? 'Update Product' : 'Add Product'}
                           </>
                         )}
                       </button>
                       {editingProduct && (
-                        <button 
-                          type="button" 
-                          className="btn btn-secondary"
-                          onClick={handleCancelEdit}
-                          disabled={productLoading}
-                        >
+                        <button type="button" className="btn btn-secondary" onClick={handleCancelEdit} disabled={productLoading}>
                           <i className="bi bi-x-lg"></i> Cancel Edit
                         </button>
                       )}
@@ -883,30 +857,29 @@ const AdminPanel = () => {
               </div>
             </div>
 
-            {/* Product List */}
             <div className="col-lg-7">
               <div className="card shadow">
                 <div className="card-body">
                   <h3 className="card-title mb-4">
                     <i className="bi bi-box-seam"></i> Products ({products.length || 0})
                   </h3>
-                  
+
                   {!products || products.length === 0 ? (
                     <div className="alert alert-info">
                       <i className="bi bi-info-circle"></i> No products available. Add your first product!
                     </div>
                   ) : (
-                    <div className="products-list" style={{maxHeight: '600px', overflowY: 'auto'}}>
-                      {products.map(product => (
+                    <div className="products-list" style={{ maxHeight: '600px', overflowY: 'auto' }}>
+                      {products.map((product) => (
                         <div key={product.id || product._id} className="product-item border rounded p-3 mb-3">
                           <div className="row align-items-center">
                             <div className="col-md-2">
-                              <img 
-                                src={product.img} 
-                                alt={product.id} 
+                              <img
+                                src={product.img}
+                                alt={product.id}
                                 className="img-fluid rounded"
-                                style={{width: '100%', height: '60px', objectFit: 'cover'}}
-                                onError={(e) => e.target.src = 'https://via.placeholder.com/60'}
+                                style={{ width: '100%', height: '60px', objectFit: 'cover' }}
+                                onError={(e) => (e.target.src = 'https://via.placeholder.com/60')}
                               />
                             </div>
                             <div className="col-md-7">
@@ -917,21 +890,15 @@ const AdminPanel = () => {
                                 </div>
                               )}
                               <p className="mb-1 text-success fw-bold">₹{product.cost || 0}</p>
-                              <small className="text-muted">{product.category || 'No category'} • {product.year || 'N/A'}</small>
+                              <small className="text-muted">
+                                {product.category || 'No category'} • {product.year || 'N/A'}
+                              </small>
                             </div>
                             <div className="col-md-3 text-end">
-                              <button 
-                                className="btn btn-primary btn-sm me-1"
-                                onClick={() => handleEditProduct(product)}
-                                disabled={productLoading}
-                              >
+                              <button className="btn btn-primary btn-sm me-1" onClick={() => handleEditProduct(product)} disabled={productLoading}>
                                 <i className="bi bi-pencil"></i> Edit
                               </button>
-                              <button 
-                                className="btn btn-danger btn-sm"
-                                onClick={() => handleDeleteProduct(product.id)}
-                                disabled={productLoading}
-                              >
+                              <button className="btn btn-danger btn-sm" onClick={() => handleDeleteProduct(product.id)} disabled={productLoading}>
                                 <i className="bi bi-trash"></i> Delete
                               </button>
                             </div>
