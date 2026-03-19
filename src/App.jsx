@@ -28,183 +28,106 @@ const getBrandName = (product) => {
   return (product.brand || product.sellerBusinessName || product.sellerName || "").trim();
 };
 
-const BootScreen = () => {
-  const [stage, setStage] = useState(0);
-
-  useEffect(() => {
-    const timings = [300, 300, 400, 600, 800];
-    let currentStage = 0;
-    const interval = setInterval(() => {
-      currentStage++;
-      if (currentStage >= timings.length) {
-        clearInterval(interval);
-      } else {
-        setStage(currentStage);
-      }
-    }, timings[currentStage]);
-    return () => clearInterval(interval);
-  }, []);
-
-  return (
+const BootScreen = () => (
+  <div
+    style={{
+      position: "fixed",
+      inset: 0,
+      background: "linear-gradient(135deg, #0d233d 0%, #162e54 65%, #1a4a80 100%)",
+      display: "flex",
+      alignItems: "center",
+      justifyContent: "center",
+      padding: "2rem",
+      zIndex: 9999,
+    }}
+  >
     <div
       style={{
-        position: "fixed",
-        inset: 0,
-        background: "linear-gradient(135deg, #ffffff 0%, #f5f5f5 100%)",
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        flexDirection: "column",
-        zIndex: 9999,
-        overflow: "hidden",
+        background: "rgba(255, 255, 255, 0.04)",
+        border: "1px solid rgba(255, 255, 255, 0.2)",
+        borderRadius: "24px",
+        padding: "3rem",
+        maxWidth: "480px",
+        width: "100%",
+        boxShadow: "0 30px 60px rgba(6, 11, 25, 0.55)",
       }}
     >
+      <div
+        style={{
+          width: "56px",
+          height: "56px",
+          borderRadius: "16px",
+          background: "rgba(255, 255, 255, 0.1)",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          fontSize: "1.25rem",
+          fontWeight: 700,
+          letterSpacing: "0.1rem",
+          marginBottom: "1rem",
+          color: "#ffd54f",
+        }}
+      >
+        SM
+      </div>
+      <h1
+        style={{
+          color: "white",
+          fontSize: "2.4rem",
+          lineHeight: "1.1",
+          marginBottom: "0.5rem",
+        }}
+      >
+        ShopMaster
+      </h1>
+      <p
+        style={{
+          color: "rgba(255, 255, 255, 0.8)",
+          marginBottom: "2rem",
+          fontSize: "1rem",
+        }}
+      >
+        Curated products, real reviews, zero compromise. Preparing a premium shopping experience just for you.
+      </p>
+      <div style={{ marginBottom: "1.25rem" }}>
+        <div style={{ height: "6px", background: "rgba(255, 255, 255, 0.2)", borderRadius: "999px", overflow: "hidden" }}>
+          <div
+            style={{
+              width: "68%",
+              height: "100%",
+              background: "linear-gradient(90deg, #ffd54f, #ff8a65)",
+              animation: "pulseProgress 2s ease-in-out infinite",
+            }}
+          ></div>
+        </div>
+      </div>
+      <div
+        style={{
+          display: "flex",
+          justifyContent: "space-between",
+          fontSize: "0.85rem",
+          color: "rgba(255,255,255,0.65)",
+        }}
+      >
+        <div>
+          <strong style={{ color: "#fff" }}>Catalog</strong>
+          <div>Syncing live inventory</div>
+        </div>
+        <div>
+          <strong style={{ color: "#fff" }}>Reviews</strong>
+          <div>Fetching verified ratings</div>
+        </div>
+      </div>
       <style>{`
-        @keyframes slideIn {
-          from { opacity: 0; transform: translateX(-40px); }
-          to { opacity: 1; transform: translateX(0); }
-        }
-        @keyframes slideInRight {
-          from { opacity: 0; transform: translateX(40px); }
-          to { opacity: 1; transform: translateX(0); }
-        }
-        @keyframes curveArrow {
-          0% { strokeDashoffset: 200; opacity: 0; }
-          20% { opacity: 1; }
-          100% { strokeDashoffset: 0; opacity: 1; }
-        }
-        @keyframes expandCircle {
-          from { transform: scale(0); opacity: 0; }
-          to { transform: scale(1); opacity: 1; }
-        }
-        @keyframes dropDown {
-          0% { transform: translateY(-30px); opacity: 0; }
-          100% { transform: translateY(0); opacity: 1; }
-        }
-        @keyframes arrowBounce {
-          0%, 100% { transform: translateY(0); }
-          50% { transform: translateY(8px); }
-        }
-        
-        .s-letter {
-          animation: slideIn 0.6s cubic-bezier(0.34, 1.56, 0.64, 1);
-          font-size: 72px;
-          font-weight: 900;
-          color: #000;
-          letter-spacing: 2px;
-        }
-        .arrow-container {
-          position: relative;
-          width: 200px;
-          height: 80px;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          margin: 20px 0;
-        }
-        .arrow-svg {
-          width: 100%;
-          height: 100%;
-          animation: curveArrow 1.2s ease-in-out 0.6s forwards;
-        }
-        .arrow-svg path {
-          stroke-dasharray: 200;
-        }
-        .m-letter {
-          animation: slideInRight 0.6s cubic-bezier(0.34, 1.56, 0.64, 1) 0.8s both;
-          font-size: 72px;
-          font-weight: 900;
-          color: #333;
-          letter-spacing: 2px;
-        }
-        .full-text {
-          animation: dropDown 0.8s cubic-bezier(0.34, 1.56, 0.64, 1) 1.2s both;
-          font-size: 48px;
-          font-weight: 900;
-          color: #000;
-          letter-spacing: 1px;
-          text-align: center;
-        }
-        .logo-container {
-          animation: expandCircle 0.8s cubic-bezier(0.34, 1.56, 0.64, 1) 2s both;
-          width: 120px;
-          height: 120px;
-          border: 3px solid #ffd54f;
-          border-radius: 20px;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          background: rgba(255, 213, 79, 0.08);
-          margin: 30px 0 0 0;
-        }
-        .logo-text {
-          font-size: 44px;
-          font-weight: 900;
-          color: #ffd54f;
-          letter-spacing: 1px;
-        }
-        .down-arrow-container {
-          animation: dropDown 0.6s cubic-bezier(0.34, 1.56, 0.64, 1) 2.8s both;
-          margin-top: 20px;
-        }
-        .down-arrow {
-          animation: arrowBounce 1.5s ease-in-out 3s infinite;
-          font-size: 28px;
-          color: #ffd54f;
-          font-weight: 900;
+        @keyframes pulseProgress {
+          0% { transform: scaleX(0.82); opacity: 0.8; }
+          50% { transform: scaleX(0.92); opacity: 1; }
+          100% { transform: scaleX(0.82); opacity: 0.8; }
         }
       `}</style>
-
-      {stage >= 0 && (
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: "10px" }}>
-          <div className="s-letter">S</div>
-
-          {stage >= 1 && (
-            <div className="arrow-container">
-              <svg className="arrow-svg" viewBox="0 0 200 80">
-                <defs>
-                  <marker
-                    id="arrowhead"
-                    markerWidth="10"
-                    markerHeight="10"
-                    refX="9"
-                    refY="3"
-                    orient="auto"
-                  >
-                    <polygon points="0 0, 10 3, 0 6" fill="#ffd54f" />
-                  </marker>
-                </defs>
-                <path
-                  d="M 20 40 Q 100 10, 180 40"
-                  stroke="#ffd54f"
-                  strokeWidth="5"
-                  fill="none"
-                  markerEnd="url(#arrowhead)"
-                  strokeLinecap="round"
-                />
-              </svg>
-            </div>
-          )}
-
-          {stage >= 2 && <div className="m-letter">M</div>}
-        </div>
-      )}
-
-      {stage >= 3 && <div className="full-text">ShopMaster</div>}
-
-      {stage >= 4 && (
-        <div style={{ textAlign: "center" }}>
-          <div className="logo-container">
-            <div className="logo-text">SM</div>
-          </div>
-          <div className="down-arrow-container">
-            <div className="down-arrow">↓</div>
-          </div>
-        </div>
-      )}
     </div>
-  );
-};
+  </div>
+);
 
 const ProductCard = React.memo(({ product, quantity, onShowDetails, onAddCart, onRemoveCart, variant = "grid" }) => {
   const brandText = getBrandName(product);
