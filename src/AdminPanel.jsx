@@ -407,7 +407,7 @@ const AdminPanel = () => {
                 <i className="bi bi-cart-check"></i>
               </div>
               <div className="stat-details">
-                <h3>{stats.totalOrders || orders.length || 0}</h3>
+                <h3>{orders.length || 0}</h3>
                 <p>Total Orders</p>
               </div>
             </div>
