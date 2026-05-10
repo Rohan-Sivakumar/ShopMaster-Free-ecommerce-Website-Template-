@@ -844,6 +844,14 @@ function App() {
           <div className={`filter-overlay ${mobileFiltersOpen ? "active" : ""}`} onClick={() => setMobileFiltersOpen(false)}></div>
           <div className="products-container">
             <aside className={`filter-sidebar ${mobileFiltersOpen ? "mobile-open" : ""}`}>
+              {/* Filter Modal Header */}
+              <div className="filter-modal-header">
+                <h4 className="filter-modal-title">🎯 Filters</h4>
+                <button className="filter-close-btn" onClick={() => setMobileFiltersOpen(false)}>✕</button>
+              </div>
+              
+              {/* Filter Content Scrollable Area */}
+              <div className="filter-content-scroll">
               {hasActiveFilters && (
                 <button className="clear-filters-btn" onClick={clearAllFilters}>
                   <i className="bi bi-x-circle"></i> Clear All Filters
@@ -941,6 +949,12 @@ function App() {
                     ₹{minPrice || 0} - ₹{maxPrice || productMaxPrice.toLocaleString()}
                   </div>
                 )}
+              </div>
+              </div>
+              {/* Filter Modal Footer */}
+              <div className="filter-modal-footer">
+                <button className="btn-filter-clear" onClick={() => { clearAllFilters(); setMobileFiltersOpen(false); }}>Clear</button>
+                <button className="btn-filter-apply" onClick={() => setMobileFiltersOpen(false)}>Apply</button>
               </div>
             </aside>
             <div className="products-main">
