@@ -3,6 +3,15 @@ import "./Navigation.css";
 import { getCurrentUser } from "./cartService";
 import Swal from 'sweetalert2';
 
+// Icon mapping for bottom navigation
+const NAV_ICONS = {
+  home: '🏠',
+  products: '🛍️',
+  cart: '🛒',
+  user: '👤',
+  login: '🔓'
+};
+
 export default function Navigation({ activePage, onPageChange, search, setSearch, cartCount = 0 }) {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [currentUser, setCurrentUser] = useState(null);
@@ -145,6 +154,63 @@ export default function Navigation({ activePage, onPageChange, search, setSearch
           onChange={handleSearch}
         />
       </div>
+
+      {/* Bottom Navigation for Mobile & Tablet */}
+      <nav className="bottom-navigation">
+        <div className="bottom-nav-container">
+          {/* Home */}
+          <button
+            className={`nav-item ${activePage === 'home' ? 'active' : ''}`}
+            onClick={go('home')}
+            aria-label="Home"
+          >
+            <span className="nav-icon">{NAV_ICONS.home}</span>
+            <span className="nav-label">Home</span>
+          </button>
+
+          {/* Products */}
+          <button
+            className={`nav-item ${activePage === 'p' ? 'active' : ''}`}
+            onClick={go('p')}
+            aria-label="Products"
+          >
+            <span className="nav-icon">{NAV_ICONS.products}</span>
+            <span className="nav-label">Shop</span>
+          </button>
+
+          {/* Cart */}
+          <button
+            className={`nav-item ${activePage === 'Cart' ? 'active' : ''}`}
+            onClick={go('Cart')}
+            aria-label="Cart"
+          >
+            <span className="nav-icon">{NAV_ICONS.cart}</span>
+            <span className="nav-label">Cart</span>
+            {cartCount > 0 && <span className="cart-badge">{cartCount}</span>}
+          </button>
+
+          {/* User/Login */}
+          {!currentUser ? (
+            <button
+              className={`nav-item ${activePage === 'login' ? 'active' : ''}`}
+              onClick={go('login')}
+              aria-label="Login"
+            >
+              <span className="nav-icon">{NAV_ICONS.login}</span>
+              <span className="nav-label">Login</span>
+            </button>
+          ) : (
+            <button
+              className={`nav-item ${activePage === 'dashboard' ? 'active' : ''}`}
+              onClick={go('dashboard')}
+              aria-label="Profile"
+            >
+              <span className="nav-icon">{NAV_ICONS.user}</span>
+              <span className="nav-label">Profile</span>
+            </button>
+          )}
+        </div>
+      </nav>
     </nav>
   );
 }
