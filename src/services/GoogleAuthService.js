@@ -11,7 +11,8 @@ class GoogleAuthService {
     this.isInitialized = false;
     this.isInitializing = false;
     this.initPromise = null;
-    this.redirectUri = `${window.location.origin}/auth-callback`;
+    // Use base URL only (no /auth-callback path) - matches Google Cloud Console registration
+    this.redirectUri = window.location.origin;
   }
 
   /**
@@ -91,21 +92,17 @@ class GoogleAuthService {
   }
 
   /**
-   * Open Google Sign-In in a popup window
-   * This mimics the popup flow similar to GitHub/Microsoft sign-in
+   * Start Google OAuth 2.0 flow
+   * Redirects to Google's authorization endpoint or opens in popup
+   * usePopup: if true, opens in popup; if false, uses main window redirect
    */
-  openSignInPopup() {
-    const width = 500;
-    const height = 600;
-    const left = window.screen.width / 2 - width / 2;
-    const top = window.screen.height / 2 - height / 2;
-
-    // Generate state and nonce for security
+  startOAuthFlow(usePopup = true) {
     const state = Math.random().toString(36).substring(7);
     const nonce = Math.random().toString(36).substring(7);
 
     // Store state in sessionStorage for verification
     sessionStorage.setItem('google_oauth_state', state);
+    sessionStorage.setItem('google_oauth_nonce', nonce);
 
     // Google OAuth 2.0 authorization endpoint
     const params = new URLSearchParams({
@@ -121,11 +118,29 @@ class GoogleAuthService {
 
     const authUrl = `https://accounts.google.com/o/oauth2/v2/auth?${params.toString()}`;
 
-    return window.open(
-      authUrl,
-      'Google Sign In',
-      `width=${width},height=${height},left=${left},top=${top}`
-    );
+    if (usePopup) {
+      const width = 500;
+      const height = 600;
+      const left = window.screen.width / 2 - width / 2;
+      const top = window.screen.height / 2 - height / 2;
+
+      return window.open(
+        authUrl,
+        'Google Sign In',
+        `width=${width},height=${height},left=${left},top=${top}`
+      );
+    } else {
+      // Direct redirect (simpler approach)
+      window.location.href = authUrl;
+    }
+  }
+
+  /**
+   * Open Google Sign-In in a popup window
+   * This mimics the popup flow similar to GitHub/Microsoft sign-in
+   */
+  openSignInPopup() {
+    return this.startOAuthFlow(true);
   }
 
   /**

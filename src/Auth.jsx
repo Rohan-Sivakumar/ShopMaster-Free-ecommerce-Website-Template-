@@ -11,7 +11,7 @@ const Auth = ({ onSignInSuccess, onSignInFailure }) => {
   const [isLoading, setIsLoading] = useState(false);
   const [isGoogleLoading, setIsGoogleLoading] = useState(false);
 
-  // Initialize Google Auth Service on mount
+  // Initialize Google Auth Service on mount and handle OAuth callback
   useEffect(() => {
     const initGoogleAuth = async () => {
       try {
@@ -23,6 +23,55 @@ const Auth = ({ onSignInSuccess, onSignInFailure }) => {
 
     initGoogleAuth();
 
+    // Check for OAuth callback parameters (when Google redirects back to base URL)
+    const handleOAuthCallback = () => {
+      const params = new URLSearchParams(window.location.search);
+      const code = params.get('code');
+      const state = params.get('state');
+      const scope = params.get('scope');
+
+      if (code) {
+        // Verify state for security
+        const storedState = sessionStorage.getItem('google_oauth_state');
+        
+        if (state && storedState && state === storedState) {
+          console.log('OAuth callback received with valid state');
+          
+          // If this page is opened as a popup, message back to parent window
+          if (window.opener && window.opener !== window) {
+            try {
+              window.opener.postMessage(
+                {
+                  type: 'google-auth-callback',
+                  code: code,
+                  scope: scope,
+                },
+                window.location.origin
+              );
+              // Close popup after sending message
+              setTimeout(() => window.close(), 500);
+              return;
+            } catch (error) {
+              console.error('Failed to message parent window:', error);
+            }
+          }
+          
+          // Otherwise, handle in current window
+          exchangeCodeForTokens(code);
+          
+          // Clean up state from URL
+          window.history.replaceState({}, document.title, window.location.pathname);
+          sessionStorage.removeItem('google_oauth_state');
+        } else if (code) {
+          // Code present but state validation failed
+          console.warn('State mismatch in OAuth callback - possible CSRF attack');
+          window.history.replaceState({}, document.title, window.location.pathname);
+        }
+      }
+    };
+
+    handleOAuthCallback();
+
     return () => {
       // Cleanup is handled by GoogleAuthService singleton
     };
@@ -32,52 +81,77 @@ const Auth = ({ onSignInSuccess, onSignInFailure }) => {
     setIsGoogleLoading(true);
     setIsLoading(true);
 
-    // Open Google Sign-In popup
-    const popup = GoogleAuthService.openSignInPopup();
+    try {
+      // Start OAuth flow - uses popup approach
+      // Google will redirect back to base URL with authorization code
+      // The popup will message back the auth code to this window
+      const popup = GoogleAuthService.openSignInPopup();
 
-    if (!popup) {
-      setIsGoogleLoading(false);
-      setIsLoading(false);
-      if (onSignInFailure) {
-        onSignInFailure(new Error('Failed to open sign-in popup. Check browser popup settings.'));
-      }
-      return;
-    }
-
-    // Listen for message from popup
-    const handleMessage = (event) => {
-      // Verify origin for security
-      if (event.origin !== window.location.origin) {
+      if (!popup) {
+        setIsGoogleLoading(false);
+        setIsLoading(false);
+        if (onSignInFailure) {
+          onSignInFailure(new Error('Failed to open sign-in popup. Check browser popup settings.'));
+        }
         return;
       }
 
-      if (event.data && event.data.type === 'google-auth') {
-        window.removeEventListener('message', handleMessage);
+      // Listen for message from popup with OAuth callback
+      const handlePopupMessage = (event) => {
+        // Verify origin for security
+        if (event.origin !== window.location.origin) {
+          return;
+        }
 
-        if (event.data.success) {
-          // Exchange code for tokens on backend
-          exchangeCodeForTokens(event.data.code);
-        } else {
-          setIsGoogleLoading(false);
-          setIsLoading(false);
-          if (onSignInFailure) {
-            onSignInFailure(new Error(event.data.error || 'Google sign-in failed'));
+        if (event.data && event.data.type === 'google-auth-callback') {
+          window.removeEventListener('message', handlePopupMessage);
+          clearInterval(checkPopupInterval);
+          clearTimeout(timeoutId);
+
+          if (event.data.code) {
+            console.log('Received auth code from popup');
+            exchangeCodeForTokens(event.data.code);
+          } else {
+            setIsGoogleLoading(false);
+            setIsLoading(false);
+            if (onSignInFailure) {
+              onSignInFailure(new Error('No authorization code received'));
+            }
           }
         }
-      }
-    };
+      };
 
-    window.addEventListener('message', handleMessage);
+      window.addEventListener('message', handlePopupMessage);
 
-    // Monitor if popup is closed without authentication
-    const popupCheckInterval = setInterval(() => {
-      if (!popup || popup.closed) {
-        clearInterval(popupCheckInterval);
-        window.removeEventListener('message', handleMessage);
+      // Timeout to stop loading if auth doesn't complete
+      const timeoutId = setTimeout(() => {
+        window.removeEventListener('message', handlePopupMessage);
         setIsGoogleLoading(false);
         setIsLoading(false);
+      }, 5000);
+
+      // Monitor if popup is closed without authentication
+      const checkPopupInterval = setInterval(() => {
+        if (!popup || popup.closed) {
+          clearInterval(checkPopupInterval);
+          clearTimeout(timeoutId);
+          window.removeEventListener('message', handlePopupMessage);
+          // Only show error if loading is still active
+          if (isGoogleLoading) {
+            setIsGoogleLoading(false);
+            setIsLoading(false);
+          }
+        }
+      }, 500);
+
+    } catch (error) {
+      setIsGoogleLoading(false);
+      setIsLoading(false);
+      console.error('Error starting Google sign-in:', error);
+      if (onSignInFailure) {
+        onSignInFailure(error);
       }
-    }, 500);
+    }
   };
 
   /**
