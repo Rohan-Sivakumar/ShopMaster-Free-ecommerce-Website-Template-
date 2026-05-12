@@ -15,7 +15,7 @@ app.use(cors({
     'http://localhost:5173',
     'http://localhost:3000',
     'https://scs577738.vercel.app',
-    'https://*.vercel.app'
+    'https://shopmaster-mobile.vercel.app'
   ],
   credentials: true
 }));
@@ -292,6 +292,8 @@ const sendOrderEmail = async (orderData) => {
     throw error;
   }
 };
+
+
 
 // Initialize all data
 const initializeData = async () => {
