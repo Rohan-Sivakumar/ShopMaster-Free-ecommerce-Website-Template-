@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import './GoogleAuth.css';
+import GoogleAuthService from './services/GoogleAuthService';
 
-const GOOGLE_CLIENT_ID = '902043632684-87h6kimr4divhgqhuabu11l8713vc240.apps.googleusercontent.com';
 const MICROSOFT_CLIENT_ID = '0ad4fe15-57b7-4e64-8189-2840b19c05f5';
 const MICROSOFT_REDIRECT_URI = window.location.origin;
 
@@ -11,53 +11,121 @@ const Auth = ({ onSignInSuccess, onSignInFailure }) => {
   const [isLoading, setIsLoading] = useState(false);
   const [isGoogleLoading, setIsGoogleLoading] = useState(false);
 
+  // Initialize Google Auth Service on mount
   useEffect(() => {
-    const loadGoogleScript = () => {
-      const script = document.createElement('script');
-      script.src = 'https://accounts.google.com/gsi/client';
-      script.async = true;
-      script.defer = true;
-      script.onload = initializeGoogleSignIn;
-      document.body.appendChild(script);
-    };
-
-    loadGoogleScript();
-
-    return () => {
-      const script = document.querySelector('script[src="https://accounts.google.com/gsi/client"]');
-      if (script) {
-        document.body.removeChild(script);
+    const initGoogleAuth = async () => {
+      try {
+        await GoogleAuthService.initialize(handleGoogleCredentialResponse);
+      } catch (error) {
+        console.error('Failed to initialize Google Auth:', error);
       }
     };
-  }, []);
 
-  const initializeGoogleSignIn = () => {
-    if (window.google) {
-      window.google.accounts.id.initialize({
-        client_id: GOOGLE_CLIENT_ID,
-        callback: handleGoogleCredentialResponse,
-        auto_select: false,
-        cancel_on_tap_outside: true,
-      });
-      window.google.accounts.id.disableAutoSelect();
-    }
-  };
+    initGoogleAuth();
+
+    return () => {
+      // Cleanup is handled by GoogleAuthService singleton
+    };
+  }, []);
 
   const handleGoogleSignInClick = () => {
     setIsGoogleLoading(true);
     setIsLoading(true);
 
-    if (window.google) {
-      window.google.accounts.id.prompt((notification) => {
-        if (notification.isNotDisplayed() || notification.isSkippedMoment()) {
+    // Open Google Sign-In popup
+    const popup = GoogleAuthService.openSignInPopup();
+
+    if (!popup) {
+      setIsGoogleLoading(false);
+      setIsLoading(false);
+      if (onSignInFailure) {
+        onSignInFailure(new Error('Failed to open sign-in popup. Check browser popup settings.'));
+      }
+      return;
+    }
+
+    // Listen for message from popup
+    const handleMessage = (event) => {
+      // Verify origin for security
+      if (event.origin !== window.location.origin) {
+        return;
+      }
+
+      if (event.data && event.data.type === 'google-auth') {
+        window.removeEventListener('message', handleMessage);
+
+        if (event.data.success) {
+          // Exchange code for tokens on backend
+          exchangeCodeForTokens(event.data.code);
+        } else {
           setIsGoogleLoading(false);
           setIsLoading(false);
+          if (onSignInFailure) {
+            onSignInFailure(new Error(event.data.error || 'Google sign-in failed'));
+          }
         }
-      });
+      }
+    };
+
+    window.addEventListener('message', handleMessage);
+
+    // Monitor if popup is closed without authentication
+    const popupCheckInterval = setInterval(() => {
+      if (!popup || popup.closed) {
+        clearInterval(popupCheckInterval);
+        window.removeEventListener('message', handleMessage);
+        setIsGoogleLoading(false);
+        setIsLoading(false);
+      }
+    }, 500);
+  };
+
+  /**
+   * Exchange authorization code for tokens (handled by backend)
+   * In production, add a backend endpoint to securely exchange the code
+   */
+  const exchangeCodeForTokens = async (code) => {
+    try {
+      // TODO: In production, call your backend API to exchange code for tokens
+      // Example endpoint: POST /api/auth/google/callback
+      // For now, we'll simulate with a mock response
+      // You should implement this on your backend for security
+
+      // Mock implementation - replace with actual backend call
+      const mockUserData = {
+        provider: 'google',
+        email: 'user@example.com',
+        name: 'User Name',
+        picture: 'https://via.placeholder.com/80',
+        sub: 'mock-sub-id',
+        loginTime: new Date().toISOString(),
+      };
+
+      setUserInfo(mockUserData);
+      setIsSignedIn(true);
+
+      sessionStorage.setItem('authUser', JSON.stringify(mockUserData));
+      sessionStorage.setItem('authCode', code);
+
+      window.dispatchEvent(new Event('userChanged'));
+
+      if (onSignInSuccess) {
+        onSignInSuccess(mockUserData);
+      }
+    } catch (error) {
+      console.error('Error exchanging code for tokens:', error);
+      if (onSignInFailure) {
+        onSignInFailure(error);
+      }
+    } finally {
+      setIsGoogleLoading(false);
+      setIsLoading(false);
     }
   };
 
   const handleGoogleCredentialResponse = (response) => {
+    // This callback is kept for backward compatibility with the old GSI button
+    // but the new popup flow is preferred
     try {
       const userObject = parseJwt(response.credential);
 
@@ -234,9 +302,8 @@ const Auth = ({ onSignInSuccess, onSignInFailure }) => {
   };
 
   const handleSignOut = () => {
-    if (window.google && userInfo?.provider === 'google') {
-      window.google.accounts.id.disableAutoSelect();
-    }
+    // Use GoogleAuthService for cleanup
+    GoogleAuthService.signOut();
 
     setIsSignedIn(false);
     setUserInfo(null);
@@ -245,6 +312,8 @@ const Auth = ({ onSignInSuccess, onSignInFailure }) => {
 
     sessionStorage.removeItem('authUser');
     sessionStorage.removeItem('authToken');
+    sessionStorage.removeItem('authCode');
+    sessionStorage.removeItem('google_oauth_state');
 
     window.dispatchEvent(new Event('userChanged'));
   };

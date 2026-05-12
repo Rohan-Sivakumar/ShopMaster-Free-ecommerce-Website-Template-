@@ -429,6 +429,56 @@ app.get('/api/health', (req, res) => {
   });
 });
 
+// ========== AUTHENTICATION ROUTES ==========
+
+/**
+ * Google OAuth 2.0 Token Exchange
+ * Exchanges authorization code for ID token and user info
+ * This is called by the backend to securely exchange the code
+ */
+app.post('/api/auth/google/callback', async (req, res) => {
+  try {
+    const { code, state } = req.body;
+
+    if (!code || !state) {
+      return res.status(400).json({ 
+        error: 'Missing required parameters: code and state' 
+      });
+    }
+
+    // IMPORTANT: In production, verify the state against a stored value
+    // and exchange the code for tokens via Google's token endpoint
+    // This requires your Google OAuth client secret (keep it server-side only!)
+
+    // For now, we'll return a mock response
+    // In production, implement actual Google token exchange here
+
+    const mockUserData = {
+      provider: 'google',
+      email: 'user@example.com',
+      name: 'User Name',
+      picture: 'https://via.placeholder.com/80',
+      sub: 'google-user-id',
+      loginTime: new Date().toISOString(),
+    };
+
+    // In production:
+    // 1. Verify state
+    // 2. Exchange code for tokens using Google's OAuth endpoint
+    // 3. Extract user info from ID token
+    // 4. Create/update user in database if needed
+
+    res.json({
+      success: true,
+      user: mockUserData,
+      token: 'mock-jwt-token', // Replace with actual JWT token in production
+    });
+  } catch (error) {
+    console.error('Google OAuth callback error:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
 // ========== SELLER ROUTES ==========
 
 app.post('/api/sellers/register', async (req, res) => {

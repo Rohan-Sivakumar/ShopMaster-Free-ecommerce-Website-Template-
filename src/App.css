@@ -378,6 +378,8 @@
   .products-container {
     flex-direction: column;
     gap: 0;
+    position: relative;
+    overflow: visible;
   }
 
   /* Amazon/Flipkart style bottom sheet filter modal */
@@ -386,17 +388,20 @@
     bottom: -100%;
     left: 0;
     right: 0;
-    width: 100%;
-    z-index: 1050;
-    transition: bottom 0.3s ease;
+    width: 100vw;
+    height: auto;
+    max-height: 85vh;
+    z-index: 2000;
+    transition: bottom 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     border-radius: 20px 20px 0 0;
     overflow-y: auto;
+    overflow-x: hidden;
     box-shadow: 0 -4px 16px rgba(0, 0, 0, 0.2);
     padding: 0;
     background: #ffffff;
-    max-height: 85vh;
     display: flex;
     flex-direction: column;
+    -webkit-overflow-scrolling: touch;
   }
 
   .filter-sidebar.mobile-open {
@@ -613,7 +618,7 @@
   }
 
   .mobile-filter-toggle {
-    display: flex;
+    display: flex !important;
     align-items: center;
     justify-content: center;
     gap: 0.5rem;
@@ -627,6 +632,8 @@
     margin-bottom: 1rem;
     width: 100%;
     transition: all 0.2s ease;
+    position: relative;
+    z-index: 10;
   }
 
   .mobile-filter-toggle:active {
@@ -635,18 +642,20 @@
   }
 
   .filter-overlay {
-    display: none;
+    display: none !important;
     position: fixed;
     top: 0;
     left: 0;
     right: 0;
     bottom: 0;
     background: rgba(0, 0, 0, 0.5);
-    z-index: 1049;
+    z-index: 1999;
+    width: 100%;
+    height: 100%;
   }
 
   .filter-overlay.active {
-    display: block;
+    display: block !important;
   }
 
   .products-header {
