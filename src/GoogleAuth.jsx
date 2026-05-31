@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import './GoogleAuth.css';
 
 // Google OAuth Configuration
-const GOOGLE_CLIENT_ID = '902043632684-87h6kimr4divhgqhuabu11l8713vc240.apps.googleusercontent.com';
+const GOOGLE_CLIENT_ID = '441853028836-o65ton6djcjdvkdk2n2kpstdj930e4r6.apps.googleusercontent.com';
 
 const GoogleAuth = ({ onSignInSuccess, onSignInFailure }) => {
   const [isSignedIn, setIsSignedIn] = useState(false);
